@@ -32,6 +32,7 @@ const dnsReverse = promisify(dns.reverse);
 
 import { CVE_DATABASE } from '../stubs/index.js';
 import type { CVEEntry } from '../stubs/index.js';
+import { isRestrictedInternalIP } from './adapter-tools.js';
 
 // =============================================================================
 // PORT SCANNING UTILITY
@@ -752,6 +753,17 @@ export const BUILTIN_TOOLS: CustomTool[] = [
       const body = context.parameters.body as string | undefined;
 
       try {
+        // SSRF Protection: Block access to internal/metadata services
+        const urlObj = new URL(url);
+        if (isRestrictedInternalIP(urlObj.hostname)) {
+          return {
+            success: false,
+            error: 'SSRF BLOCKED: Access to internal/metadata services (127.x, 10.x, 192.168.x, 172.16-31.x, 169.254.x, link-local) is denied by default. Only authorized mission scopes can override.',
+            blocked: true,
+            reason: 'internal_ip_range',
+          };
+        }
+
         const response = await fetch(url, {
           method,
           headers,
@@ -1565,27 +1577,63 @@ Note: Consider using larger wordlists (rockyou.txt) or hashcat for better result
     ],
     handler: async (context) => {
       const token = context.parameters.token as string;
+      const MAX_PAYLOAD_SIZE = 1_000_000; // 1MB limit per part
+      const MAX_TOKEN_SIZE = 5_000_000; // 5MB limit for entire token
+
+      if (token.length > MAX_TOKEN_SIZE) {
+        return { success: false, error: `JWT token exceeds maximum size (${token.length} > ${MAX_TOKEN_SIZE} bytes)` };
+      }
+
       const parts = token.split('.');
       if (parts.length !== 3) {
-        return { success: false, error: 'Invalid JWT format' };
+        return { success: false, error: 'Invalid JWT format: expected 3 parts (header.payload.signature)' };
       }
+
       try {
-        const b64urlDecode = (s: string) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
-        const header = JSON.parse(b64urlDecode(parts[0]));
-        const payload = JSON.parse(b64urlDecode(parts[1]));
+        // Safe base64url decode with padding and size validation
+        const b64urlDecode = (s: string, partName: string): string => {
+          if (s.length > MAX_PAYLOAD_SIZE) {
+            throw new Error(`JWT ${partName} exceeds size limit (${s.length} > ${MAX_PAYLOAD_SIZE})`);
+          }
+          try {
+            // Add proper padding
+            const padded = s + '=='.substring(0, (4 - s.length % 4) % 4);
+            return Buffer.from(padded, 'base64').toString('utf8');
+          } catch (e) {
+            throw new Error(`Failed to decode base64url ${partName}: ${e instanceof Error ? e.message : 'unknown error'}`);
+          }
+        };
+
+        const headerStr = b64urlDecode(parts[0], 'header');
+        const payloadStr = b64urlDecode(parts[1], 'payload');
+
+        // Verify decoded size before parsing
+        if (headerStr.length > 50_000) {
+          return { success: false, error: 'JWT header too large after decoding' };
+        }
+        if (payloadStr.length > 500_000) {
+          return { success: false, error: 'JWT payload too large after decoding' };
+        }
+
+        const header = JSON.parse(headerStr);
+        const payload = JSON.parse(payloadStr);
+
         const issues: string[] = [];
         if (header.alg === 'none') issues.push('⚠ Algorithm is "none" - VULNERABLE');
         if (header.alg === 'HS256') issues.push('⚠ HS256 may be vulnerable to key confusion');
         if (payload.exp && payload.exp < Date.now() / 1000) issues.push('⚠ Token is expired');
+
         return {
           success: true,
           output: `JWT Analysis:
 Header: ${JSON.stringify(header, null, 2)}
 Payload: ${JSON.stringify(payload, null, 2)}
-${issues.length ? `Issues:\n${issues.join('\n')}` : '✓ No obvious issues'}`,
+${issues.length ? `Issues:\n${issues.join('\n')}` : '✓ No obvious issues'}
+Note: Signature verification not performed - this tool is for analysis only`,
         };
-      } catch {
-        return { success: false, error: 'Failed to decode JWT' };
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : 'unknown error';
+        return { success: false, error: `Failed to decode JWT: ${errMsg}` };
       }
     },
   },

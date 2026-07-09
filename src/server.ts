@@ -184,6 +184,37 @@ function isLoopbackOrigin(originHeader: string | undefined): boolean {
   }
 }
 
+/**
+ * Security: Sanitize error messages for API responses to prevent information leakage.
+ * Strips file paths, system details, and stack traces from error messages exposed to clients.
+ */
+function sanitizeErrorForResponse(error: unknown): string {
+  if (error instanceof Error) {
+    const msg = error.message;
+
+    // Whitelist of patterns that are safe to expose
+    const SAFE_PATTERNS = [
+      /^(repoPath rejected|scope denied|approval required)/i,
+      /^(timeout|network|connection)/i,
+      /^mission/i,
+      /^ssrf (blocked|denied)/i,
+    ];
+
+    // Check if error matches a safe pattern
+    for (const pattern of SAFE_PATTERNS) {
+      if (pattern.test(msg)) {
+        return msg;
+      }
+    }
+
+    // Generic response for unknown errors (operator can check server logs)
+    return 'Operation failed - check server logs for details';
+  }
+
+  // Never expose raw error objects or values
+  return 'An error occurred during processing';
+}
+
 // CORS locked to the localhost UI origins ONLY. A same-origin fetch from the UI
 // (or a tool with no Origin like curl/CLI) is allowed; any other website's
 // Origin is rejected so the browser blocks it from reading our responses.
@@ -979,11 +1010,26 @@ function buildStateSnapshot(): Record<string, unknown> {
   };
 }
 
+// Security: Write queue to serialize state persistence and prevent concurrent writes
+let persistQueue: Promise<void> = Promise.resolve();
+
 async function persistState(reason = 'state.updated'): Promise<void> {
   const file = stateFilePath();
   if (!file) return;
-  await mkdir(stateRoot(), { recursive: true });
-  await writeFile(file, JSON.stringify(redactSecrets({ ...buildStateSnapshot(), reason }), null, 2));
+
+  // Queue the write to prevent concurrent filesystem operations
+  persistQueue = persistQueue.then(async () => {
+    try {
+      await mkdir(stateRoot(), { recursive: true });
+      const data = JSON.stringify(redactSecrets({ ...buildStateSnapshot(), reason }), null, 2);
+      await writeFile(file, data);
+    } catch (error) {
+      console.warn(`[T3MP3ST] State persistence failed: ${error instanceof Error ? error.message : String(error)}`);
+      // Don't throw - allow app to continue even if persistence fails
+    }
+  });
+
+  return persistQueue;
 }
 
 // Debounced full-snapshot writer. persistState re-serializes the ENTIRE (growing) snapshot,
@@ -1005,7 +1051,7 @@ function schedulePersist(reason: string): void {
     if (!persistPending) return;
     persistPending = false;
     void persistState(persistReason).catch(error => {
-      console.warn(`[T3MP3ST] State persistence failed: ${error.message || error}`);
+      console.warn(`[T3MP3ST] State persistence failed: ${error instanceof Error ? error.message : String(error)}`);
     });
   }, PERSIST_DEBOUNCE_MS);
 }
@@ -6674,7 +6720,8 @@ app.post('/api/codex/probe', async (_req: Request, res: Response): Promise<void>
     } catch (probeError: any) {
       payload.execReady = false;
       payload.selfTest = 'failed';
-      payload.executionError = String(probeError?.stderr || probeError?.message || probeError).trim().slice(0, 1000);
+      // Security: Sanitize error messages to prevent information leakage
+      payload.executionError = sanitizeErrorForResponse(probeError).slice(0, 200);
     }
     res.json(payload);
   } catch (error: any) {

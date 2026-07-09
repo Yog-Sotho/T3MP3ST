@@ -77,6 +77,99 @@ export interface BountyFinding {
   evidence?: Array<{ type: string; content: string }>;
 }
 
+// =============================================================================
+// SECURITY: INPUT VALIDATION
+// =============================================================================
+
+/**
+ * Validation configuration for bounty credentials.
+ * Enforces format, length, and character restrictions to prevent injection.
+ */
+const CREDENTIAL_LIMITS = {
+  apiKey: { min: 16, max: 512, pattern: /^[a-zA-Z0-9_\-\.]+$/ },
+  username: { min: 1, max: 128, pattern: /^[a-zA-Z0-9_\-\.@]+$/ },
+  apiIdentifier: { min: 1, max: 256, pattern: /^[a-zA-Z0-9_\-\.]+$/ },
+  walletAddress: { min: 40, max: 66, pattern: /^0x[a-fA-F0-9]+$/ }, // Ethereum
+} as const;
+
+/**
+ * Validate bounty credentials format, length, and character set.
+ * Returns validation result with any errors found.
+ */
+export function validateBountyCredentials(creds: BountyCredentials): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  // Validate platform
+  const validPlatforms = ['hackerone', 'bugcrowd', 'intigriti', 'immunefi', 'huntr', 'code4rena'];
+  if (!validPlatforms.includes(creds.platform)) {
+    errors.push(`Invalid platform: must be one of ${validPlatforms.join(', ')}`);
+  }
+
+  // Validate apiKey if provided
+  if (creds.apiKey) {
+    if (creds.apiKey.length < CREDENTIAL_LIMITS.apiKey.min) {
+      errors.push(`apiKey too short (min ${CREDENTIAL_LIMITS.apiKey.min} chars)`);
+    }
+    if (creds.apiKey.length > CREDENTIAL_LIMITS.apiKey.max) {
+      errors.push(`apiKey too long (max ${CREDENTIAL_LIMITS.apiKey.max} chars)`);
+    }
+    if (!CREDENTIAL_LIMITS.apiKey.pattern.test(creds.apiKey)) {
+      errors.push('apiKey contains invalid characters (only alphanumeric, underscore, hyphen, dot allowed)');
+    }
+    // Check for control characters
+    if (/[\n\r\x00-\x1f]/.test(creds.apiKey)) {
+      errors.push('apiKey contains control characters');
+    }
+  }
+
+  // Validate username if provided
+  if (creds.username) {
+    if (creds.username.length < CREDENTIAL_LIMITS.username.min) {
+      errors.push(`username too short (min ${CREDENTIAL_LIMITS.username.min} chars)`);
+    }
+    if (creds.username.length > CREDENTIAL_LIMITS.username.max) {
+      errors.push(`username too long (max ${CREDENTIAL_LIMITS.username.max} chars)`);
+    }
+    if (!CREDENTIAL_LIMITS.username.pattern.test(creds.username)) {
+      errors.push('username contains invalid characters');
+    }
+    if (/[\n\r\x00-\x1f]/.test(creds.username)) {
+      errors.push('username contains control characters');
+    }
+  }
+
+  // Validate walletAddress (Ethereum) if provided
+  if (creds.walletAddress) {
+    if (!CREDENTIAL_LIMITS.walletAddress.pattern.test(creds.walletAddress)) {
+      errors.push('Invalid wallet address - must be valid Ethereum address (0x...)');
+    }
+    if (creds.walletAddress.length !== 42) {
+      errors.push('Ethereum wallet address must be exactly 42 characters (0x + 40 hex)');
+    }
+    if (/[\n\r\x00-\x1f]/.test(creds.walletAddress)) {
+      errors.push('walletAddress contains control characters');
+    }
+  }
+
+  // Validate apiIdentifier if provided
+  if (creds.apiIdentifier) {
+    if (creds.apiIdentifier.length > CREDENTIAL_LIMITS.apiIdentifier.max) {
+      errors.push(`apiIdentifier too long (max ${CREDENTIAL_LIMITS.apiIdentifier.max} chars)`);
+    }
+    if (/[\n\r\x00-\x1f]/.test(creds.apiIdentifier)) {
+      errors.push('apiIdentifier contains control characters');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
 export interface BountyReport {
   platform: BountyPlatform;
   programHandle: string;

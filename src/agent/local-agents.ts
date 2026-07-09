@@ -174,9 +174,22 @@ export interface AgentDetection {
 
 function resolvePath(bin: string): string | undefined {
   try {
-    return execFileSync('command', ['-v', bin], { shell: '/bin/bash', encoding: 'utf8' }).trim() || undefined;
+    // Security: Whitelist allowed agent binaries to prevent command injection
+    // (even though bin is currently hardcoded from SPECS, defensive coding practice)
+    const ALLOWED_BINS = ['claude', 'codex', 'hermes'];
+    if (!ALLOWED_BINS.includes(bin)) {
+      return undefined;
+    }
+
+    // Try 'which' first (standard, doesn't need shell)
+    return execFileSync('which', [bin], { encoding: 'utf8' }).trim() || undefined;
   } catch {
-    try { return execFileSync('which', [bin], { encoding: 'utf8' }).trim() || undefined; } catch { return undefined; }
+    // Fallback: try 'command' if which fails (shouldn't happen on normal systems)
+    try {
+      return execFileSync('sh', ['-c', `command -v ${bin}`], { encoding: 'utf8' }).trim() || undefined;
+    } catch {
+      return undefined;
+    }
   }
 }
 
