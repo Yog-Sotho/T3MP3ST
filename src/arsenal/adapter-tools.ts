@@ -59,6 +59,45 @@ export interface AdapterToolDeps {
 }
 
 // =============================================================================
+// SECURITY HELPERS
+// =============================================================================
+
+/**
+ * SSRF Protection: Detect restricted internal IP addresses and metadata endpoints.
+ * Prevents access to localhost, private ranges, and cloud provider metadata services.
+ * Used defensively by all HTTP-based tools to block SSRF attacks.
+ */
+export function isRestrictedInternalIP(hostname: string): boolean {
+  const ip = hostname.toLowerCase();
+
+  // Loopback addresses
+  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '[::1]') return true;
+
+  // Private IPv4 ranges
+  if (/^10\./.test(ip)) return true; // 10.0.0.0/8
+  if (/^192\.168\./.test(ip)) return true; // 192.168.0.0/16
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return true; // 172.16.0.0/12
+
+  // Link-local and metadata ranges
+  if (/^169\.254\./.test(ip)) return true; // 169.254.0.0/16 (AWS metadata, APIPA)
+  if (/^127\./.test(ip)) return true; // All of 127.0.0.0/8
+
+  // IPv6 private ranges
+  if (/^(fc00|fd00):/i.test(ip)) return true; // Unique local addresses
+  if (/^fe80:/i.test(ip)) return true; // Link-local addresses
+
+  return false;
+}
+
+/**
+ * Check if hostname is a loopback address (safe for internal testing).
+ */
+export function isLoopbackIP(hostname: string): boolean {
+  const ip = hostname.toLowerCase();
+  return ip === 'localhost' || /^127\./.test(ip) || ip === '::1' || ip === '[::1]';
+}
+
+// =============================================================================
 // ARG TEMPLATES
 // =============================================================================
 
