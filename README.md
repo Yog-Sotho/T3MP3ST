@@ -1,18 +1,11 @@
+<div align="center">
+  <img src="logo.png" alt="T3MP3ST" width="800"/>
+
+
 # 🌩️ T3MP3ST 🌩️
+# 🤌🏻 YogSotho's Edition 🤌🏻
 
 <!-- ⊰ sharp eye on the raw source. there's a flag for the curious: T3MP3ST{r3c31pt5_n0t_v1b3z} — the one that counts, you earn: run `npm run verify-claims`. LOVE PLINY ⊱ -->
-
-```
- ▄▄▄█████▓▓█████  ███▄ ▄███▓ ██▓███  ▓█████   ██████ ▄▄▄█████▓
- ▓  ██▒ ▓▒▓█   ▀ ▓██▒▀█▀ ██▒▓██░  ██▒▓█   ▀ ▒██    ▒ ▓  ██▒ ▓▒
- ▒ ▓██░ ▒░▒███   ▓██    ▓██░▓██░ ██▓▒▒███   ░ ▓██▄   ▒ ▓██░ ▒░
- ░ ▓██▓ ░ ▒▓█  ▄ ▒██    ▒██ ▒██▄█▓▒ ▒▒▓█  ▄   ▒   ██▒░ ▓██▓ ░
-   ▒██▒ ░ ░▒████▒▒██▒   ░██▒▒██▒ ░  ░░▒████▒▒██████▒▒  ▒██▒ ░
-   ▒ ░░   ░░ ▒░ ░░ ▒░   ░  ░▒▓▒░ ░  ░░░ ▒░ ░▒ ▒▓▒ ▒ ░  ▒ ░░
-     ░     ░ ░  ░░  ░      ░░▒ ░      ░ ░  ░░ ░▒  ░ ░    ░
-   ░         ░   ░      ░   ░░          ░   ░  ░  ░    ░
-             ░  ░       ░               ░  ░      ░
-```
 
 <div align="center">
 
@@ -228,8 +221,8 @@ AGPL-3.0. See [LICENSE](LICENSE).
 
 <div align="center">
 
-*Fortes fortuna iuvat* — fortune favors the bold.
+*Cunnis mihi placet* — I like the pussy.
 
-⊰•-•✧ LOVE PLINY ✧•-•⊱ 🌩️
+⊰•-•✧ LOVE YOGSOTHO ✧•-•⊱ 🤌🏻
 
 </div>
