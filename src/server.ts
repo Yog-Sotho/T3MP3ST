@@ -192,28 +192,43 @@ function sanitizeErrorForResponse(error: unknown): string {
   if (error instanceof Error) {
     const msg = error.message;
 
-    // Whitelist of patterns that are safe to expose
+    // Whitelist of patterns safe to expose verbatim to API clients.
+    // These are either user-input validation messages or well-defined
+    // operational errors that contain no system internals.
     const SAFE_PATTERNS = [
       /^(repoPath rejected|scope denied|approval required)/i,
       /^(timeout|network|connection)/i,
       /^mission/i,
       /^ssrf (blocked|denied)/i,
+      /^api key required/i,
+      /^(invalid|unknown|unsupported) (platform|provider|model|format)/i,
+      /^(planning already|no plan available)/i,
+      /^operator (at capacity|with callsign|is not available)/i,
+      /^(hackerone|bugcrowd|intigriti|immunefi|huntr|code4rena) (api|requires|submission)/i,
+      /^\.keys\.bounty\.json/i,
     ];
 
-    // Check if error matches a safe pattern
     for (const pattern of SAFE_PATTERNS) {
-      if (pattern.test(msg)) {
-        return msg;
-      }
+      if (pattern.test(msg)) return msg;
     }
 
-    // Generic response for unknown errors (operator can check server logs)
-    return 'Operation failed - check server logs for details';
+    return 'Operation failed — check server logs for details';
   }
 
-  // Never expose raw error objects or values
   return 'An error occurred during processing';
 }
+
+// Security headers — applied to every response before CORS or route processing.
+// X-Content-Type-Options prevents MIME-sniffing attacks.
+// X-Frame-Options blocks clickjacking from embedding the UI in a foreign frame.
+// X-XSS-Protection is disabled (set to 0) per OWASP guidance — the legacy
+// browser XSS auditor is itself exploitable; rely on CSP in the UI layer instead.
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0');
+  next();
+});
 
 // CORS locked to the localhost UI origins ONLY. A same-origin fetch from the UI
 // (or a tool with no Origin like curl/CLI) is allowed; any other website's
@@ -6130,7 +6145,7 @@ app.post('/api/mission/start', async (req: Request, res: Response): Promise<void
     });
   } catch (error: any) {
     console.error('[T3MP3ST] Mission start failed:', error);
-    res.status(500).json({ error: error.message || 'Failed to start mission' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -6362,7 +6377,7 @@ app.post('/api/operators/spawn', (req: Request, res: Response): void => {
     broadcastEvent('operator:spawned', { id: op.id, callsign: op.callsign, archetype });
     res.json({ success: true, operator: op.getSummary() });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -6482,7 +6497,7 @@ app.post('/api/operators/:id/task', async (req: Request, res: Response): Promise
       taskId: task.id,
       operatorId: operator.id,
       callsign: operator.callsign,
-      error: error.message,
+      error: sanitizeErrorForResponse(error),
     });
   });
 
@@ -6793,8 +6808,8 @@ app.post('/api/general/plan', async (req: Request, res: Response): Promise<void>
     });
   } catch (error: any) {
     console.error('[T3MP3ST] General planning failed:', error);
-    const message = error.message || 'Planning failed';
-    res.status(/API key required|Unknown provider/.test(message) ? 400 : 500).json({ error: message });
+    const rawMsg = error instanceof Error ? error.message : '';
+    res.status(/API key required|Unknown provider/.test(rawMsg) ? 400 : 500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -6826,7 +6841,7 @@ app.post('/api/general/execute', async (req: Request, res: Response): Promise<vo
   try {
     generalConfig = resolveGeneralLLMConfig(provider, model, apiKey);
   } catch (error: any) {
-    res.status(400).json({ error: error.message || 'API key required' });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
     return;
   }
 
@@ -6913,7 +6928,7 @@ app.post('/api/general/execute', async (req: Request, res: Response): Promise<vo
     });
   } catch (error: any) {
     console.error('[T3MP3ST] General execution failed:', error);
-    res.status(500).json({ error: error.message || 'Execution failed' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -6944,7 +6959,7 @@ app.post('/api/general/auto', async (req: Request, res: Response): Promise<void>
   try {
     generalConfig = resolveGeneralLLMConfig(provider, model, apiKey);
   } catch (error: any) {
-    res.status(400).json({ error: error.message || 'API key required' });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
     return;
   }
 
@@ -7054,7 +7069,7 @@ app.post('/api/general/auto', async (req: Request, res: Response): Promise<void>
     });
   } catch (error: any) {
     console.error('[T3MP3ST] General auto mode failed:', error);
-    res.status(500).json({ error: error.message || 'Auto mode failed' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7099,7 +7114,7 @@ app.post('/api/general/sitrep', async (_req: Request, res: Response): Promise<vo
     const sitrep = await activeGeneral.produceSitrep(cmd);
     res.json({ success: true, sitrep });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7122,7 +7137,7 @@ app.post('/api/general/assess', async (_req: Request, res: Response): Promise<vo
     const assessment = await activeGeneral.produceAssessment(cmd);
     res.json({ success: true, assessment });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7160,7 +7175,7 @@ app.post('/api/attack-graph', (req: Request, res: Response): void => {
       },
     });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7173,7 +7188,7 @@ app.post('/api/attack-graph/ingest', (req: Request, res: Response): void => {
     const graph = validateAttackGraph(req.body?.graph ?? req.body);
     res.json({ graph });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7208,7 +7223,7 @@ app.post('/api/admiral/converse', async (req: Request, res: Response): Promise<v
     const turn = await admiral.converse(messages);
     res.json(turn);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Admiral converse failed' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7242,7 +7257,7 @@ app.post('/api/admiral/suggest', async (req: Request, res: Response): Promise<vo
     const advice = await admiral.suggest(prompt, failureSignal);
     res.json(advice);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Admiral suggest failed' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7274,7 +7289,7 @@ app.post('/api/admiral/launch', async (req: Request, res: Response): Promise<voi
     try {
       generalConfig = resolveGeneralLLMConfig(provider, model, apiKey);
     } catch (error: any) {
-      res.status(400).json({ error: error.message || 'API key required' });
+      res.status(400).json({ error: sanitizeErrorForResponse(error) });
       return;
     }
 
@@ -7328,7 +7343,7 @@ app.post('/api/admiral/launch', async (req: Request, res: Response): Promise<voi
         : 'Plan produced no operators to spawn — nothing is running.',
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Admiral launch failed' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7338,7 +7353,7 @@ app.post('/api/admiral/launch', async (req: Request, res: Response): Promise<voi
 
 import {
   getConnector, listConnectors, findingToBountyFinding,
-  loadBountyCredentials,
+  loadBountyCredentials, validateBountyCredentials,
   type BountyPlatform, type BountyCredentials,
 } from './integrations/bounty.js';
 
@@ -7365,7 +7380,7 @@ app.post('/api/bounty/format', (req: Request, res: Response) => {
     const report = connector.formatReport(bountyFinding, programHandle);
     res.json({ report });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7380,13 +7395,18 @@ app.post('/api/bounty/submit', async (req: Request, res: Response) => {
     }
     const creds = loadBountyCredentials(process.cwd());
     const platformCreds: BountyCredentials = creds[platform] || { platform };
+    const credValidation = validateBountyCredentials(platformCreds);
+    if (!credValidation.valid) {
+      res.status(400).json({ error: 'Invalid credentials', details: credValidation.errors });
+      return;
+    }
     const connector = getConnector(platform);
     const bountyFinding = findingToBountyFinding(finding);
     const report = connector.formatReport(bountyFinding, programHandle);
     const result = await connector.submit(report, platformCreds, { dryRun: dryRun !== false });
     res.json({ result, report });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -7396,11 +7416,16 @@ app.get('/api/bounty/programs/:platform', async (req: Request, res: Response) =>
     const query = (req.query.q as string) || '';
     const creds = loadBountyCredentials(process.cwd());
     const platformCreds: BountyCredentials = creds[platform] || { platform };
+    const credValidation = validateBountyCredentials(platformCreds);
+    if (!credValidation.valid) {
+      res.status(400).json({ error: 'Invalid credentials', details: credValidation.errors });
+      return;
+    }
     const connector = getConnector(platform);
     const programs = await connector.listPrograms(query, platformCreds);
     res.json({ programs });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 

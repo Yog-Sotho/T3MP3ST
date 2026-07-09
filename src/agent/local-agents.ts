@@ -186,7 +186,7 @@ function resolvePath(bin: string): string | undefined {
   } catch {
     // Fallback: try 'command' if which fails (shouldn't happen on normal systems)
     try {
-      return execFileSync('sh', ['-c', `command -v ${bin}`], { encoding: 'utf8' }).trim() || undefined;
+      return execFileSync('sh', ['-c', 'command -v "$1"', '--', bin], { encoding: 'utf8' }).trim() || undefined;
     } catch {
       return undefined;
     }

@@ -89,14 +89,6 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   return false;
 }
 
-/**
- * Check if hostname is a loopback address (safe for internal testing).
- */
-export function isLoopbackIP(hostname: string): boolean {
-  const ip = hostname.toLowerCase();
-  return ip === 'localhost' || /^127\./.test(ip) || ip === '::1' || ip === '[::1]';
-}
-
 // =============================================================================
 // ARG TEMPLATES
 // =============================================================================

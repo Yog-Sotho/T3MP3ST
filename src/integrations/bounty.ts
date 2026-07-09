@@ -652,8 +652,12 @@ export function findingToBountyFinding(raw: Record<string, any>): BountyFinding 
  */
 export function loadBountyCredentials(repoRoot: string): Record<BountyPlatform, BountyCredentials> {
   const credPath = join(repoRoot, '.keys.bounty.json');
-  if (!existsSync(credPath)) return {} as any;
-  return JSON.parse(readFileSync(credPath, 'utf8'));
+  if (!existsSync(credPath)) return {} as Record<BountyPlatform, BountyCredentials>;
+  try {
+    return JSON.parse(readFileSync(credPath, 'utf8'));
+  } catch (e) {
+    throw new Error(`.keys.bounty.json is not valid JSON: ${e instanceof Error ? e.message : 'parse error'}`);
+  }
 }
 
 /**
