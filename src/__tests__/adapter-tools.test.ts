@@ -231,17 +231,17 @@ describe('source / supply-chain scanners run a real invocation (not `<binary> <t
     ['checkov', ['-d', 'src', '-o', 'json']],
   ];
 
-  it.each(CASES)('%s builds its real scanner argv for an explicit path', async (id, expected) => {
+  it.each(CASES)('%s builds its real scanner argv for an explicit path', async (id: string, expected: string[]) => {
     const deps = makeDeps();
     await mint(id, deps).handler(ctx({ path: 'src' }));
     expect(deps.spawns[0]).toEqual(expected);
   });
 
-  it.each(CASES)('%s defaults to the working dir "." when no path is given', async (id) => {
+  it.each(CASES)('%s defaults to the working dir "." when no path is given', async (id: string) => {
     const deps = makeDeps();
     await mint(id, deps).handler(ctx({}));
     // The path slot resolves to "." — assert "." is present and the argv is more than a bare target.
-    expect(deps.spawns[0].some(a => a === '.' || a === 'dir:.')).toBe(true);
+    expect(deps.spawns[0].some((a: string) => a === '.' || a === 'dir:.')).toBe(true);
     expect(deps.spawns[0].length).toBeGreaterThan(1);
   });
 

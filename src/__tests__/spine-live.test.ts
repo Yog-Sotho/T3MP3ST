@@ -32,7 +32,7 @@ describe('honesty spine is load-bearing at finding creation (operator.recordFind
   it('a model-asserted finding (no tool evidence) is recorded UNVERIFIED with gate reasons', () => {
     const op = createOperator('test-recon', 'recon');
     let blocked: { reasons: string[] } | undefined;
-    op.on('finding:gate-blocked', (e) => { blocked = e; });
+    op.on('finding:gate-blocked', (e: any) => { blocked = e; });
 
     const f = baseFinding({ title: 'model says critical', severity: 'critical', evidence: [] });
     op.recordFinding(f);
