@@ -86,9 +86,9 @@ export interface BountyFinding {
  * Enforces format, length, and character restrictions to prevent injection.
  */
 const CREDENTIAL_LIMITS = {
-  apiKey: { min: 16, max: 512, pattern: /^[a-zA-Z0-9_\-\.]+$/ },
-  username: { min: 1, max: 128, pattern: /^[a-zA-Z0-9_\-\.@]+$/ },
-  apiIdentifier: { min: 1, max: 256, pattern: /^[a-zA-Z0-9_\-\.]+$/ },
+  apiKey: { min: 16, max: 512, pattern: /^[a-zA-Z0-9_\-.]+$/ },
+  username: { min: 1, max: 128, pattern: /^[a-zA-Z0-9_\-.@]+$/ },
+  apiIdentifier: { min: 1, max: 256, pattern: /^[a-zA-Z0-9_\-.]+$/ },
   walletAddress: { min: 40, max: 66, pattern: /^0x[a-fA-F0-9]+$/ }, // Ethereum
 } as const;
 
@@ -120,7 +120,8 @@ export function validateBountyCredentials(creds: BountyCredentials): {
       errors.push('apiKey contains invalid characters (only alphanumeric, underscore, hyphen, dot allowed)');
     }
     // Check for control characters
-    if (/[\n\r\x00-\x1f]/.test(creds.apiKey)) {
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f]/.test(creds.apiKey)) {
       errors.push('apiKey contains control characters');
     }
   }
@@ -136,7 +137,8 @@ export function validateBountyCredentials(creds: BountyCredentials): {
     if (!CREDENTIAL_LIMITS.username.pattern.test(creds.username)) {
       errors.push('username contains invalid characters');
     }
-    if (/[\n\r\x00-\x1f]/.test(creds.username)) {
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f]/.test(creds.username)) {
       errors.push('username contains control characters');
     }
   }
@@ -149,7 +151,8 @@ export function validateBountyCredentials(creds: BountyCredentials): {
     if (creds.walletAddress.length !== 42) {
       errors.push('Ethereum wallet address must be exactly 42 characters (0x + 40 hex)');
     }
-    if (/[\n\r\x00-\x1f]/.test(creds.walletAddress)) {
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f]/.test(creds.walletAddress)) {
       errors.push('walletAddress contains control characters');
     }
   }
@@ -159,7 +162,8 @@ export function validateBountyCredentials(creds: BountyCredentials): {
     if (creds.apiIdentifier.length > CREDENTIAL_LIMITS.apiIdentifier.max) {
       errors.push(`apiIdentifier too long (max ${CREDENTIAL_LIMITS.apiIdentifier.max} chars)`);
     }
-    if (/[\n\r\x00-\x1f]/.test(creds.apiIdentifier)) {
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f]/.test(creds.apiIdentifier)) {
       errors.push('apiIdentifier contains control characters');
     }
   }
