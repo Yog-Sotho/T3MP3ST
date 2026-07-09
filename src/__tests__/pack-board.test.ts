@@ -82,7 +82,7 @@ describe('PackBoard — reference/evidence hardening (H12/H15/M5)', () => {
     // synchronous SSE/controller subscriber could flip status / reset the version / forge a lease.
     const board = new PackBoard({}, fakeClock().now);
     const posted = board.postLead('a', leadInput());
-    board.on('lead:claimed', ({ lead }) => { lead.status = 'open'; lead.version = 0; delete lead.claim; });
+    board.on('lead:claimed', ({ lead }: { lead: any }) => { lead.status = 'open'; lead.version = 0; delete lead.claim; });
     board.claim(posted.id, 'agentA', posted.version);
     const after = board.getLead(posted.id)!;
     expect(after.status).toBe('claimed'); // not reverted to open by the subscriber

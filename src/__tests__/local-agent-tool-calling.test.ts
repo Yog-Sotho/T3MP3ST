@@ -18,8 +18,8 @@ vi.mock('child_process', () => ({
     return child;
   }),
 }));
-vi.mock('fs/promises', async (orig) => {
-  const actual = await orig<typeof import('fs/promises')>();
+vi.mock('fs/promises', async (orig: () => Promise<typeof import('fs/promises')>) => {
+  const actual = await orig();
   return { ...actual, readFile: vi.fn() };
 });
 
