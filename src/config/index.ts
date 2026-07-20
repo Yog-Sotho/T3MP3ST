@@ -23,6 +23,7 @@ export interface TempestSettings {
     anthropic?: string;
     openai?: string;
     xai?: string;
+    nvidia?: string;
     local?: string;
   };
 
@@ -58,6 +59,12 @@ export interface TempestSettings {
 
   // xAI — Grok Build / Grok models (OpenAI-compatible API)
   xai: {
+    baseUrl: string;
+    defaultModel: string;
+  };
+
+  // Nvidia Build API — OpenAI-compatible NIM inference (https://integrate.api.nvidia.com/v1)
+  nvidia: {
     baseUrl: string;
     defaultModel: string;
   };
@@ -123,6 +130,11 @@ const DEFAULT_SETTINGS: TempestSettings = {
   xai: {
     baseUrl: 'https://api.x.ai/v1',
     defaultModel: 'grok-build-0.1',
+  },
+
+  nvidia: {
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    defaultModel: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
   },
 
   codex: {
@@ -402,6 +414,44 @@ export const AVAILABLE_MODELS: Record<LLMProvider, ModelInfo[]> = {
       capabilities: ['testing'],
     },
   ],
+  // Nvidia Build API (https://build.nvidia.com) — NIM-hosted models, OpenAI-compatible.
+  // Model IDs use the `org/name` format (e.g. nvidia/llama-3.1-nemotron-ultra-253b-v1).
+  // Any NIM model available at https://integrate.api.nvidia.com/v1 can be specified.
+  nvidia: [
+    {
+      id: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+      name: 'Llama 3.1 Nemotron Ultra 253B',
+      provider: 'Nvidia',
+      contextWindow: 128000,
+      maxOutput: 32768,
+      capabilities: ['reasoning', 'code', 'analysis', 'agents', 'tools'],
+    },
+    {
+      id: 'nvidia/llama-3.3-nemotron-super-49b-v1',
+      name: 'Llama 3.3 Nemotron Super 49B',
+      provider: 'Nvidia',
+      contextWindow: 128000,
+      maxOutput: 32768,
+      capabilities: ['reasoning', 'code', 'analysis', 'fast', 'tools'],
+    },
+    {
+      id: 'meta/llama-3.3-70b-instruct',
+      name: 'Llama 3.3 70B Instruct (NIM)',
+      provider: 'Nvidia',
+      contextWindow: 128000,
+      maxOutput: 8192,
+      capabilities: ['reasoning', 'code', 'analysis'],
+    },
+    {
+      id: 'qwen/qwen3-235b-a22b',
+      name: 'Qwen3 235B (NIM)',
+      provider: 'Nvidia',
+      contextWindow: 32768,
+      maxOutput: 8192,
+      capabilities: ['reasoning', 'code', 'analysis', 'agents'],
+    },
+  ],
+
   // Model IDs verified against xAI's published model list (docs.x.ai/docs/models, 2026-07-05):
   // grok-build-0.1 = coding model (256K ctx); grok-4.3 = general (1M ctx). Any current xAI
   // model id can be passed via config/CLI/model arg — these are just the curated defaults.
@@ -459,6 +509,14 @@ export const AVAILABLE_MODELS: Record<LLMProvider, ModelInfo[]> = {
       contextWindow: 32000,
       maxOutput: 8192,
       capabilities: ['reasoning', 'code', 'agents', 'local-cli'],
+    },
+    {
+      id: 'pi',
+      name: 'Pi Coding Agent (local CLI)',
+      provider: 'LocalAgent',
+      contextWindow: 128000,
+      maxOutput: 32768,
+      capabilities: ['reasoning', 'code', 'analysis', 'agents', 'local-cli'],
     },
   ],
 };
@@ -548,7 +606,7 @@ class ConfigManager {
   /**
    * Set an API key for a provider
    */
-  setApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'local', key: string): void {
+  setApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia' | 'local', key: string): void {
     const apiKeys = this.config.get('apiKeys');
     apiKeys[provider] = key;
     this.config.set('apiKeys', apiKeys);
@@ -557,7 +615,7 @@ class ConfigManager {
   /**
    * Get an API key for a provider
    */
-  getApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'local'): string | undefined {
+  getApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia' | 'local'): string | undefined {
     // First check environment variables (highest priority)
     // local provider: a self-hosted/OpenAI-compatible server MAY require a bearer
     // (Zhipu/z.ai, Together, etc.) — accept TEMPEST_LOCAL_API_KEY or provider-specific vars.
@@ -572,6 +630,7 @@ class ConfigManager {
       anthropic: 'ANTHROPIC_API_KEY',
       openai: 'OPENAI_API_KEY',
       xai: 'XAI_API_KEY',
+      nvidia: 'NVIDIA_API_KEY',
     };
 
     // Force a fully UNCONFIGURED server (no key from env OR the saved store) — used by
@@ -590,7 +649,7 @@ class ConfigManager {
   /**
    * Check if a provider has a valid API key configured
    */
-  hasApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'local'): boolean {
+  hasApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia' | 'local'): boolean {
     const key = this.getApiKey(provider);
     return !!key && key.length > 10;
   }
@@ -598,7 +657,7 @@ class ConfigManager {
   /**
    * Remove an API key
    */
-  removeApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'local'): void {
+  removeApiKey(provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia' | 'local'): void {
     const apiKeys = this.config.get('apiKeys');
     delete apiKeys[provider];
     this.config.set('apiKeys', apiKeys);
@@ -615,6 +674,7 @@ class ConfigManager {
     if (this.hasApiKey('anthropic')) providers.push('anthropic');
     if (this.hasApiKey('openai')) providers.push('openai');
     if (this.hasApiKey('xai')) providers.push('xai');
+    if (this.hasApiKey('nvidia')) providers.push('nvidia');
 
     // Codex uses the local Codex CLI/account auth instead of API-key storage.
     providers.push('codex');
@@ -661,6 +721,13 @@ class ConfigManager {
         apiKey = this.getApiKey('xai');
         baseUrl = this.config.get('xai').baseUrl;
         actualModel = model || this.config.get('xai').defaultModel;
+        break;
+      case 'nvidia':
+        // Nvidia Build API — NIM-hosted models at https://integrate.api.nvidia.com/v1.
+        // OpenAI-compatible wire; any model from https://build.nvidia.com can be used.
+        apiKey = this.getApiKey('nvidia');
+        baseUrl = this.config.get('nvidia').baseUrl;
+        actualModel = model || this.config.get('nvidia').defaultModel;
         break;
       case 'codex':
         actualModel = model || this.config.get('codex').defaultModel;
@@ -710,7 +777,7 @@ class ConfigManager {
     const flag = (process.env.TEMPEST_MODEL_FALLBACK || '').trim().toLowerCase();
     if (!flag || ['0', 'false', 'off', 'no'].includes(flag)) return [];
     const chain: FallbackEntry[] = [];
-    const add = (p: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai') => {
+    const add = (p: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia') => {
       if (p === primary || !this.hasApiKey(p)) return;
       chain.push({
         provider: p,
@@ -724,6 +791,7 @@ class ConfigManager {
     add('anthropic');
     add('openai');
     add('xai');
+    add('nvidia');
     return chain;
   }
 
@@ -747,6 +815,9 @@ class ConfigManager {
       case 'openai':
         this.config.set('defaultModel', this.config.get('openai').defaultModel);
         break;
+      case 'nvidia':
+        this.config.set('defaultModel', this.config.get('nvidia').defaultModel);
+        break;
       case 'codex':
         this.config.set('defaultModel', this.config.get('codex').defaultModel);
         break;
@@ -769,6 +840,9 @@ class ConfigManager {
         break;
       case 'openai':
         this.config.set('openai', { ...this.config.get('openai'), defaultModel: model });
+        break;
+      case 'nvidia':
+        this.config.set('nvidia', { ...this.config.get('nvidia'), defaultModel: model });
         break;
       case 'codex':
         this.config.set('codex', { ...this.config.get('codex'), defaultModel: model });
@@ -808,6 +882,7 @@ class ConfigManager {
         anthropic: settings.apiKeys.anthropic ? '***REDACTED***' : undefined,
         openai: settings.apiKeys.openai ? '***REDACTED***' : undefined,
         xai: settings.apiKeys.xai ? '***REDACTED***' : undefined,
+        nvidia: settings.apiKeys.nvidia ? '***REDACTED***' : undefined,
       },
     };
     writeFileSync(filePath, JSON.stringify(safeSettings, null, 2));
@@ -841,6 +916,10 @@ OPENAI_API_KEY=
 # Get your key at: https://console.x.ai/
 XAI_API_KEY=
 
+# Nvidia Build API Key (OpenAI-compatible NIM inference)
+# Get your key at: https://build.nvidia.com/
+NVIDIA_API_KEY=
+
 # Local model (Ollama / LM Studio / vLLM / llama.cpp, or any OpenAI-compatible server)
 # Point TEMPEST_LOCAL_BASE_URL at the server root (Ollama default shown below).
 # For an OpenAI-compatible server, use a versioned path: LM Studio :1234/v1,
@@ -863,8 +942,8 @@ TEMPEST_LOCAL_API_KEY=
 export const config = new ConfigManager();
 
 // Helper functions for quick access
-export const getApiKey = (provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai') => config.getApiKey(provider);
-export const setApiKey = (provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai', key: string) => config.setApiKey(provider, key);
-export const hasApiKey = (provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai') => config.hasApiKey(provider);
+export const getApiKey = (provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia') => config.getApiKey(provider);
+export const setApiKey = (provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia', key: string) => config.setApiKey(provider, key);
+export const hasApiKey = (provider: 'openrouter' | 'venice' | 'anthropic' | 'openai' | 'xai' | 'nvidia') => config.hasApiKey(provider);
 export const getLLMConfig = (provider?: LLMProvider, model?: string) => config.getLLMConfig(provider, model);
 export const getConfiguredProviders = () => config.getConfiguredProviders();

@@ -361,6 +361,26 @@ class VeniceAdapter extends OpenRouterAdapter {
 }
 
 // =============================================================================
+// NVIDIA BUILD API ADAPTER
+// =============================================================================
+// Nvidia Build API is OpenAI-compatible on the wire (Bearer auth, POST /chat/completions,
+// identical request/response + tool-calling + SSE stream shape), so it reuses the entire
+// OpenRouter adapter and only differs in its default base URL and error message.
+class NvidiaAdapter extends OpenRouterAdapter {
+  name = 'nvidia';
+
+  validateConfig(): { valid: boolean; error?: string } {
+    if (!this.config.apiKey) {
+      return {
+        valid: false,
+        error: 'Nvidia API key is required. Get one at https://build.nvidia.com/',
+      };
+    }
+    return { valid: true };
+  }
+}
+
+// =============================================================================
 // ANTHROPIC ADAPTER
 // =============================================================================
 
@@ -1201,6 +1221,8 @@ export class LLMBackbone extends EventEmitter<LLMEvents> {
         return new OpenRouterAdapter(config);
       case 'venice':
         return new VeniceAdapter(config);
+      case 'nvidia':
+        return new NvidiaAdapter(config);
       case 'anthropic':
         return new AnthropicAdapter(config);
       case 'openai':
@@ -1475,6 +1497,12 @@ export function createVeniceBackbone(apiKey?: string, model?: string): LLMBackbo
   return new LLMBackbone(llmConfig);
 }
 
+export function createNvidiaBackbone(apiKey?: string, model?: string): LLMBackbone {
+  const llmConfig = config.getLLMConfig('nvidia', model);
+  if (apiKey) llmConfig.apiKey = apiKey;
+  return new LLMBackbone(llmConfig);
+}
+
 export function createOpenAIBackbone(apiKey?: string, model?: string): LLMBackbone {
   const llmConfig = config.getLLMConfig('openai', model);
   if (apiKey) llmConfig.apiKey = apiKey;
@@ -1518,6 +1546,9 @@ export function createBestAvailableBackbone(): LLMBackbone {
   }
   if (providers.includes('openai')) {
     return createOpenAIBackbone();
+  }
+  if (providers.includes('nvidia')) {
+    return createNvidiaBackbone();
   }
 
   // Default to mock if no API keys configured
