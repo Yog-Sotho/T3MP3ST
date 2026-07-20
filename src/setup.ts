@@ -11,6 +11,7 @@ import boxen from 'boxen';
 import ora from 'ora';
 import { config, AVAILABLE_MODELS, hasApiKey, setApiKey } from './config/index.js';
 import { LLMBackbone } from './llm/index.js';
+import { detectLocalAgents } from './agent/local-agents.js';
 import { getBanner } from './index.js';
 
 // =============================================================================
@@ -362,6 +363,7 @@ The setup will guide you through:
           { name: 'Add/update API keys', value: 'keys' },
           { name: 'Change default provider/model', value: 'model' },
           { name: 'View current configuration', value: 'view' },
+          { name: 'Check local agents (Pi / Claude Code / Codex / Hermes)', value: 'agents' },
           { name: 'Reset all settings', value: 'reset' },
           { name: 'Exit', value: 'exit' },
         ],
@@ -379,6 +381,9 @@ The setup will guide you through:
       case 'view':
         viewConfiguration();
         break;
+      case 'agents':
+        await checkLocalAgents();
+        break;
       case 'reset':
         await resetConfiguration();
         break;
@@ -389,6 +394,7 @@ The setup will guide you through:
     // First-time setup
     await setupApiKeys();
     await setupProvider();
+    await checkLocalAgents();
   }
 
   console.log('');
@@ -513,6 +519,46 @@ function viewConfiguration(): void {
   console.log('');
   console.log(chalk.cyan('  Config Path: ') + config.getConfigPath());
   console.log('');
+}
+
+async function checkLocalAgents(): Promise<void> {
+  console.log('');
+  showInfo('Detecting locally installed agent CLIs...');
+  const spinner = ora('Scanning...').start();
+
+  try {
+    const agents = await detectLocalAgents();
+    spinner.stop();
+    console.log('');
+
+    for (const a of agents) {
+      const icon = a.ready ? chalk.green('✓') : a.installed ? chalk.yellow('~') : chalk.red('✗');
+      const status = a.ready
+        ? chalk.green('ready')
+        : a.installed
+        ? chalk.yellow(`installed, not authed (${a.version})`)
+        : chalk.red('not installed');
+      console.log(`  ${icon} ${chalk.bold(a.label.padEnd(20))} ${status}`);
+    }
+
+    console.log('');
+
+    const piAgent = agents.find(a => a.id === 'pi');
+    if (!piAgent?.installed) {
+      showInfo('Pi Coding Agent not found.');
+      showInfo('Install it and authenticate, then run this check again.');
+      showInfo('Once installed, T3MP3ST auto-detects it — no further config needed.');
+      showInfo('Auth artifacts checked: ~/.pi/config.json, ~/.pi/.env, ~/.config/pi/config.json');
+    }
+
+    const notReady = agents.filter(a => a.installed && !a.ready);
+    for (const a of notReady) {
+      showWarning(`${a.label}: installed but not authenticated — log in to ${a.vendor} first.`);
+    }
+  } catch (err) {
+    spinner.fail('Detection failed');
+    showError(err instanceof Error ? err.message : String(err));
+  }
 }
 
 async function resetConfiguration(): Promise<void> {

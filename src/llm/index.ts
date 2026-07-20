@@ -365,9 +365,16 @@ class VeniceAdapter extends OpenRouterAdapter {
 // =============================================================================
 // Nvidia Build API is OpenAI-compatible on the wire (Bearer auth, POST /chat/completions,
 // identical request/response + tool-calling + SSE stream shape), so it reuses the entire
-// OpenRouter adapter and only differs in its default base URL and error message.
+// OpenRouter adapter and only differs in its base URL and error message.
+// The constructor always pins Nvidia's endpoint as the default so callers that don't
+// explicitly pass baseUrl (e.g. the setup wizard) still hit the right host.
 class NvidiaAdapter extends OpenRouterAdapter {
   name = 'nvidia';
+  private static readonly NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+
+  constructor(config: LLMConfig) {
+    super({ ...config, baseUrl: config.baseUrl || NvidiaAdapter.NVIDIA_BASE_URL });
+  }
 
   validateConfig(): { valid: boolean; error?: string } {
     if (!this.config.apiKey) {
