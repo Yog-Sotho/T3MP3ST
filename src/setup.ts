@@ -240,6 +240,51 @@ async function setupOpenAIKey(): Promise<boolean> {
   }
 }
 
+async function setupNvidiaKey(): Promise<boolean> {
+  console.log('');
+  showInfo('Nvidia Build API provides NIM-hosted models (Nemotron, Llama, Qwen, etc.).');
+  showInfo('OpenAI-compatible endpoint at https://integrate.api.nvidia.com/v1');
+  showInfo('Get your API key at: ' + chalk.underline('https://build.nvidia.com/'));
+  console.log('');
+
+  const { apiKey } = await inquirer.prompt([
+    {
+      type: 'password',
+      name: 'apiKey',
+      message: 'Enter your Nvidia Build API key (nvapi-...):',
+      mask: '*',
+      validate: (input: string) => {
+        if (!input || input.length < 10) return 'Please enter a valid API key';
+        return true;
+      },
+    },
+  ]);
+
+  const spinner = ora('Testing API key...').start();
+
+  try {
+    const llm = new LLMBackbone({
+      provider: 'nvidia',
+      model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+      apiKey,
+      maxTokens: 10,
+      temperature: 0,
+    });
+
+    await llm.prompt('Hello', undefined, { maxTokens: 10 });
+    spinner.succeed('API key is valid!');
+
+    setApiKey('nvidia', apiKey);
+    showSuccess('Nvidia API key saved successfully!');
+
+    return true;
+  } catch (error) {
+    spinner.fail('API key validation failed');
+    showError(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 // =============================================================================
 // MODEL SELECTION
 // =============================================================================
@@ -297,13 +342,15 @@ The setup will guide you through:
   const hasOpenRouter = hasApiKey('openrouter');
   const hasAnthropic = hasApiKey('anthropic');
   const hasOpenAI = hasApiKey('openai');
+  const hasNvidia = hasApiKey('nvidia');
 
-  if (hasOpenRouter || hasAnthropic || hasOpenAI) {
+  if (hasOpenRouter || hasAnthropic || hasOpenAI || hasNvidia) {
     console.log('');
     showInfo('Existing API keys detected:');
     if (hasOpenRouter) showSuccess('  OpenRouter: configured');
     if (hasAnthropic) showSuccess('  Anthropic: configured');
     if (hasOpenAI) showSuccess('  OpenAI: configured');
+    if (hasNvidia) showSuccess('  Nvidia Build API: configured');
     console.log('');
 
     const { action } = await inquirer.prompt([
@@ -384,6 +431,10 @@ async function setupApiKeys(): Promise<void> {
           name: `OpenAI ${hasApiKey('openai') ? chalk.green('(configured)') : ''}`,
           value: 'openai',
         },
+        {
+          name: `Nvidia Build API ${hasApiKey('nvidia') ? chalk.green('(configured)') : ''} ${chalk.gray('(NIM models: Nemotron, Llama, Qwen)')}`,
+          value: 'nvidia',
+        },
       ],
     },
   ]);
@@ -402,6 +453,9 @@ async function setupApiKeys(): Promise<void> {
       case 'openai':
         await setupOpenAIKey();
         break;
+      case 'nvidia':
+        await setupNvidiaKey();
+        break;
     }
   }
 }
@@ -413,6 +467,7 @@ async function setupProvider(): Promise<void> {
   if (hasApiKey('venice')) configuredProviders.push({ name: 'Venice', value: 'venice' });
   if (hasApiKey('anthropic')) configuredProviders.push({ name: 'Anthropic', value: 'anthropic' });
   if (hasApiKey('openai')) configuredProviders.push({ name: 'OpenAI', value: 'openai' });
+  if (hasApiKey('nvidia')) configuredProviders.push({ name: 'Nvidia Build API', value: 'nvidia' });
 
   if (configuredProviders.length === 0) {
     showWarning('No API keys configured. Please add at least one API key first.');
@@ -454,6 +509,7 @@ function viewConfiguration(): void {
   console.log('    Venice: ' + (hasApiKey('venice') ? chalk.green('configured') : chalk.red('not set')));
   console.log('    Anthropic: ' + (hasApiKey('anthropic') ? chalk.green('configured') : chalk.red('not set')));
   console.log('    OpenAI: ' + (hasApiKey('openai') ? chalk.green('configured') : chalk.red('not set')));
+  console.log('    Nvidia Build API: ' + (hasApiKey('nvidia') ? chalk.green('configured') : chalk.red('not set')));
   console.log('');
   console.log(chalk.cyan('  Config Path: ') + config.getConfigPath());
   console.log('');
