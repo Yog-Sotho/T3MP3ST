@@ -69,7 +69,7 @@ function childEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-export type LocalAgentId = 'claude' | 'codex' | 'hermes';
+export type LocalAgentId = 'claude' | 'codex' | 'hermes' | 'pi';
 
 /** Apply an authoritative bulk selection; single-agent connects remain additive. */
 export function syncLocalAgentSelection<T>(
@@ -140,6 +140,18 @@ const SPECS: AgentSpec[] = [
     authArtifacts: ['~/.hermes/.env', "~/.hermes/auth.json"],
     oneShot: (p, m) => ['-z', p, ...(hermesYoloEnabled() ? ['--yolo'] : []), ...(m ? ['-m', m] : [])],
   },
+  {
+    id: 'pi',
+    label: 'Pi Coding Agent',
+    vendor: 'Pi',
+    bin: 'pi',
+    blurb: 'Pi Coding Agent — OpenAI-compatible coding assistant CLI',
+    invokeHint: 'pi run "<prompt>"',
+    versionArgs: ['--version'],
+    parseVersion: (o) => (o.match(/[\d]+\.[\d]+(\.[\d]+)?/) || ['?'])[0],
+    authArtifacts: ['~/.pi/config.json', '~/.pi/.env', '~/.config/pi/config.json'],
+    oneShot: (p, m) => ['run', ...(m ? ['--model', m] : []), p],
+  },
 ];
 
 export function getSpec(id: string): AgentSpec | undefined {
@@ -176,7 +188,7 @@ function resolvePath(bin: string): string | undefined {
   try {
     // Security: Whitelist allowed agent binaries to prevent command injection
     // (even though bin is currently hardcoded from SPECS, defensive coding practice)
-    const ALLOWED_BINS = ['claude', 'codex', 'hermes'];
+    const ALLOWED_BINS = ['claude', 'codex', 'hermes', 'pi'];
     if (!ALLOWED_BINS.includes(bin)) {
       return undefined;
     }
@@ -336,6 +348,9 @@ export function localAgentChat(id: string, prompt: string, opts: { model?: strin
     workDir = mkdtempSync(join(tmpdir(), 't3mp3st-codexllm-'));
     outFile = join(workDir, 'reply.txt');
     args = ['exec', '--skip-git-repo-check', '--color', 'never', '--sandbox', 'read-only', '--output-last-message', outFile, ...(model ? ['-m', model] : [])];
+  } else if (id === 'pi') {
+    args = ['run', ...(model ? ['--model', model] : []), prompt];
+    viaStdin = false;
   } else { // hermes — takes the prompt as an arg
     args = ['-z', prompt, ...(hermesYoloEnabled() ? ['--yolo'] : []), ...(model ? ['-m', model] : [])];
     viaStdin = false;
