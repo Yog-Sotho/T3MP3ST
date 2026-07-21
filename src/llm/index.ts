@@ -124,6 +124,7 @@ interface OllamaResponse {
 
 class OpenRouterAdapter implements LLMProviderAdapter {
   name = 'openrouter';
+  protected providerName = 'OpenRouter';
   protected config: LLMConfig;
 
   constructor(config: LLMConfig) {
@@ -215,7 +216,7 @@ class OpenRouterAdapter implements LLMProviderAdapter {
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorMessage = `OpenRouter API error: ${response.status}`;
+      let errorMessage = `${this.providerName} API error: ${response.status}`;
 
       try {
         const errorJson = JSON.parse(errorText);
@@ -223,7 +224,7 @@ class OpenRouterAdapter implements LLMProviderAdapter {
           errorMessage = errorJson.error.message;
         }
       } catch {
-        errorMessage = `OpenRouter API error: ${response.status} - ${errorText}`;
+        errorMessage = `${this.providerName} API error: ${response.status} - ${errorText}`;
       }
 
       // Parse Retry-After header for rate-limited responses
@@ -296,7 +297,7 @@ class OpenRouterAdapter implements LLMProviderAdapter {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      throw new Error(`${this.providerName} API error: ${response.status}`);
     }
 
     const reader = response.body?.getReader();
@@ -348,6 +349,7 @@ class OpenRouterAdapter implements LLMProviderAdapter {
 // headers the parent sends are harmless (Venice ignores unknown headers).
 class VeniceAdapter extends OpenRouterAdapter {
   name = 'venice';
+  protected providerName = 'Venice';
 
   validateConfig(): { valid: boolean; error?: string } {
     if (!this.config.apiKey) {
@@ -370,6 +372,7 @@ class VeniceAdapter extends OpenRouterAdapter {
 // explicitly pass baseUrl (e.g. the setup wizard) still hit the right host.
 class NvidiaAdapter extends OpenRouterAdapter {
   name = 'nvidia';
+  protected providerName = 'Nvidia';
   private static readonly NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 
   constructor(config: LLMConfig) {
