@@ -264,15 +264,18 @@ async function setupNvidiaKey(): Promise<boolean> {
   const spinner = ora('Testing API key...').start();
 
   try {
-    const llm = new LLMBackbone({
-      provider: 'nvidia',
-      model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
-      apiKey,
-      maxTokens: 10,
-      temperature: 0,
+    // Validate via GET /models — lightweight auth check that doesn't require
+    // picking a specific model (avoids 404 when a model isn't in your tier).
+    const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(15000),
     });
-
-    await llm.prompt('Hello', undefined, { maxTokens: 10 });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Invalid API key (authentication rejected by Nvidia)');
+    }
+    if (!res.ok) {
+      throw new Error(`Nvidia API returned ${res.status} — key may still be valid; check https://build.nvidia.com/`);
+    }
     spinner.succeed('API key is valid!');
 
     setApiKey('nvidia', apiKey);
