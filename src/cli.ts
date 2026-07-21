@@ -171,7 +171,7 @@ async function interactiveMode(): Promise<void> {
       'Setup Required',
       `No API keys configured. Please run setup first:
 
-${chalk.cyan('npx t3mp3st setup')}
+${chalk.cyan('npm run setup')}
 
 Or set environment variables:
 ${chalk.gray('OPENROUTER_API_KEY=your-key-here')}`,
@@ -681,7 +681,7 @@ program
 
     if (!hasApiKey(provider as any)) {
       showError(`No API key configured for ${provider}`);
-      showInfo('Run "npx t3mp3st setup" to configure API keys');
+      showInfo('Run "npm run setup" to configure API keys');
       return;
     }
 

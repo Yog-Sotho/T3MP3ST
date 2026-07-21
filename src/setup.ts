@@ -443,12 +443,9 @@ The setup will guide you through:
     `T3MP3ST is now configured and ready to use.
 
 Quick start:
-${chalk.cyan('npx t3mp3st')}        Start the interactive CLI
-${chalk.cyan('npx t3mp3st --help')} View all commands
-
-Or use in your code:
-${chalk.gray(`import { createTempest } from 't3mp3st';
-const tempest = createTempest({ name: 'My Operation' });`)}`,
+${chalk.cyan('npm start')}              Start the interactive CLI
+${chalk.cyan('npm run server:prod')}    Start the HTTP API server
+${chalk.cyan('npm run setup')}          Re-run this wizard anytime`,
     'green'
   );
 }
