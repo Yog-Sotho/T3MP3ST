@@ -679,6 +679,10 @@ class ConfigManager {
     // Codex uses the local Codex CLI/account auth instead of API-key storage.
     providers.push('codex');
 
+    // local-agent covers Pi / Claude Code / Codex / Hermes — no API key needed;
+    // availability is checked by the caller (detectLocalAgents).
+    providers.push('local-agent');
+
     // Mock and local are always available
     providers.push('mock', 'local');
 
@@ -731,6 +735,11 @@ class ConfigManager {
         break;
       case 'codex':
         actualModel = model || this.config.get('codex').defaultModel;
+        break;
+      case 'local-agent':
+        // Local agent CLIs (Pi, Claude Code, Codex, Hermes). No API key.
+        // The model field carries the agent ID: 'pi' | 'claude' | 'codex' | 'hermes'.
+        actualModel = model || this.config.get('defaultModel') || 'pi';
         break;
       case 'mock':
         actualModel = 'mock-model';
@@ -821,6 +830,10 @@ class ConfigManager {
       case 'codex':
         this.config.set('defaultModel', this.config.get('codex').defaultModel);
         break;
+      case 'local-agent':
+        // "model" for local-agent is the agent id; default to pi
+        this.config.set('defaultModel', 'pi');
+        break;
     }
   }
 
@@ -846,6 +859,9 @@ class ConfigManager {
         break;
       case 'codex':
         this.config.set('codex', { ...this.config.get('codex'), defaultModel: model });
+        break;
+      case 'local-agent':
+        // agent id is stored directly in defaultModel when local-agent is the provider
         break;
     }
 
