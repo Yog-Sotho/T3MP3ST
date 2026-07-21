@@ -459,6 +459,28 @@ async function chatWithAI(tempest: Tempest): Promise<void> {
       continue;
     }
 
+    // /model                          → show current provider / model
+    // /model <model-id>               → switch model, keep current provider
+    // /model <provider> <model-id>    → switch provider and model
+    if (message.trim().startsWith('/model')) {
+      const parts = message.trim().split(/\s+/).slice(1);
+      if (parts.length === 0) {
+        showInfo(`Current: ${tempest.llm.getProvider()} / ${tempest.llm.getModel()}`);
+      } else {
+        const provider = parts.length >= 2 ? parts[0] : tempest.llm.getProvider();
+        const model    = parts.length >= 2 ? parts.slice(1).join(' ') : parts[0];
+        try {
+          const newCfg = config.getLLMConfig(provider as Parameters<typeof config.getLLMConfig>[0], model);
+          tempest.llm.updateConfig(newCfg);
+          config.setDefaultModel(provider as Parameters<typeof config.setDefaultModel>[0], model);
+          showSuccess(`Switched to ${provider} / ${model}`);
+        } catch (err) {
+          showError(`Could not switch model: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      continue;
+    }
+
     const spinner = ora('Thinking...').start();
 
     try {
