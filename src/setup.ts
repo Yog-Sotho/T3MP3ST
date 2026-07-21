@@ -263,9 +263,10 @@ async function setupNvidiaKey(): Promise<boolean> {
 
   const spinner = ora('Testing API key...').start();
 
+  let availableModels: string[] = [];
+
   try {
-    // Validate via GET /models — lightweight auth check that doesn't require
-    // picking a specific model (avoids 404 when a model isn't in your tier).
+    // Validate via GET /models — also gives us the real list of models this key can access.
     const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(15000),
@@ -276,17 +277,53 @@ async function setupNvidiaKey(): Promise<boolean> {
     if (!res.ok) {
       throw new Error(`Nvidia API returned ${res.status} — key may still be valid; check https://build.nvidia.com/`);
     }
-    spinner.succeed('API key is valid!');
 
+    // Parse available models from the response
+    try {
+      const data = await res.json() as { data?: Array<{ id: string }> };
+      if (Array.isArray(data?.data)) {
+        availableModels = data.data
+          .map((m) => m.id)
+          .filter((id) => typeof id === 'string' && id.length > 0);
+      }
+    } catch {
+      // Parsing failed — will fall back to hardcoded list below
+    }
+
+    spinner.succeed(`API key is valid!${availableModels.length > 0 ? ` (${availableModels.length} models available)` : ''}`);
     setApiKey('nvidia', apiKey);
     showSuccess('Nvidia API key saved successfully!');
-
-    return true;
   } catch (error) {
     spinner.fail('API key validation failed');
     showError(`Error: ${error instanceof Error ? error.message : String(error)}`);
     return false;
   }
+
+  // Let the user pick a model from what their key actually has access to.
+  // Fall back to the curated list if the /models response didn't give us anything.
+  const fallbackModels = [
+    'meta/llama-3.3-70b-instruct',
+    'nvidia/llama-3.3-nemotron-super-49b-v1',
+    'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+    'qwen/qwen3-235b-a22b',
+  ];
+  const modelChoices = availableModels.length > 0 ? availableModels : fallbackModels;
+
+  const { selectedModel } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'selectedModel',
+      message: `Select default Nvidia model${availableModels.length > 0 ? ' (from your account)' : ' (fallback list — run setup again after key activation)'}:`,
+      choices: modelChoices,
+      default: modelChoices.find(m => m.includes('70b')) || modelChoices[0],
+      pageSize: 15,
+    },
+  ]);
+
+  config.setDefaultModel('nvidia', selectedModel);
+  showSuccess(`Default model set to: ${selectedModel}`);
+
+  return true;
 }
 
 // =============================================================================
