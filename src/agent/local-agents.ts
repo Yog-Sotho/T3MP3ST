@@ -98,6 +98,8 @@ interface AgentSpec {
   authArtifacts: string[];
   /** macOS keychain fallback service name */
   keychainService?: string;
+  /** set true for CLIs that need no separate login step (run as-is once installed) */
+  noAuth?: boolean;
   /** build the argv for a headless one-shot prompt */
   oneShot: (prompt: string, model?: string) => string[];
 }
@@ -149,7 +151,8 @@ const SPECS: AgentSpec[] = [
     invokeHint: 'pi run "<prompt>"',
     versionArgs: ['--version'],
     parseVersion: (o) => (o.match(/[\d]+\.[\d]+(\.[\d]+)?/) || ['?'])[0],
-    authArtifacts: ['~/.pi/config.json', '~/.pi/.env', '~/.config/pi/config.json'],
+    authArtifacts: [],
+    noAuth: true,
     oneShot: (p, m) => ['run', ...(m ? ['--model', m] : []), p],
   },
 ];
@@ -206,6 +209,7 @@ function resolvePath(bin: string): string | undefined {
 }
 
 function authState(spec: AgentSpec): { authed: boolean; method?: string } {
+  if (spec.noAuth) return { authed: true, method: 'none' };
   for (const a of spec.authArtifacts) {
     if (existsSync(expand(a))) return { authed: true, method: 'file' };
   }

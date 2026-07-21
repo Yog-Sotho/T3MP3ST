@@ -546,12 +546,10 @@ async function checkLocalAgents(): Promise<void> {
     const piAgent = agents.find(a => a.id === 'pi');
     if (!piAgent?.installed) {
       showInfo('Pi Coding Agent not found.');
-      showInfo('Install it and authenticate, then run this check again.');
       showInfo('Once installed, T3MP3ST auto-detects it — no further config needed.');
-      showInfo('Auth artifacts checked: ~/.pi/config.json, ~/.pi/.env, ~/.config/pi/config.json');
     }
 
-    const notReady = agents.filter(a => a.installed && !a.ready);
+    const notReady = agents.filter(a => a.installed && !a.ready && a.id !== 'pi');
     for (const a of notReady) {
       showWarning(`${a.label}: installed but not authenticated — log in to ${a.vendor} first.`);
     }
