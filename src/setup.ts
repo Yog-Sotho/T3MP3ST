@@ -301,6 +301,7 @@ async function setupNvidiaKey(): Promise<boolean> {
 
   // Let the user pick a model from what their key actually has access to.
   // Fall back to the curated list if the /models response didn't give us anything.
+  // Free-tier-safe models are listed first.
   const fallbackModels = [
     'meta/llama-3.3-70b-instruct',
     'nvidia/llama-3.3-nemotron-super-49b-v1',
@@ -309,19 +310,71 @@ async function setupNvidiaKey(): Promise<boolean> {
   ];
   const modelChoices = availableModels.length > 0 ? availableModels : fallbackModels;
 
-  const { selectedModel } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'selectedModel',
-      message: `Select default Nvidia model${availableModels.length > 0 ? ' (from your account)' : ' (fallback list — run setup again after key activation)'}:`,
-      choices: modelChoices,
-      default: modelChoices.find(m => m.includes('70b')) || modelChoices[0],
-      pageSize: 15,
-    },
-  ]);
+  let remainingChoices = [...modelChoices];
+  let workingModel: string | null = null;
 
-  config.setDefaultModel('nvidia', selectedModel);
-  showSuccess(`Default model set to: ${selectedModel}`);
+  while (!workingModel && remainingChoices.length > 0) {
+    const { selectedModel } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedModel',
+        message: `Select Nvidia model${availableModels.length > 0 ? ' (from your account)' : ' (fallback list)'}:`,
+        choices: remainingChoices,
+        default: remainingChoices.find(m => m.includes('70b')) || remainingChoices[0],
+        pageSize: 15,
+      },
+    ]);
+
+    // Always test real inference — /models listing alone does not guarantee a model
+    // is available for chat completions on the key's tier.
+    const inferSpinner = ora(`Testing inference with ${selectedModel}...`).start();
+    try {
+      const testLlm = new LLMBackbone({
+        provider: 'nvidia',
+        model: selectedModel,
+        apiKey,
+        maxTokens: 1,
+        temperature: 0,
+      });
+      await testLlm.prompt('Hi', undefined, { maxTokens: 1 });
+      inferSpinner.succeed(`${selectedModel} — inference OK`);
+      workingModel = selectedModel;
+    } catch (inferErr) {
+      inferSpinner.fail(`${selectedModel} — not available for inference on your plan`);
+      showError(inferErr instanceof Error ? inferErr.message : String(inferErr));
+      showWarning('This model may require a higher tier on build.nvidia.com.');
+      showInfo('Tip: meta/llama-3.3-70b-instruct is usually on the free tier.');
+
+      remainingChoices = remainingChoices.filter(m => m !== selectedModel);
+
+      if (remainingChoices.length === 0) {
+        showError('No models tested successfully. Key saved — fix model from Settings later.');
+        config.setDefaultModel('nvidia', selectedModel);
+        return true;
+      }
+
+      const { action } = await inquirer.prompt([{
+        type: 'list',
+        name: 'action',
+        message: 'Try another model?',
+        choices: [
+          { name: 'Yes — pick a different model', value: 'retry' },
+          { name: 'Skip for now (key saved, fix via Settings)', value: 'skip' },
+        ],
+      }]);
+
+      if (action === 'skip') {
+        config.setDefaultModel('nvidia', selectedModel);
+        showInfo('Key saved. Change the model later: Settings → Change default model');
+        return true;
+      }
+    }
+  }
+
+  if (workingModel) {
+    config.setDefaultModel('nvidia', workingModel);
+    showSuccess(`Default model set to: ${workingModel}`);
+  }
 
   return true;
 }
@@ -504,7 +557,7 @@ async function setupApiKeys(): Promise<void> {
 }
 
 async function setupProvider(): Promise<void> {
-  const configuredProviders = [];
+  const configuredProviders: Array<{ name: string; value: string }> = [];
 
   if (hasApiKey('openrouter')) configuredProviders.push({ name: 'OpenRouter', value: 'openrouter' });
   if (hasApiKey('venice')) configuredProviders.push({ name: 'Venice', value: 'venice' });
@@ -512,8 +565,15 @@ async function setupProvider(): Promise<void> {
   if (hasApiKey('openai')) configuredProviders.push({ name: 'OpenAI', value: 'openai' });
   if (hasApiKey('nvidia')) configuredProviders.push({ name: 'Nvidia Build API', value: 'nvidia' });
 
+  // Pi Coding Agent: no API key needed — detect from PATH
+  const agents = await detectLocalAgents();
+  const piAgent = agents.find(a => a.id === 'pi');
+  if (piAgent?.ready) {
+    configuredProviders.push({ name: `Pi Coding Agent (local CLI — no API key)`, value: 'local-agent' });
+  }
+
   if (configuredProviders.length === 0) {
-    showWarning('No API keys configured. Please add at least one API key first.');
+    showWarning('No API keys configured and Pi not detected. Please add at least one API key first.');
     return;
   }
 
@@ -584,6 +644,21 @@ async function checkLocalAgents(): Promise<void> {
     if (!piAgent?.installed) {
       showInfo('Pi Coding Agent not found.');
       showInfo('Once installed, T3MP3ST auto-detects it — no further config needed.');
+    } else if (piAgent.ready) {
+      showSuccess('Pi Coding Agent is ready to use as backbone (no API key needed).');
+      const currentProvider = config.get('defaultProvider');
+      if (currentProvider !== 'local-agent') {
+        const { usePi } = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'usePi',
+          message: 'Set Pi as the default backbone for operations?',
+          default: false,
+        }]);
+        if (usePi) {
+          config.setDefaultProvider('local-agent' as any);
+          showSuccess('Default provider set to: Pi Coding Agent');
+        }
+      }
     }
 
     const notReady = agents.filter(a => a.installed && !a.ready && a.id !== 'pi');
