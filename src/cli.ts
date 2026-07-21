@@ -86,6 +86,7 @@ function showWarning(message: string): void {
 
 function displayStatus(tempest: Tempest): void {
   const status = tempest.command.getStatus();
+  const activeMission = tempest.mission.getActiveMission();
 
   console.log('');
   console.log(chalk.bold.cyan('═══ OPERATION STATUS ═══'));
@@ -93,10 +94,18 @@ function displayStatus(tempest: Tempest): void {
 
   // Operation Info
   console.log(chalk.bold('Operation:'), status.name);
-  console.log(chalk.bold('Status:'), status.running
+  console.log(chalk.bold('Status:    '), status.running
     ? (status.paused ? chalk.yellow('PAUSED') : chalk.green('RUNNING'))
     : chalk.gray('STOPPED'));
-  console.log(chalk.bold('Tick Count:'), status.tickCount);
+  console.log(chalk.bold('Tick:      '), status.tickCount);
+  if (activeMission) {
+    console.log(chalk.bold('Mission:   '), activeMission.name);
+    console.log(chalk.bold('Phase:     '), chalk.cyan(activeMission.currentPhase));
+  }
+  console.log(chalk.bold('Targets:   '), status.targets.total);
+  if (status.stallReason) {
+    console.log(chalk.bold('Stall:     '), chalk.red(status.stallReason));
+  }
   console.log('');
 
   // Operators Table
@@ -146,14 +155,74 @@ function displayStatus(tempest: Tempest): void {
     status.opsec.riskLevel === 'high' ? chalk.yellow :
     status.opsec.riskLevel === 'medium' ? chalk.blue : chalk.green;
 
-  console.log(chalk.bold('OPSEC:'), opsecColor(status.opsec.riskLevel.toUpperCase()));
+  console.log(chalk.bold('OPSEC:     '), opsecColor(status.opsec.riskLevel.toUpperCase()));
   console.log(chalk.bold('Detections:'), `${status.opsec.activeDetections}/${status.opsec.totalDetections}`);
 
   if (status.opsec.abortRecommended) {
-    console.log(chalk.red.bold('⚠ ABORT RECOMMENDED'));
+    console.log(chalk.red.bold('\n⚠  ABORT RECOMMENDED'));
   }
 
   console.log('');
+}
+
+// Live auto-refresh status watch. Clears the terminal and redraws every 3 s.
+// The user presses Enter to exit back to the menu. Uses raw stdin so individual
+// keypresses are captured instantly; falls back to a single snapshot on non-TTY.
+async function watchLiveStatus(tempest: Tempest): Promise<void> {
+  if (!process.stdin.isTTY) {
+    // Non-interactive environment: just print a single snapshot.
+    displayStatus(tempest);
+    return;
+  }
+
+  return new Promise<void>((resolve) => {
+    let stopped = false;
+
+    const render = () => {
+      if (stopped) return;
+      process.stdout.write('\x1Bc'); // VT100 reset: clear screen + home cursor
+      process.stdout.write(chalk.gray('Live status  ·  q / Enter to return to menu\n\n'));
+      displayStatus(tempest);
+      const s = tempest.command.getStatus();
+      if (!s.running) {
+        process.stdout.write(chalk.yellow('\n⏹  Operation stopped — press any key\n'));
+      }
+    };
+
+    render();
+    const interval = setInterval(render, 3000);
+
+    // Take over stdin with raw mode so single keypresses register immediately.
+    let rawSet = false;
+    try {
+      process.stdin.setRawMode(true);
+      rawSet = true;
+    } catch { /* not a TTY — best effort */ }
+    process.stdin.resume();
+
+    const onData = (chunk: Buffer) => {
+      const key = chunk.toString();
+      // q, Q, Enter (\r or \n), Escape (\x1b), Ctrl-C (\x03)
+      if (['q', 'Q', '\r', '\n', '\x03', '\x1b'].includes(key)) {
+        cleanup();
+      }
+    };
+
+    process.stdin.on('data', onData);
+
+    const cleanup = () => {
+      if (stopped) return;
+      stopped = true;
+      clearInterval(interval);
+      process.stdin.removeListener('data', onData);
+      if (rawSet) {
+        try { process.stdin.setRawMode(false); } catch {}
+      }
+      process.stdin.pause();
+      process.stdout.write('\x1Bc');
+      resolve();
+    };
+  });
 }
 
 // =============================================================================
@@ -207,7 +276,19 @@ Default: ${chalk.cyan(config.get('defaultProvider'))} / ${chalk.cyan(config.get(
   let running = true;
   let tempest: Tempest | null = null;
 
+  // Queued event notifications — flushed before each menu prompt so they are
+  // visible without racing against inquirer's terminal rendering.
+  const notifQueue: string[] = [];
+
   while (running) {
+    // Print any queued event notifications before showing the menu
+    if (notifQueue.length > 0) {
+      console.log('');
+      for (const msg of notifQueue) console.log(msg);
+      notifQueue.length = 0;
+      console.log('');
+    }
+
     const choices = [
       { name: '🚀 Start New Operation', value: 'new' },
     ];
@@ -215,6 +296,7 @@ Default: ${chalk.cyan(config.get('defaultProvider'))} / ${chalk.cyan(config.get(
     if (tempest) {
       choices.push(
         { name: '📊 View Status', value: 'status' },
+        { name: '👁  Watch Live Status', value: 'watch' },
         { name: '👤 Spawn Operator', value: 'spawn' },
         { name: '🎯 Add Target', value: 'target' },
         { name: '📋 Create Mission', value: 'mission' },
@@ -240,11 +322,33 @@ Default: ${chalk.cyan(config.get('defaultProvider'))} / ${chalk.cyan(config.get(
 
     try {
       switch (action) {
-        case 'new':
-          tempest = await startNewOperation();
+        case 'new': {
+          const t = await startNewOperation();
+          tempest = t;
+          // Wire up event notifications for this operation
+          t.command.on('finding:discovered', ({ finding }) => {
+            const colorFn =
+              finding.severity === 'critical' ? chalk.red.bold :
+              finding.severity === 'high' ? chalk.magenta :
+              finding.severity === 'medium' ? chalk.yellow : chalk.blue;
+            notifQueue.push(colorFn(`[+] FINDING (${finding.severity.toUpperCase()}): ${finding.title}`));
+          });
+          t.command.on('mission:phase_changed', ({ phase }) => {
+            notifQueue.push(chalk.cyan(`[~] Phase advanced: ${phase}`));
+          });
+          t.command.on('abort:recommended', (reason) => {
+            notifQueue.push(chalk.red.bold(`[!] ABORT RECOMMENDED: ${reason}`));
+          });
+          t.command.on('command:stopped', () => {
+            notifQueue.push(chalk.yellow(`[*] Operation "${t.command.name}" stopped.`));
+          });
           break;
+        }
         case 'status':
           if (tempest) displayStatus(tempest);
+          break;
+        case 'watch':
+          if (tempest) await watchLiveStatus(tempest);
           break;
         case 'spawn':
           if (tempest) await spawnOperator(tempest);
