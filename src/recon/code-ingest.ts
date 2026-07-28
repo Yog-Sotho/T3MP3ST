@@ -516,20 +516,29 @@ export function buildCallGraph(blocks: CodeBlock[]): Record<string, CallGraphEnt
     byName.set(b.name, arr);
   }
 
-  // Precompile a call-detector per distinct name.
-  const nameRes = new Map<string, RegExp>();
-  for (const name of byName.keys()) {
-    nameRes.set(name, new RegExp(`\\b${escapeRe(name)}\\s*\\(`));
-  }
+  // ⚡ BOLT OPTIMIZATION: Instead of an O(N * M) nested loop compiling and testing a RegExp
+  // for every unique function/class name against every block's body, we perform a single
+  // O(N) scan using a global RegExp to extract all potential called names from each block's
+  // bodyAfterSignature. We then look up these names in the O(1) byName Map. This results in
+  // massive performance gains on larger repositories.
+  const callRe = /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g;
 
   for (const b of blocks) {
     // A block should not count as calling itself just by its own def line; strip
     // the first line (the def) before scanning so `def foo(` doesn't self-match.
     const bodyAfterSignature = b.body.split('\n').slice(1).join('\n');
-    for (const [name, ids] of byName) {
-      if (name === b.name && ids.length === 1) continue; // pure self, skip
-      const re = nameRes.get(name)!;
-      if (re.test(bodyAfterSignature)) {
+    callRe.lastIndex = 0;
+
+    const calledNames = new Set<string>();
+    let match;
+    while ((match = callRe.exec(bodyAfterSignature)) !== null) {
+      calledNames.add(match[1]);
+    }
+
+    for (const name of calledNames) {
+      if (name === b.name && byName.get(name)?.length === 1) continue; // pure self, skip
+      const ids = byName.get(name);
+      if (ids) {
         for (const targetId of ids) {
           if (targetId === b.id) continue; // no self-edge
           if (!graph[b.id].callees.includes(targetId)) {
@@ -544,10 +553,6 @@ export function buildCallGraph(blocks: CodeBlock[]): Record<string, CallGraphEnt
   }
 
   return graph;
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // =============================================================================
