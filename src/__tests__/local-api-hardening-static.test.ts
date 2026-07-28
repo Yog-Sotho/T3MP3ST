@@ -38,4 +38,12 @@ describe('local API authorization hardening invariants', () => {
     expect(route.indexOf('ensureExecTargetsWithinApprovedTarget(execConfig.targets, brief.target)'))
       .toBeLessThan(route.indexOf('bringUpMissionFromPlan(execConfig, generalConfig)'));
   });
+
+  it('parseCommand function contains flag-injection and local-file-read hardening blocks', () => {
+    const block = routeBlock('function parseCommand(', 'function inferCommandTarget(');
+
+    expect(block).toMatch(/dangerousFlags/);
+    expect(block).toMatch(/bin === 'curl'/);
+    expect(block).toMatch(/\/\^\[@<\]\/\.test/);
+  });
 });
