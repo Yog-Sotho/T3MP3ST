@@ -3297,7 +3297,7 @@
                     <span class="api-dot" id="apiDot"></span>
                     <span class="api-text" id="apiText">Checking...</span>
                 </div>
-                <button class="api-reconnect-btn" id="apiReconnectBtn" onclick="T3MP3ST_API.checkHealth()" title="Reconnect">↻</button>
+                <button class="api-reconnect-btn" id="apiReconnectBtn" onclick="T3MP3ST_API.checkHealth()" title="Reconnect" aria-label="Reconnect to T3MP3ST API">↻</button>
             </div>
 
             <nav class="nav-section">
@@ -3362,7 +3362,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
-                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
                 <h1 class="header-title" id="pageTitle">War Room</h1>
                 <div class="header-actions">
                     <button class="btn btn-secondary" onclick="if(window.t3mpTour)t3mpTour.start()" title="Take the guided tour" aria-label="Guided tour" style="font-weight:700;">?</button>
@@ -6914,6 +6914,10 @@ Correlating findings across agents, identifying patterns, producing actionable i
             const titles = { warroom: 'War Room', operators: 'Operatives', evidence: 'Evidence Vault', arsenal: 'Arsenal', terminal: 'Terminal', benchmarks: 'Benchmarks', configs: 'Config Library', 'ctf-range': 'CTF Range', general: 'Op Admiral', selfimprove: 'Self-Improvement', settings: 'Settings', about: 'About' };
             document.getElementById('pageTitle').textContent = titles[page] || 'War Room';
             document.getElementById('sidebar').classList.remove('open');
+            const toggleBtn = document.querySelector('.mobile-toggle');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
             if (page === 'operators' && typeof window.loadOperativesRoster === 'function') setTimeout(window.loadOperativesRoster, 80);
             if (page === 'evidence' && typeof window.hydrateFindings === 'function') setTimeout(window.hydrateFindings, 60);
             if (page === 'selfimprove' && typeof window.renderSelfImprove === 'function') setTimeout(window.renderSelfImprove, 60);
@@ -6921,7 +6925,14 @@ Correlating findings across agents, identifying patterns, producing actionable i
 
         document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page)));
 
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const isOpen = sidebar.classList.toggle('open');
+            const toggleBtn = document.querySelector('.mobile-toggle');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        }
 
         // Architecture Selection
         let currentArchitecture = null;
