@@ -401,6 +401,31 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
   if (adapter?.execution === 'catalog_only' || adapter?.execution === 'import_only') {
     return { error: `Tool is catalog-only and cannot be executed directly: ${bin}` };
   }
+
+  // Hardening: Prevent flag injection and local-file-read vectors on safe binaries
+  const dangerousFlags: Record<string, RegExp> = {
+    curl: /^(-o|--output|-K|--config|-T|--upload-file|-x|--proxy|--preproxy|-D|--dump-header|--trace|--trace-ascii|-w|--write-out|--cert|--key|--cacert|--capath|--cert-type|--key-type|--output-dir|--create-dirs|-c|--cookie-jar)$/i,
+    nmap: /^(-o[NXGAS]|--script|--script-args|--script-args-file|--script-help|--script-updatedb|-iL|--excludefile|--datadir|--servicedb|--versiondb|--resume|--stylesheet|--webxml)$/i,
+  };
+
+  const pattern = dangerousFlags[bin];
+  if (pattern) {
+    for (const arg of args) {
+      const name = arg.split('=')[0];
+      if (pattern.test(name)) {
+        return { error: `Dangerous flag is not allowed in direct command execution: ${name}` };
+      }
+    }
+  }
+
+  if (bin === 'curl') {
+    for (const arg of args) {
+      if (/^[@<]/.test(arg)) {
+        return { error: `Local file read is not allowed in direct command execution: ${arg}` };
+      }
+    }
+  }
+
   return { bin, args };
 }
 
