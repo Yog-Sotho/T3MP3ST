@@ -201,6 +201,13 @@
 
         .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 
+        .nav-item:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
         .nav-item.active {
             background: var(--accent-glow);
             color: var(--accent);
@@ -3300,53 +3307,53 @@
                 <button class="api-reconnect-btn" id="apiReconnectBtn" onclick="T3MP3ST_API.checkHealth()" title="Reconnect" aria-label="Reconnect to T3MP3ST API">↻</button>
             </div>
 
-            <nav class="nav-section">
+            <nav class="nav-section" role="tablist" aria-label="Dashboard sections">
                 <div class="nav-label">Main</div>
-                <div class="nav-item active" data-page="warroom">
+                <div class="nav-item active" data-page="warroom" tabindex="0" role="tab" aria-selected="true">
                     <span class="icon">⚔️</span> War Room
                 </div>
-                <div class="nav-item" data-page="operators">
+                <div class="nav-item" data-page="operators" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">🤖</span> Operatives
                     <span class="badge" id="activeOperatorCount">0</span>
                 </div>
-                <div class="nav-item" data-page="evidence">
+                <div class="nav-item" data-page="evidence" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">🔐</span> Evidence Vault
                 </div>
 
                 <div class="nav-label">Ranges</div>
-                <div class="nav-item" data-page="benchmarks">
+                <div class="nav-item" data-page="benchmarks" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">📈</span> OBSIDIVM
                 </div>
-                <div class="nav-item" data-page="ctf-range">
+                <div class="nav-item" data-page="ctf-range" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">🚩</span> CTF Range
                     <span class="badge" id="ctfActiveCount" style="background: #ff8800;">0</span>
                 </div>
 
                 <div class="nav-label">Toolkit</div>
-                <div class="nav-item" data-page="arsenal">
+                <div class="nav-item" data-page="arsenal" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">📡</span> Arsenal
                 </div>
-                <div class="nav-item" data-page="terminal">
+                <div class="nav-item" data-page="terminal" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">💻</span> Terminal
                 </div>
-                <div class="nav-item" data-page="configs">
+                <div class="nav-item" data-page="configs" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">💾</span> Config Library
                 </div>
 
                 <div class="nav-label">Command</div>
-                <div class="nav-item" data-page="general">
+                <div class="nav-item" data-page="general" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">&#9733;</span> Op Admiral
                     <span class="badge" id="generalStatusBadge" style="background: #ff4444; display: none;">LIVE</span>
                 </div>
 
                 <div class="nav-label">System</div>
-                <div class="nav-item" data-page="selfimprove">
+                <div class="nav-item" data-page="selfimprove" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">🧬</span> Self-Improvement
                 </div>
-                <div class="nav-item" data-page="settings">
+                <div class="nav-item" data-page="settings" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">⚙️</span> Settings
                 </div>
-                <div class="nav-item" data-page="about">
+                <div class="nav-item" data-page="about" tabindex="0" role="tab" aria-selected="false">
                     <span class="icon">ℹ️</span> About
                 </div>
             </nav>
@@ -6909,7 +6916,11 @@ Correlating findings across agents, identifying patterns, producing actionable i
 
         // Navigation
         function navigateTo(page) {
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.toggle('active', i.dataset.page === page));
+            document.querySelectorAll('.nav-item').forEach(i => {
+                const isActive = i.dataset.page === page;
+                i.classList.toggle('active', isActive);
+                i.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
             document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === `page-${page}`));
             const titles = { warroom: 'War Room', operators: 'Operatives', evidence: 'Evidence Vault', arsenal: 'Arsenal', terminal: 'Terminal', benchmarks: 'Benchmarks', configs: 'Config Library', 'ctf-range': 'CTF Range', general: 'Op Admiral', selfimprove: 'Self-Improvement', settings: 'Settings', about: 'About' };
             document.getElementById('pageTitle').textContent = titles[page] || 'War Room';
@@ -6923,7 +6934,15 @@ Correlating findings across agents, identifying patterns, producing actionable i
             if (page === 'selfimprove' && typeof window.renderSelfImprove === 'function') setTimeout(window.renderSelfImprove, 60);
         }
 
-        document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page)));
+        document.querySelectorAll('.nav-item').forEach(i => {
+            i.addEventListener('click', () => navigateTo(i.dataset.page));
+            i.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigateTo(i.dataset.page);
+                }
+            });
+        });
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
