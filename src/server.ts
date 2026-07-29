@@ -198,7 +198,7 @@ function sanitizeErrorForResponse(error: unknown): string {
     const SAFE_PATTERNS = [
       /^(repoPath rejected|scope denied|approval required)/i,
       /^(timeout|network|connection)/i,
-      /^mission/i,
+      /^(mission|no mission found)/i,
       /^ssrf (blocked|denied)/i,
       /^api key required/i,
       /^(invalid|unknown|unsupported) (platform|provider|model|format)/i,
@@ -406,6 +406,7 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
   const dangerousFlags: Record<string, RegExp> = {
     curl: /^(-o|--output|-K|--config|-T|--upload-file|-x|--proxy|--preproxy|-D|--dump-header|--trace|--trace-ascii|-w|--write-out|--cert|--key|--cacert|--capath|--cert-type|--key-type|--output-dir|--create-dirs|-c|--cookie-jar)$/i,
     nmap: /^(-o[NXGAS]|--script|--script-args|--script-args-file|--script-help|--script-updatedb|-iL|--excludefile|--datadir|--servicedb|--versiondb|--resume|--stylesheet|--webxml)$/i,
+    dig: /^(-f)$/i,
   };
 
   const pattern = dangerousFlags[bin];
@@ -6217,7 +6218,7 @@ app.post('/api/whitebox/analyze', async (req: Request, res: Response): Promise<v
     res.json(result);
   } catch (error: any) {
     console.error('[T3MP3ST] White-box analysis failed:', error);
-    res.status(500).json({ error: error?.message || 'White-box analysis failed' });
+    res.status(500).json({ error: sanitizeErrorForResponse(error) });
   }
 });
 
@@ -6238,7 +6239,7 @@ function handleMissionReport(req: Request, res: Response): void {
     res.json({ success: true, missionId: missionId || null, report });
   } catch (error: any) {
     // generateReport throws when no mission is found for reporting.
-    res.status(404).json({ error: error?.message || 'No mission found for reporting' });
+    res.status(404).json({ error: sanitizeErrorForResponse(error) });
   }
 }
 app.get('/api/mission/report', (req: Request, res: Response) => handleMissionReport(req, res));
