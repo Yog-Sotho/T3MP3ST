@@ -159,8 +159,14 @@ export function validateBountyCredentials(creds: BountyCredentials): {
 
   // Validate apiIdentifier if provided
   if (creds.apiIdentifier) {
+    if (creds.apiIdentifier.length < CREDENTIAL_LIMITS.apiIdentifier.min) {
+      errors.push(`apiIdentifier too short (min ${CREDENTIAL_LIMITS.apiIdentifier.min} chars)`);
+    }
     if (creds.apiIdentifier.length > CREDENTIAL_LIMITS.apiIdentifier.max) {
       errors.push(`apiIdentifier too long (max ${CREDENTIAL_LIMITS.apiIdentifier.max} chars)`);
+    }
+    if (!CREDENTIAL_LIMITS.apiIdentifier.pattern.test(creds.apiIdentifier)) {
+      errors.push('apiIdentifier contains invalid characters (only alphanumeric, underscore, hyphen, dot allowed)');
     }
     // eslint-disable-next-line no-control-regex
     if (/[\u0000-\u001f]/.test(creds.apiIdentifier)) {
