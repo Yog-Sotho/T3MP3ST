@@ -125,6 +125,18 @@ describe('validateBountyCredentials', () => {
       expect(result.errors.some(e => e.includes('too long'))).toBe(true);
     });
 
+    it('rejects apiIdentifier with invalid characters', () => {
+      const result = validateBountyCredentials(creds({ apiIdentifier: 'user@hackerone' }));
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('invalid characters'))).toBe(true);
+    });
+
+    it('rejects apiIdentifier with spaces', () => {
+      const result = validateBountyCredentials(creds({ apiIdentifier: 'user identifier' }));
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('invalid characters'))).toBe(true);
+    });
+
     it('rejects apiIdentifier with control characters', () => {
       const result = validateBountyCredentials(creds({ apiIdentifier: 'legit\x01poison' }));
       expect(result.valid).toBe(false);
