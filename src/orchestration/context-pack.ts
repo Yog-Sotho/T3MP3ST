@@ -186,8 +186,14 @@ function scoreFile(file: SourceFile, keywords: string[]): number {
 function approxLoc(content: string): number {
   if (!content) return 0;
   // count newlines + 1 for the last line if non-empty
+  // ⚡ BOLT OPTIMIZATION: Avoid iterating character-by-character in JS.
+  // Instead, use native C++-backed `indexOf` loop which is much faster.
   let n = 0;
-  for (let i = 0; i < content.length; i++) if (content[i] === '\n') n++;
+  let idx = content.indexOf('\n');
+  while (idx !== -1) {
+    n++;
+    idx = content.indexOf('\n', idx + 1);
+  }
   return content.length > 0 ? n + 1 : 0;
 }
 
