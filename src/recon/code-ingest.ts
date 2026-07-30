@@ -526,7 +526,10 @@ export function buildCallGraph(blocks: CodeBlock[]): Record<string, CallGraphEnt
   for (const b of blocks) {
     // A block should not count as calling itself just by its own def line; strip
     // the first line (the def) before scanning so `def foo(` doesn't self-match.
-    const bodyAfterSignature = b.body.split('\n').slice(1).join('\n');
+    // ⚡ BOLT OPTIMIZATION: Avoid expensive b.body.split('\n') allocations inside loop.
+    // We locate the first newline character and take the substring after it.
+    const firstNewline = b.body.indexOf('\n');
+    const bodyAfterSignature = firstNewline !== -1 ? b.body.substring(firstNewline + 1) : '';
     callRe.lastIndex = 0;
 
     const calledNames = new Set<string>();
