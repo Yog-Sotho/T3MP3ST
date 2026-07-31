@@ -166,6 +166,16 @@ describe('validateBountyCredentials', () => {
 // =============================================================================
 
 describe('isRestrictedInternalIP', () => {
+  describe('IPv4-mapped IPv6 address formats', () => {
+    it('blocks ::ffff:127.0.0.1', () => expect(isRestrictedInternalIP('::ffff:127.0.0.1')).toBe(true));
+    it('blocks [::ffff:127.0.0.1]', () => expect(isRestrictedInternalIP('[::ffff:127.0.0.1]')).toBe(true));
+    it('blocks ::ffff:10.0.0.1', () => expect(isRestrictedInternalIP('::ffff:10.0.0.1')).toBe(true));
+    it('blocks [::ffff:192.168.1.1]', () => expect(isRestrictedInternalIP('[::ffff:192.168.1.1]')).toBe(true));
+    it('blocks ::ffff:0:127.0.0.1', () => expect(isRestrictedInternalIP('::ffff:0:127.0.0.1')).toBe(true));
+    it('blocks [::ffff:0:10.0.0.1]', () => expect(isRestrictedInternalIP('[::ffff:0:10.0.0.1]')).toBe(true));
+    it('allows ::ffff:8.8.8.8', () => expect(isRestrictedInternalIP('::ffff:8.8.8.8')).toBe(false));
+  });
+
   describe('loopback addresses', () => {
     it('blocks localhost', () => expect(isRestrictedInternalIP('localhost')).toBe(true));
     it('blocks 127.0.0.1', () => expect(isRestrictedInternalIP('127.0.0.1')).toBe(true));
