@@ -37,6 +37,11 @@ const PRE_SCREEN_RE = /AKIA|AIza|ghp_|gho_|sk-|glpat-|eyJ|sk_live_|xox|postgres|
 /** Hoisted RegExp for object keys that need redaction to avoid recompiling it on every object key. */
 const SECRET_KEY_RE = /(api[_-]?key|authorization|cookie|credential|password|secret|token)/i;
 
+/** Hoisted RegExp patterns used in redactString to prevent recompilation on every call. */
+const BEARER_RE = /Bearer\s+[A-Za-z0-9._~+/=-]{16,}/gi;
+const ASSIGN_SECRET_RE = /(api[_-]?key|token|secret|password)=([^&\s]+)/gi;
+const BASIC_AUTH_URL_RE = /([a-z][a-z0-9+.-]*:\/\/)(?:[^/\s@]+@)+/gi;
+
 export function redactString(value: string): string {
   // ⚡ BOLT OPTIMIZATION: Quick check to bypass expensive regex scanning for normal text.
   // If the string is too short or doesn't match any potential secret indicators, we can safely return it.
@@ -52,14 +57,14 @@ export function redactString(value: string): string {
     redacted = redacted.replace(pattern, '[redacted]');
   }
   return redacted
-    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]{16,}/gi, 'Bearer [redacted]')
-    .replace(/(api[_-]?key|token|secret|password)=([^&\s]+)/gi, '$1=[redacted]')
+    .replace(BEARER_RE, 'Bearer [redacted]')
+    .replace(ASSIGN_SECRET_RE, '$1=[redacted]')
     // Generic URL userinfo (basic-auth): `scheme://user:pass@host` — the SECRET_PATTERNS only cover
     // postgres/mongodb URIs, so an http(s)/ssh/ftp login URL supplied to a gated tool would otherwise
     // carry its password verbatim into the arsenal-approval audit's target/action (served over both the
     // REST endpoint and the SSE feed). Scrub the whole userinfo up to the LAST `@` before the host, so a
     // password that itself contains `@` is fully covered; credential-free URLs are left untouched.
-    .replace(/([a-z][a-z0-9+.-]*:\/\/)(?:[^/\s@]+@)+/gi, '$1[redacted]@');
+    .replace(BASIC_AUTH_URL_RE, '$1[redacted]@');
 }
 
 export function redactLedgerText(value: string, limit = 4000): string {
@@ -77,12 +82,19 @@ export function redactSecrets(value: unknown, seen = new WeakSet<object>()): unk
   if (Array.isArray(value)) return value.map((item) => redactSecrets(item, seen));
 
   const result: Record<string, unknown> = {};
-  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    // Use hoisted SECRET_KEY_RE to avoid compiling RegExp for every key.
-    if (SECRET_KEY_RE.test(key)) {
-      result[key] = '[redacted]';
-    } else {
-      result[key] = redactSecrets(nested, seen);
+
+  // ⚡ BOLT OPTIMIZATION: Replace Object.entries with a fast `for ... in` loop
+  // that uses hasOwnProperty to avoid array tuple allocations on every object key.
+  const obj = value as Record<string, unknown>;
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const nested = obj[key];
+      // Use hoisted SECRET_KEY_RE to avoid compiling RegExp for every key.
+      if (SECRET_KEY_RE.test(key)) {
+        result[key] = '[redacted]';
+      } else {
+        result[key] = redactSecrets(nested, seen);
+      }
     }
   }
   return result;
