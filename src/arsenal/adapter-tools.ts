@@ -68,10 +68,13 @@ export interface AdapterToolDeps {
  * Used defensively by all HTTP-based tools to block SSRF attacks.
  */
 export function isRestrictedInternalIP(hostname: string): boolean {
-  const ip = hostname.toLowerCase();
+  let ip = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+
+  // Strip IPv4-mapped IPv6 address prefixes to extract raw IPv4
+  ip = ip.replace(/^::ffff:(?:0:)?/i, '');
 
   // Loopback addresses
-  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '[::1]') return true;
+  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1') return true;
 
   // Private IPv4 ranges
   if (/^10\./.test(ip)) return true; // 10.0.0.0/8
