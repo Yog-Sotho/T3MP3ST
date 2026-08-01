@@ -37,7 +37,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from 'fs';
-import { join, sep } from 'path';
+import { join } from 'path';
 import {
   estimateTokens,
   type SourceFile,
@@ -212,18 +212,6 @@ const EXPOSURE_BASE: Record<Exposure, number> = {
 // STAGE 1 — CRAWL
 // =============================================================================
 
-function isExcluded(path: string, excludeGlobs: string[]): boolean {
-  // Bare fragments match a path SEGMENT only; glob (`*`) entries match as a
-  // substring.
-  const segments = path.split(sep);
-  for (const ex of excludeGlobs) {
-    if (!ex) continue;
-    if (segments.includes(ex)) return true;
-    if (ex.includes('*') && path.includes(ex.replace(/\*/g, ''))) return true;
-  }
-  return false;
-}
-
 function hasIncludedExt(name: string, includeExts: string[]): boolean {
   return includeExts.some((ext) => name.endsWith(ext));
 }
@@ -237,8 +225,21 @@ function hasIncludedExt(name: string, includeExts: string[]): boolean {
  */
 export function crawl(config: IngestConfig): string[] {
   const out: string[] = [];
-  const excludes = [...DEFAULT_EXCLUDES, ...(config.excludeGlobs ?? [])];
+  const rawExcludes = [...DEFAULT_EXCLUDES, ...(config.excludeGlobs ?? [])];
   const maxFiles = config.maxFiles;
+
+  // ⚡ BOLT OPTIMIZATION: Precompute sets and patterns to make checking O(1) for plain names
+  // and minimize path matching overhead.
+  const plainExcludes = new Set<string>();
+  const wildcardExcludes: string[] = [];
+  for (const ex of rawExcludes) {
+    if (!ex) continue;
+    if (ex.includes('*')) {
+      wildcardExcludes.push(ex.replace(/\*/g, ''));
+    } else {
+      plainExcludes.add(ex);
+    }
+  }
 
   const walk = (dir: string): void => {
     if (maxFiles !== undefined && out.length >= maxFiles) return; // ceiling hit — stop descending
@@ -253,8 +254,23 @@ export function crawl(config: IngestConfig): string[] {
 
     for (const entry of entries) {
       if (maxFiles !== undefined && out.length >= maxFiles) return; // ceiling hit — stop
+
+      // Fast check: is the current entry's name directly in the plain excludes Set?
+      if (plainExcludes.has(entry.name)) continue;
+
       const full = join(dir, entry.name);
-      if (isExcluded(full, excludes)) continue;
+
+      // Slow check fallback: wildcard matching on full path
+      let shouldSkip = false;
+      if (wildcardExcludes.length > 0) {
+        for (let j = 0; j < wildcardExcludes.length; j++) {
+          if (full.includes(wildcardExcludes[j])) {
+            shouldSkip = true;
+            break;
+          }
+        }
+      }
+      if (shouldSkip) continue;
 
       if (entry.isDirectory()) {
         walk(full);

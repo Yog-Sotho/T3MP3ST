@@ -15,3 +15,7 @@
 ## 2025-03-06 - [Avoid split/join on hot string loops and character loops on large content]
 **Learning:** Splitting multi-line block bodies with `.split('\n')` inside loops (e.g. `buildCallGraph`) causes large amounts of heap allocations and heavy GC overhead. Similarly, scanning large strings character-by-character inside JavaScript loops (e.g. `approxLoc`) is slow compared to native C++-backed `indexOf()` searches.
 **Action:** Use fast, non-allocating string searches (`indexOf` and `substring`) to isolate specific sections/substrings, and leverage C++-optimized substring scan loops in JS runtimes.
+
+## 2025-03-07 - [O(1) Excludes Check and Object/Regex Allocation Hot Paths]
+**Learning:** File crawling can be slowed down significantly by repeated path-segment splits and array list-scans against multiple exclusions. Similarly, instantiating regexes or calling `Object.entries` on hot loops produces high GC overhead due to intermediate array allocation.
+**Action:** Pre-compute file excludes into a plain names `Set` to check in O(1) time before falling back to full wildcard path matching. Hoist RegExp literals to static constants and replace `Object.entries` with a fast `for ... in` loop using `hasOwnProperty` in performance-critical loops.
