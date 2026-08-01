@@ -93,6 +93,21 @@ const CREDENTIAL_LIMITS = {
 } as const;
 
 /**
+ * Validates the programHandle to prevent injection or path traversal.
+ * Enforces length (1-128 chars) and allows alphanumeric, dashes, underscores, dots, and slashes.
+ * Explicitly rejects path traversal sequences (like '..' or '//').
+ */
+export function isValidProgramHandle(handle: unknown): boolean {
+  if (typeof handle !== 'string') return false;
+  const h = handle.trim();
+  if (h.length < 1 || h.length > 128) return false;
+  // Disallow path traversal sequences and multiple adjacent slashes
+  if (h.includes('..') || h.includes('//') || h.includes('\\')) return false;
+  // Accept only safe characters
+  return /^[a-zA-Z0-9_\-./]+$/.test(h);
+}
+
+/**
  * Validate bounty credentials format, length, and character set.
  * Returns validation result with any errors found.
  */
