@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateBountyCredentials, type BountyCredentials } from '../integrations/bounty.js';
+import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials } from '../integrations/bounty.js';
 import { isRestrictedInternalIP } from '../arsenal/adapter-tools.js';
 
 // =============================================================================
@@ -202,5 +202,55 @@ describe('isRestrictedInternalIP', () => {
     it('allows example.com', () => expect(isRestrictedInternalIP('example.com')).toBe(false));
     it('allows 203.0.113.1', () => expect(isRestrictedInternalIP('203.0.113.1')).toBe(false));
     it('allows 2001:db8::1 (documentation prefix)', () => expect(isRestrictedInternalIP('2001:db8::1')).toBe(false));
+  });
+});
+
+// =============================================================================
+// isValidProgramHandle
+// =============================================================================
+
+describe('isValidProgramHandle', () => {
+  it('accepts valid program handles', () => {
+    expect(isValidProgramHandle('hackerone')).toBe(true);
+    expect(isValidProgramHandle('some-program')).toBe(true);
+    expect(isValidProgramHandle('another_program')).toBe(true);
+    expect(isValidProgramHandle('program.v1')).toBe(true);
+    expect(isValidProgramHandle('org/program')).toBe(true);
+  });
+
+  it('rejects non-string types', () => {
+    expect(isValidProgramHandle(null)).toBe(false);
+    expect(isValidProgramHandle(undefined)).toBe(false);
+    expect(isValidProgramHandle(123)).toBe(false);
+    expect(isValidProgramHandle({})).toBe(false);
+  });
+
+  it('rejects empty or whitespace-only handles', () => {
+    expect(isValidProgramHandle('')).toBe(false);
+    expect(isValidProgramHandle('   ')).toBe(false);
+  });
+
+  it('rejects handles exceeding max length', () => {
+    expect(isValidProgramHandle('a'.repeat(129)).valueOf()).toBe(false);
+  });
+
+  it('rejects handles with path traversal sequences', () => {
+    expect(isValidProgramHandle('../escape')).toBe(false);
+    expect(isValidProgramHandle('escape/..')).toBe(false);
+    expect(isValidProgramHandle('nested/../escape')).toBe(false);
+    expect(isValidProgramHandle('escape/..')).toBe(false);
+  });
+
+  it('rejects handles with backslashes or double slashes', () => {
+    expect(isValidProgramHandle('org\\program')).toBe(false);
+    expect(isValidProgramHandle('org//program')).toBe(false);
+  });
+
+  it('rejects handles with invalid/injection characters', () => {
+    expect(isValidProgramHandle('program; injection')).toBe(false);
+    expect(isValidProgramHandle('program?key=val')).toBe(false);
+    expect(isValidProgramHandle('program<script>')).toBe(false);
+    expect(isValidProgramHandle('program&other')).toBe(false);
+    expect(isValidProgramHandle('program|command')).toBe(false);
   });
 });

@@ -7380,6 +7380,7 @@ app.post('/api/admiral/launch', async (req: Request, res: Response): Promise<voi
 import {
   getConnector, listConnectors, findingToBountyFinding,
   loadBountyCredentials, validateBountyCredentials,
+  isValidProgramHandle,
   type BountyPlatform, type BountyCredentials,
 } from './integrations/bounty.js';
 
@@ -7401,6 +7402,10 @@ app.post('/api/bounty/format', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Required: platform, programHandle, finding' });
       return;
     }
+    if (!isValidProgramHandle(programHandle)) {
+      res.status(400).json({ error: 'Invalid programHandle format' });
+      return;
+    }
     const connector = getConnector(platform);
     const bountyFinding = findingToBountyFinding(finding);
     const report = connector.formatReport(bountyFinding, programHandle);
@@ -7417,6 +7422,10 @@ app.post('/api/bounty/submit', async (req: Request, res: Response) => {
     };
     if (!platform || !programHandle || !finding) {
       res.status(400).json({ error: 'Required: platform, programHandle, finding' });
+      return;
+    }
+    if (!isValidProgramHandle(programHandle)) {
+      res.status(400).json({ error: 'Invalid programHandle format' });
       return;
     }
     const creds = loadBountyCredentials(process.cwd());
