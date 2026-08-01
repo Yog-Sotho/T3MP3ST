@@ -5662,7 +5662,7 @@ tempest.operators.<span class="function">spawn</span>(<span class="string">'scan
     </div>
 
     <!-- Modal -->
-    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Modal</h3>
@@ -8487,13 +8487,66 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, duration);
         }
 
+        let modalPreviousActiveElement = null;
+        let modalKeydownHandler = null;
+
         function openModal(title, content) {
+            modalPreviousActiveElement = document.activeElement;
+            const overlay = document.getElementById('modalOverlay');
             document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalBody').innerHTML = content;
-            document.getElementById('modalOverlay').classList.add('active');
+            overlay.classList.add('active');
+
+            const focusableElements = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            const firstFocusable = focusableElements[0];
+            const lastFocusable = focusableElements[focusableElements.length - 1];
+
+            if (firstFocusable) {
+                setTimeout(() => firstFocusable.focus(), 50);
+            } else {
+                overlay.focus();
+            }
+
+            if (modalKeydownHandler) {
+                overlay.removeEventListener('keydown', modalKeydownHandler);
+            }
+
+            modalKeydownHandler = function(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                } else if (e.key === 'Tab') {
+                    if (focusableElements.length === 0) {
+                        e.preventDefault();
+                        return;
+                    }
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstFocusable || document.activeElement === overlay) {
+                            e.preventDefault();
+                            lastFocusable.focus();
+                        }
+                    } else {
+                        if (document.activeElement === lastFocusable) {
+                            e.preventDefault();
+                            firstFocusable.focus();
+                        }
+                    }
+                }
+            };
+            overlay.addEventListener('keydown', modalKeydownHandler);
         }
 
-        function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+        function closeModal() {
+            const overlay = document.getElementById('modalOverlay');
+            overlay.classList.remove('active');
+            if (modalKeydownHandler) {
+                overlay.removeEventListener('keydown', modalKeydownHandler);
+                modalKeydownHandler = null;
+            }
+            if (modalPreviousActiveElement && typeof modalPreviousActiveElement.focus === 'function') {
+                modalPreviousActiveElement.focus();
+                modalPreviousActiveElement = null;
+            }
+        }
 
         // External-target approval — surface a one-click Approve instead of a dead-end error when a
         // standard Hunt is blocked on a missing receipt. Self-contained overlay with its own dismiss
