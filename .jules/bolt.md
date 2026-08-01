@@ -15,3 +15,7 @@
 ## 2025-03-06 - [Avoid split/join on hot string loops and character loops on large content]
 **Learning:** Splitting multi-line block bodies with `.split('\n')` inside loops (e.g. `buildCallGraph`) causes large amounts of heap allocations and heavy GC overhead. Similarly, scanning large strings character-by-character inside JavaScript loops (e.g. `approxLoc`) is slow compared to native C++-backed `indexOf()` searches.
 **Action:** Use fast, non-allocating string searches (`indexOf` and `substring`) to isolate specific sections/substrings, and leverage C++-optimized substring scan loops in JS runtimes.
+
+## 2025-03-07 - [O(N) vs O(1) traversal path excludes pre-categorization]
+**Learning:** Checking a file path against a list of exclude glob patterns by calling `.split(sep)` and performing linear array checks on every file and directory in a recursive traversal is highly CPU-intensive and causes major GC overhead. Since traversals prune directories hierarchically, we can skip redundant checks of already-passed parent segments.
+**Action:** Pre-categorize exclude patterns into plain single-segment Sets, wildcard arrays, and multi-segment arrays at the start of `crawl`. Match folder/file names against the plain Set in O(1) time during recursive walk traversals, and use fast non-allocating character scanning (`isSegmentOfPath`) for multi-segment path exclusions.

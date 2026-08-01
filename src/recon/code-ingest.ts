@@ -212,14 +212,31 @@ const EXPOSURE_BASE: Record<Exposure, number> = {
 // STAGE 1 — CRAWL
 // =============================================================================
 
-function isExcluded(path: string, excludeGlobs: string[]): boolean {
-  // Bare fragments match a path SEGMENT only; glob (`*`) entries match as a
-  // substring.
-  const segments = path.split(sep);
-  for (const ex of excludeGlobs) {
-    if (!ex) continue;
-    if (segments.includes(ex)) return true;
-    if (ex.includes('*') && path.includes(ex.replace(/\*/g, ''))) return true;
+function isSegmentOfPath(path: string, ex: string): boolean {
+  let start = 0;
+  while (true) {
+    const idx = path.indexOf(ex, start);
+    if (idx === -1) return false;
+    const beforeOk = idx === 0 || path.charAt(idx - 1) === sep;
+    const afterOk = idx + ex.length === path.length || path.charAt(idx + ex.length) === sep;
+    if (beforeOk && afterOk) return true;
+    start = idx + 1;
+  }
+}
+
+function isExcluded(
+  path: string,
+  name: string,
+  plainExcludes: Set<string>,
+  wildcardExcludes: string[],
+  multiSegmentExcludes: string[],
+): boolean {
+  if (plainExcludes.has(name)) return true;
+  for (let i = 0; i < wildcardExcludes.length; i++) {
+    if (path.includes(wildcardExcludes[i])) return true;
+  }
+  for (let i = 0; i < multiSegmentExcludes.length; i++) {
+    if (isSegmentOfPath(path, multiSegmentExcludes[i])) return true;
   }
   return false;
 }
@@ -240,6 +257,21 @@ export function crawl(config: IngestConfig): string[] {
   const excludes = [...DEFAULT_EXCLUDES, ...(config.excludeGlobs ?? [])];
   const maxFiles = config.maxFiles;
 
+  const plainExcludes = new Set<string>();
+  const wildcardExcludes: string[] = [];
+  const multiSegmentExcludes: string[] = [];
+
+  for (const ex of excludes) {
+    if (!ex) continue;
+    if (ex.includes('*')) {
+      wildcardExcludes.push(ex.replace(/\*/g, ''));
+    } else if (ex.includes('/') || ex.includes('\\')) {
+      multiSegmentExcludes.push(ex);
+    } else {
+      plainExcludes.add(ex);
+    }
+  }
+
   const walk = (dir: string): void => {
     if (maxFiles !== undefined && out.length >= maxFiles) return; // ceiling hit — stop descending
     let entries;
@@ -254,7 +286,7 @@ export function crawl(config: IngestConfig): string[] {
     for (const entry of entries) {
       if (maxFiles !== undefined && out.length >= maxFiles) return; // ceiling hit — stop
       const full = join(dir, entry.name);
-      if (isExcluded(full, excludes)) continue;
+      if (isExcluded(full, entry.name, plainExcludes, wildcardExcludes, multiSegmentExcludes)) continue;
 
       if (entry.isDirectory()) {
         walk(full);
