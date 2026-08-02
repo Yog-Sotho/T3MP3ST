@@ -5365,11 +5365,11 @@
                         <h2 class="settings-title">🔑 API Keys</h2>
 
                         <div class="card">
-                            <h4 style="margin-bottom: 12px; font-size: 14px;">OpenRouter API Key</h4>
+                            <label for="openrouterKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">OpenRouter API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-...">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('openrouterKey')">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('openrouterKey')" aria-label="Show OpenRouter API key">Show</button>
                                 </div>
                                 <div class="form-hint">Get key from <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--accent);">openrouter.ai/keys</a></div>
                             </div>
@@ -5377,11 +5377,11 @@
                         </div>
 
                         <div class="card">
-                            <h4 style="margin-bottom: 12px; font-size: 14px;">Venice API Key</h4>
+                            <label for="veniceKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">Venice API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="veniceKey" placeholder="venice key…">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('veniceKey')">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('veniceKey')" aria-label="Show Venice API key">Show</button>
                                 </div>
                                 <div class="form-hint">OpenAI-compatible, privacy-focused. Get key from <a href="https://venice.ai/settings/api" target="_blank" style="color: var(--accent);">venice.ai/settings/api</a></div>
                             </div>
@@ -5389,11 +5389,11 @@
                         </div>
 
                         <div class="card">
-                            <h4 style="margin-bottom: 12px; font-size: 14px;">Anthropic API Key</h4>
+                            <label for="anthropicKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">Anthropic API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="anthropicKey" placeholder="sk-ant-...">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('anthropicKey')">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('anthropicKey')" aria-label="Show Anthropic API key">Show</button>
                                 </div>
                             </div>
                             <div style="font-size: 10px; color: #888; margin-bottom: 8px;">Stored, but direct-LLM currently routes via <b>OpenRouter</b> or a connected agent — not wired to this key yet.</div>
@@ -5401,11 +5401,11 @@
                         </div>
 
                         <div class="card">
-                            <h4 style="margin-bottom: 12px; font-size: 14px;">OpenAI API Key</h4>
+                            <label for="openaiKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">OpenAI API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="openaiKey" placeholder="sk-...">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('openaiKey')">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('openaiKey')" aria-label="Show OpenAI API key">Show</button>
                                 </div>
                             </div>
                             <div style="font-size: 10px; color: #888; margin-bottom: 8px;">Stored, but direct-LLM currently routes via <b>OpenRouter</b> or a connected agent — not wired to this key yet.</div>
@@ -8304,6 +8304,14 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             const b = i.nextElementSibling;
             i.type = i.type === 'password' ? 'text' : 'password';
             b.textContent = i.type === 'password' ? 'Show' : 'Hide';
+            const nameMap = {
+                openrouterKey: 'OpenRouter',
+                veniceKey: 'Venice',
+                anthropicKey: 'Anthropic',
+                openaiKey: 'OpenAI'
+            };
+            const name = nameMap[id] || 'API';
+            b.setAttribute('aria-label', `${i.type === 'password' ? 'Show' : 'Hide'} ${name} API key`);
         }
 
         function saveApiKey(provider) {
