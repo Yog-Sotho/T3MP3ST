@@ -62,3 +62,40 @@ describe('buildCallGraph performance and correctness', () => {
     expect(duration).toBeLessThan(100);
   });
 });
+
+import { packContext, type SourceBundle } from '../orchestration/context-pack.js';
+
+describe('packContext performance and correctness', () => {
+  it('correctly ranks and packs files and is extremely fast with optimized regexp matching', () => {
+    // Generate 200 files, some large, to benchmark lowercase allocation vs case-insensitive RegExp match scaling
+    const bundle: SourceBundle = [];
+    for (let i = 1; i <= 200; i++) {
+      // Create some large files with simulated content and a security hint or objective keyword
+      const path = `src/module_${i}.ts`;
+      let content = 'const x = 1;\n'.repeat(1000); // ~13KB file
+      if (i % 20 === 0) {
+        content += 'import pickle\npickle.loads(data)\n'; // security hint / keyword
+      }
+      bundle.push({ path, content });
+    }
+
+    const start = performance.now();
+    const packed = packContext(bundle, {
+      tokenBudget: 15000,
+      objective: 'find pickle deserialize sink',
+    });
+    const end = performance.now();
+
+    const duration = end - start;
+    console.log(`[Bolt Benchmark] packContext for 200 files took: ${duration.toFixed(2)}ms`);
+
+    // Verify correctness: files with deserialize/pickle should be prioritized and included
+    expect(packed.includedFiles.length).toBeGreaterThan(0);
+    const hasPrioritized = packed.includedFiles.some(f => f.includes('module_20') || f.includes('module_40'));
+    expect(hasPrioritized).toBe(true);
+
+    // Verify optimized regex performance expectation:
+    // Without allocating large lowercase copies of 200 large files, it should complete in under 50ms.
+    expect(duration).toBeLessThan(50);
+  });
+});

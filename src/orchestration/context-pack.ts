@@ -136,6 +136,10 @@ const SECURITY_HINTS = [
   'pickle', 'exec', 'system', 'eval', 'sql', 'query', 'upload', 'template',
 ];
 
+// ⚡ BOLT OPTIMIZATION: Pre-compile SECURITY_HINTS into case-insensitive RegExp objects
+// to completely eliminate the need to lowercase path or content for checking these hints.
+const SECURITY_HINTS_RES = SECURITY_HINTS.map(hint => new RegExp(hint, 'i'));
+
 const KEYWORD_RE = /[a-z0-9_]{3,}/gi;
 
 function extractKeywords(...texts: Array<string | undefined>): string[] {
@@ -149,31 +153,44 @@ function extractKeywords(...texts: Array<string | undefined>): string[] {
   return [...set];
 }
 
+interface KeywordRegExp {
+  kw: string;
+  re: RegExp;
+}
+
 /**
  * Relevance = count of objective/priorIntel keyword occurrences in path+content
  * (path hits weighted heavier) + a heuristic boost for security-relevant
  * paths/content. Higher = packed sooner.
+ *
+ * ⚡ BOLT OPTIMIZATION: Refactored to accept pre-compiled RegExp objects instead of string keywords.
+ * This completely avoids allocating large lowercase copies of file content for case-insensitive matches,
+ * significantly saving memory and garbage collection overhead.
  */
-function scoreFile(file: SourceFile, keywords: string[]): number {
-  const path = file.path.toLowerCase();
-  const content = file.content.toLowerCase();
+function scoreFile(file: SourceFile, keywordRes: KeywordRegExp[]): number {
+  const path = file.path;
+  const content = file.content;
   let score = 0;
 
-  for (const kw of keywords) {
-    if (path.includes(kw)) score += 5; // a keyword in the path is a strong signal
-    // count content occurrences (capped so one huge file can't dominate)
-    let idx = content.indexOf(kw);
+  const pathLower = path.toLowerCase();
+
+  for (let i = 0; i < keywordRes.length; i++) {
+    const { kw, re } = keywordRes[i];
+    if (pathLower.includes(kw)) score += 5; // a keyword in the path is a strong signal
+
+    // count content occurrences (capped so one huge file can't dominate) using pre-compiled regex
+    re.lastIndex = 0;
     let hits = 0;
-    while (idx !== -1 && hits < 20) {
+    while (re.test(content) && hits < 20) {
       hits++;
-      idx = content.indexOf(kw, idx + kw.length);
     }
     score += hits;
   }
 
-  for (const hint of SECURITY_HINTS) {
-    if (path.includes(hint)) score += 4;
-    if (content.includes(hint)) score += 1;
+  for (let i = 0; i < SECURITY_HINTS_RES.length; i++) {
+    const hintRe = SECURITY_HINTS_RES[i];
+    if (hintRe.test(path)) score += 4;
+    if (hintRe.test(content)) score += 1;
   }
 
   return score;
@@ -281,8 +298,15 @@ export function packContext(bundle: SourceBundle, opts: PackOptions): PackedCont
   const repoMap = buildRepoMap(files, mapCap);
 
   const keywords = extractKeywords(opts.objective, opts.priorIntel);
+  // ⚡ BOLT OPTIMIZATION: Pre-compile keywords into case-insensitive, global RegExp objects
+  // for fast, string-copy-free case-insensitive matching.
+  const keywordRes = keywords.map(kw => ({
+    kw,
+    re: new RegExp(kw, 'gi')
+  }));
+
   const ranked = files
-    .map((file, i) => ({ file, i, score: scoreFile(file, keywords) }))
+    .map((file, i) => ({ file, i, score: scoreFile(file, keywordRes) }))
     // stable: score desc, then original order (keeps deterministic packing)
     .sort((a, b) => (b.score - a.score) || (a.i - b.i));
 

@@ -19,3 +19,7 @@
 ## 2025-03-07 - [O(1) Excludes Check and Object/Regex Allocation Hot Paths]
 **Learning:** File crawling can be slowed down significantly by repeated path-segment splits and array list-scans against multiple exclusions. Similarly, instantiating regexes or calling `Object.entries` on hot loops produces high GC overhead due to intermediate array allocation.
 **Action:** Pre-compute file excludes into a plain names `Set` to check in O(1) time before falling back to full wildcard path matching. Hoist RegExp literals to static constants and replace `Object.entries` with a fast `for ... in` loop using `hasOwnProperty` in performance-critical loops.
+
+## 2025-03-08 - [Avoid Huge-String lowercase allocations and Lazy Allocations on Hot Paths]
+**Learning:** Performing `.toLowerCase()` on giant source file contents during ranking algorithms causes massive memory allocations and garbage collection overhead. Pre-compiling keywords into case-insensitive regular expressions completely bypasses copy-on-write allocation bottlenecks. Additionally, default parameter initializations (like instantiating `new WeakSet()` on every call to `redactSecrets`) can cause significant garbage collection overhead even when primitives are checked and the class is unused.
+**Action:** Pre-compile search keys and static lists into case-insensitive regular expressions (`RegExp`) to query long text directly. Lazily initialize data structures (like WeakSets or Maps) inside recursive/frequently-called functions only when an object of the correct type is actually encountered.
