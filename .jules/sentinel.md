@@ -14,3 +14,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function checked if a given hostname was a restricted loopback or private IP, but failed to handle IPv4-mapped IPv6 address formats (e.g. `::ffff:127.0.0.1` or `[::ffff:10.0.0.1]`). Since underlying HTTP clients and DNS resolution libraries naturally resolve these mapped formats back to their IPv4 equivalents, this allowed SSRF protection to be bypassed on the `http_request` tool and other networked adapters.
 **Learning:** Checking for standard IPv4/IPv6 strings or simple prefixes is insufficient when resolving mechanisms/libraries are capable of interpreting hybrid or mapped address spaces (such as IPv4-mapped IPv6).
 **Prevention:** Always sanitize IP and host inputs by stripping brackets and mapped prefixes (like `::ffff:`) before passing them to defensive IP validation regexes or list checks.
+
+## 2026-07-31 - Local Agent Detection Information Disclosure
+**Vulnerability:** The `/api/agents/local/detect` endpoint directly leaked raw `(e as Error).message` strings in its `catch` block on failure, which bypassed the global Express error-handling safety net and potentially leaked local file system paths, repository structure, or raw shell errors to the client.
+**Learning:** Standardizing security handlers or error sanitizers is only robust if applied to *all* route-level endpoints. Any single endpoint manually handling a `catch` block and outputting `e.message` re-introduces the information-disclosure risk.
+**Prevention:** Always use the centralized `sanitizeErrorForResponse(e)` utility for every API route that manually catches and formats errors for client responses.

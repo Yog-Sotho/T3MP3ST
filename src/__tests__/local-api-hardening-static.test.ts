@@ -46,4 +46,11 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/bin === 'curl'/);
     expect(block).toMatch(/\/\^\[@<\]\/\.test/);
   });
+
+  it('/api/agents/local/detect sanitizes error messages to prevent information leakage', () => {
+    const route = routeBlock("app.get('/api/agents/local/detect'", "app.post('/api/agents/local/connect'");
+
+    expect(route).not.toMatch(/String\(\(e as Error\)\.message\)/);
+    expect(route).toMatch(/sanitizeErrorForResponse/);
+  });
 });

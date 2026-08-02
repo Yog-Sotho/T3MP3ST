@@ -7531,7 +7531,7 @@ app.get('/api/agents/local/detect', async (_req: Request, res: Response): Promis
     const agents = await detectLocalAgents();
     res.json({ agents, connected: Array.from(connectedLocalAgents.keys()) });
   } catch (e) {
-    res.status(500).json({ error: String((e as Error).message) });
+    res.status(500).json({ error: sanitizeErrorForResponse(e) });
   }
 });
 
