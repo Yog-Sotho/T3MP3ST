@@ -14,3 +14,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function checked if a given hostname was a restricted loopback or private IP, but failed to handle IPv4-mapped IPv6 address formats (e.g. `::ffff:127.0.0.1` or `[::ffff:10.0.0.1]`). Since underlying HTTP clients and DNS resolution libraries naturally resolve these mapped formats back to their IPv4 equivalents, this allowed SSRF protection to be bypassed on the `http_request` tool and other networked adapters.
 **Learning:** Checking for standard IPv4/IPv6 strings or simple prefixes is insufficient when resolving mechanisms/libraries are capable of interpreting hybrid or mapped address spaces (such as IPv4-mapped IPv6).
 **Prevention:** Always sanitize IP and host inputs by stripping brackets and mapped prefixes (like `::ffff:`) before passing them to defensive IP validation regexes or list checks.
+
+## 2026-07-31 - Prototype Bypass and Input Validation in Dynamic Registry Lookups
+**Vulnerability:** The `/api/bounty/*` endpoints accepted an unvalidated `platform` input that was directly used to dynamically index the `CONNECTORS` and credentials registry. This could allow attackers to supply prototype properties (e.g. `toString`, `__proto__`, or `constructor`) as platform names, bypassing safety guards and leading to runtime crashes or unexpected property traversal.
+**Learning:** Indexing dynamic lookup objects using unsanitized user inputs can lead to prototype bypasses since standard JavaScript/TypeScript object literals inherit properties from `Object.prototype` by default.
+**Prevention:** Always validate user-provided lookup keys using explicit whitelists (such as verifying them with `Object.prototype.hasOwnProperty.call` or checking against `Object.keys()`) before resolving them from registries.

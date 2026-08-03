@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials } from '../integrations/bounty.js';
+import {
+  validateBountyCredentials,
+  isValidProgramHandle,
+  getConnector,
+  listConnectors,
+  type BountyCredentials,
+} from '../integrations/bounty.js';
 import { isRestrictedInternalIP } from '../arsenal/adapter-tools.js';
 
 // =============================================================================
@@ -262,5 +268,32 @@ describe('isValidProgramHandle', () => {
     expect(isValidProgramHandle('program<script>')).toBe(false);
     expect(isValidProgramHandle('program&other')).toBe(false);
     expect(isValidProgramHandle('program|command')).toBe(false);
+  });
+});
+
+// =============================================================================
+// getConnector / listConnectors Protection
+// =============================================================================
+
+describe('getConnector and listConnectors platform protection', () => {
+  it('allows valid connector lookup', () => {
+    const list = listConnectors();
+    expect(list).toContain('hackerone');
+    expect(list).toContain('bugcrowd');
+
+    const h1 = getConnector('hackerone');
+    expect(h1).toBeDefined();
+    expect(h1.platform).toBe('hackerone');
+  });
+
+  it('rejects prototype properties and methods as platform names', () => {
+    expect(() => getConnector('toString' as any)).toThrow();
+    expect(() => getConnector('__proto__' as any)).toThrow();
+    expect(() => getConnector('constructor' as any)).toThrow();
+  });
+
+  it('rejects empty or completely invalid platform names', () => {
+    expect(() => getConnector('' as any)).toThrow();
+    expect(() => getConnector('invalid_platform' as any)).toThrow();
   });
 });

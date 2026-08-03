@@ -636,6 +636,9 @@ const CONNECTORS: Record<BountyPlatform, BountyConnector> = {
 };
 
 export function getConnector(platform: BountyPlatform): BountyConnector {
+  if (!platform || typeof platform !== 'string' || !Object.prototype.hasOwnProperty.call(CONNECTORS, platform)) {
+    throw new Error(`Unknown bounty platform: ${platform}`);
+  }
   const c = CONNECTORS[platform];
   if (!c) throw new Error(`Unknown bounty platform: ${platform}`);
   return c;
