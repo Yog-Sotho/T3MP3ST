@@ -3373,7 +3373,7 @@
                 <h1 class="header-title" id="pageTitle">War Room</h1>
                 <div class="header-actions">
                     <button class="btn btn-secondary" onclick="if(window.t3mpTour)t3mpTour.start()" title="Take the guided tour" aria-label="Guided tour" style="font-weight:700;">?</button>
-                    <button class="btn btn-secondary" onclick="openQuickActions()">⌘ Actions</button>
+                    <button class="btn btn-secondary" onclick="openQuickActions()" title="Open quick actions menu (press A)" aria-label="Open quick actions menu">⌘ Actions</button>
                     <button class="btn btn-primary" onclick="navigateTo('warroom')">⚔️ War Room</button>
                 </div>
             </header>
@@ -17608,6 +17608,8 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                     <div style="display:grid;grid-template-columns:100px 1fr;gap:6px;">
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">?</kbd><span style="color:#999;">Show this help</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">1-9</kbd><span style="color:#999;">Navigate pages (1=War Room, 2=Operatives, ...)</span>
+                        <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">A</kbd><span style="color:#999;">Open Quick Actions menu</span>
+                        <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">/</kbd><span style="color:#999;">Focus Search / Target input</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Ctrl+Enter</kbd><span style="color:#999;">Launch mission (from any page)</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Esc</kbd><span style="color:#999;">Abort mission / close modal</span>
                     </div>
@@ -17616,7 +17618,6 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Enter</kbd><span style="color:#999;">Launch mission</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">D</kbd><span style="color:#999;">Deploy all operators</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">K</kbd><span style="color:#999;">Clear console</span>
-                        <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">/</kbd><span style="color:#999;">Search console</span>
                     </div>
                     <div style="color:#888;font-size:10px;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">Double-click any console entry to copy it to clipboard.</div>
                 </div>
@@ -17646,6 +17647,32 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                 if (modal && modal.classList.contains('active')) { closeModal(); return; }
                 if (missionRunning) { abortMission(false); return; }
                 return;
+            }
+            // a or A = Open Quick Actions menu
+            if (e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                openQuickActions();
+                return;
+            }
+            // / = Focus search/target input (War Room or Arsenal)
+            if (e.key === '/') {
+                const warroom = document.getElementById('page-warroom');
+                const arsenal = document.getElementById('page-arsenal');
+                if (warroom && warroom.classList.contains('active')) {
+                    const inp = document.getElementById('heroHuntTarget');
+                    if (inp) {
+                        e.preventDefault();
+                        inp.focus();
+                        return;
+                    }
+                } else if (arsenal && arsenal.classList.contains('active')) {
+                    const inp = document.getElementById('arsenalSearch');
+                    if (inp) {
+                        e.preventDefault();
+                        inp.focus();
+                        return;
+                    }
+                }
             }
             // Number keys 1-9 = navigate pages
             const pageKeys = { '1': 'warroom', '2': 'operators', '3': 'evidence', '4': 'arsenal', '5': 'terminal', '6': 'benchmarks', '7': 'configs', '8': 'ctf-range', '9': 'settings' };
