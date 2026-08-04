@@ -14,3 +14,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function checked if a given hostname was a restricted loopback or private IP, but failed to handle IPv4-mapped IPv6 address formats (e.g. `::ffff:127.0.0.1` or `[::ffff:10.0.0.1]`). Since underlying HTTP clients and DNS resolution libraries naturally resolve these mapped formats back to their IPv4 equivalents, this allowed SSRF protection to be bypassed on the `http_request` tool and other networked adapters.
 **Learning:** Checking for standard IPv4/IPv6 strings or simple prefixes is insufficient when resolving mechanisms/libraries are capable of interpreting hybrid or mapped address spaces (such as IPv4-mapped IPv6).
 **Prevention:** Always sanitize IP and host inputs by stripping brackets and mapped prefixes (like `::ffff:`) before passing them to defensive IP validation regexes or list checks.
+
+## 2026-07-31 - Prototype Bypass via Direct Object Lookups on User-Supplied Keys
+**Vulnerability:** Direct lookup of a user-supplied platform key on a `CONNECTORS` map or `creds` configuration object (e.g. `CONNECTORS[platform]` or `creds[platform]`) allowed attackers to bypass standard validity checks by supplying prototype properties like `toString`, `constructor`, or `__proto__`. These resolved to valid functions/objects on the global prototype chain rather than triggering expected key-missing/not-found logic.
+**Learning:** Using untrusted/user-provided keys directly as properties on standard JavaScript objects can lead to prototype lookup bypasses, returning prototype methods or objects instead of undefined.
+**Prevention:** Always validate user-provided keys against an array of safe, own properties via `listConnectors().includes(platform)` before any object lookup is performed.

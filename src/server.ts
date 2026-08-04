@@ -7402,6 +7402,10 @@ app.post('/api/bounty/format', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Required: platform, programHandle, finding' });
       return;
     }
+    if (!listConnectors().includes(platform)) {
+      res.status(400).json({ error: `Invalid platform: ${platform}` });
+      return;
+    }
     if (!isValidProgramHandle(programHandle)) {
       res.status(400).json({ error: 'Invalid programHandle format' });
       return;
@@ -7422,6 +7426,10 @@ app.post('/api/bounty/submit', async (req: Request, res: Response) => {
     };
     if (!platform || !programHandle || !finding) {
       res.status(400).json({ error: 'Required: platform, programHandle, finding' });
+      return;
+    }
+    if (!listConnectors().includes(platform)) {
+      res.status(400).json({ error: `Invalid platform: ${platform}` });
       return;
     }
     if (!isValidProgramHandle(programHandle)) {
@@ -7448,6 +7456,10 @@ app.post('/api/bounty/submit', async (req: Request, res: Response) => {
 app.get('/api/bounty/programs/:platform', async (req: Request, res: Response) => {
   try {
     const platform = req.params.platform as BountyPlatform;
+    if (!listConnectors().includes(platform)) {
+      res.status(400).json({ error: `Invalid platform: ${platform}` });
+      return;
+    }
     const query = (req.query.q as string) || '';
     const creds = loadBountyCredentials(process.cwd());
     const platformCreds: BountyCredentials = creds[platform] || { platform };

@@ -117,8 +117,8 @@ export function validateBountyCredentials(creds: BountyCredentials): {
 } {
   const errors: string[] = [];
 
-  // Validate platform
-  const validPlatforms = ['hackerone', 'bugcrowd', 'intigriti', 'immunefi', 'huntr', 'code4rena'];
+  // Validate platform - use listConnectors to prevent prototype bypass
+  const validPlatforms = listConnectors();
   if (!validPlatforms.includes(creds.platform)) {
     errors.push(`Invalid platform: must be one of ${validPlatforms.join(', ')}`);
   }
@@ -636,8 +636,11 @@ const CONNECTORS: Record<BountyPlatform, BountyConnector> = {
 };
 
 export function getConnector(platform: BountyPlatform): BountyConnector {
+  // Validate using listConnectors() own properties to prevent prototype pollution / bypasses
+  if (!listConnectors().includes(platform)) {
+    throw new Error(`Unknown bounty platform: ${platform}`);
+  }
   const c = CONNECTORS[platform];
-  if (!c) throw new Error(`Unknown bounty platform: ${platform}`);
   return c;
 }
 
