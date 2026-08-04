@@ -3997,7 +3997,7 @@
                                         <option value="webapp">Web</option>
                                         <option value="api">API</option>
                                     </select>
-                                    <button class="btn btn-primary" onclick="addTarget()" style="white-space: nowrap; font-size: 10px; padding: 6px 10px;">+</button>
+                                    <button class="btn btn-primary" onclick="addTarget()" style="white-space: nowrap; font-size: 10px; padding: 6px 10px;" aria-label="Add target" title="Add target">+</button>
                                 </div>
                                 <input type="text" class="form-input" id="targetPorts" placeholder="Ports: 80,443,8080" style="width: 100%; font-size: 10px; padding: 5px 8px; margin-bottom: 6px; box-sizing: border-box;">
                                 <div style="display: flex; gap: 4px; margin-bottom: 6px;">
@@ -5666,7 +5666,7 @@ tempest.operators.<span class="function">spawn</span>(<span class="string">'scan
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Modal</h3>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close modal" title="Close modal">×</button>
             </div>
             <div class="modal-body" id="modalBody"></div>
         </div>
@@ -5677,7 +5677,7 @@ tempest.operators.<span class="function">spawn</span>(<span class="string">'scan
         <div class="modal" style="max-width: 460px;">
             <div class="modal-header">
                 <h3 class="modal-title">👋 Welcome to T3MP3ST</h3>
-                <button class="modal-close" onclick="dismissWelcome()">×</button>
+                <button class="modal-close" onclick="dismissWelcome()" aria-label="Close welcome modal" title="Close welcome modal">×</button>
             </div>
             <div class="modal-body" style="padding: 16px; line-height: 1.6; font-size: 13px;">
                 <p style="margin: 0 0 12px;">T3MP3ST is an AI-driven offensive-security workbench — you point operators at a target and it hunts, validates, and reports findings.</p>
@@ -7598,7 +7598,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                             <div style="font-size: 10px; color: #888;">${escapeHtml(t.ports || 'All ports')} • ${escapeHtml(t.scope.toUpperCase())}</div>
                         </div>
                     </div>
-                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;">✕</button>
+                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;" aria-label="Remove target" title="Remove target">✕</button>
                 </div>
             `).join('');
         }
@@ -7983,7 +7983,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                                 <h2>${tool.name}</h2>
                                 <div class="tool-category">${tool.cat}</div>
                             </div>
-                            <button class="tool-info-close" onclick="this.closest('.tool-info-modal').remove()">×</button>
+                            <button class="tool-info-close" onclick="this.closest('.tool-info-modal').remove()" aria-label="Close tool info" title="Close tool info">×</button>
                         </div>
                         <div class="tool-info-body">
                             <div class="tool-info-section">
@@ -8565,7 +8565,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                     '<div class="modal" style="max-width:520px;">' +
                       '<div class="modal-header">' +
                         '<h3 class="modal-title">🔐 Approve target to continue</h3>' +
-                        '<button class="modal-close" data-appr-cancel>×</button>' +
+                        '<button class="modal-close" data-appr-cancel aria-label="Cancel approval request" title="Cancel approval request">×</button>' +
                       '</div>' +
                       '<div class="modal-body" style="font-size:12px;line-height:1.55;">' +
                         '<p><b>' + escapeHtml(target) + '</b> is an external target. The scope gate holds active execution until you grant an explicit approval receipt — nothing runs against it until you approve.</p>' +
@@ -19928,11 +19928,11 @@ ${entries}
                         <button onclick="clearDefaultConfig()" style="
                             padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid #333;
                             border-radius: 6px; color: #888; cursor: pointer; font-size: 11px;
-                        ">✕</button>`}
+                        " aria-label="Clear default config" title="Clear default config">✕</button>`}
                         <button onclick="deleteConfig('${config.id}')" style="
                             padding: 8px 12px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3);
                             border-radius: 6px; color: #ff4444; cursor: pointer; font-size: 11px;
-                        ">🗑️</button>
+                        " aria-label="Delete config" title="Delete config">🗑️</button>
                     </div>
                 </div>`;
             }).join('');
