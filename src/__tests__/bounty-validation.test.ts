@@ -162,6 +162,26 @@ describe('validateBountyCredentials', () => {
 });
 
 // =============================================================================
+// getConnector prototype bypass checks
+// =============================================================================
+
+import { getConnector } from '../integrations/bounty.js';
+
+describe('getConnector prototype bypass protection', () => {
+  it('allows valid platform keys', () => {
+    const connector = getConnector('hackerone');
+    expect(connector).toBeDefined();
+    expect(connector.platform).toBe('hackerone');
+  });
+
+  it('rejects prototype properties as platforms to prevent prototype pollution / bypasses', () => {
+    expect(() => getConnector('toString' as any)).toThrow('Unknown bounty platform: toString');
+    expect(() => getConnector('__proto__' as any)).toThrow('Unknown bounty platform: __proto__');
+    expect(() => getConnector('hasOwnProperty' as any)).toThrow('Unknown bounty platform: hasOwnProperty');
+  });
+});
+
+// =============================================================================
 // isRestrictedInternalIP
 // =============================================================================
 

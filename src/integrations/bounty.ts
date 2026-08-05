@@ -635,14 +635,19 @@ const CONNECTORS: Record<BountyPlatform, BountyConnector> = {
   code4rena: code4renaConnector,
 };
 
+export function listConnectors(): BountyPlatform[] {
+  return Object.keys(CONNECTORS) as BountyPlatform[];
+}
+
 export function getConnector(platform: BountyPlatform): BountyConnector {
+  // SECURITY: Validate that the platform is actually an own property of CONNECTORS via listConnectors()
+  // to prevent prototype pollution / prototype bypass attacks (e.g., passing 'toString' or '__proto__')
+  if (!listConnectors().includes(platform)) {
+    throw new Error(`Unknown bounty platform: ${platform}`);
+  }
   const c = CONNECTORS[platform];
   if (!c) throw new Error(`Unknown bounty platform: ${platform}`);
   return c;
-}
-
-export function listConnectors(): BountyPlatform[] {
-  return Object.keys(CONNECTORS) as BountyPlatform[];
 }
 
 /**

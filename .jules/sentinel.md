@@ -14,3 +14,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function checked if a given hostname was a restricted loopback or private IP, but failed to handle IPv4-mapped IPv6 address formats (e.g. `::ffff:127.0.0.1` or `[::ffff:10.0.0.1]`). Since underlying HTTP clients and DNS resolution libraries naturally resolve these mapped formats back to their IPv4 equivalents, this allowed SSRF protection to be bypassed on the `http_request` tool and other networked adapters.
 **Learning:** Checking for standard IPv4/IPv6 strings or simple prefixes is insufficient when resolving mechanisms/libraries are capable of interpreting hybrid or mapped address spaces (such as IPv4-mapped IPv6).
 **Prevention:** Always sanitize IP and host inputs by stripping brackets and mapped prefixes (like `::ffff:`) before passing them to defensive IP validation regexes or list checks.
+
+## 2026-07-31 - Bounty Platform Connector Prototype Bypass
+**Vulnerability:** The `getConnector` function accepted a caller-controlled `platform` parameter and resolved it directly from the `CONNECTORS` registry via `CONNECTORS[platform]`. An attacker could pass standard `Object.prototype` property names (such as `toString`, `hasOwnProperty`, or `__proto__`) to bypass platform validation and invoke functions or fetch unexpected objects as connectors.
+**Learning:** Object lookup in JavaScript using a dynamic key from untrusted input is vulnerable to prototype bypass attacks if keys are not explicitly checked against a strict whitelist of own properties.
+**Prevention:** Validate that dynamic keys are present within a strict array or Set of allowed values, or explicitly check `Object.prototype.hasOwnProperty.call(registry, key)` before retrieving properties from the object.
