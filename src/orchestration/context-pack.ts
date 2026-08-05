@@ -136,6 +136,11 @@ const SECURITY_HINTS = [
   'pickle', 'exec', 'system', 'eval', 'sql', 'query', 'upload', 'template',
 ];
 
+const SECURITY_HINT_RES = SECURITY_HINTS.map(hint => ({
+  hint,
+  re: new RegExp(hint, 'i'),
+}));
+
 const KEYWORD_RE = /[a-z0-9_]{3,}/gi;
 
 function extractKeywords(...texts: Array<string | undefined>): string[] {
@@ -149,31 +154,37 @@ function extractKeywords(...texts: Array<string | undefined>): string[] {
   return [...set];
 }
 
+interface KeywordRE {
+  kw: string;
+  re: RegExp;
+}
+
 /**
  * Relevance = count of objective/priorIntel keyword occurrences in path+content
  * (path hits weighted heavier) + a heuristic boost for security-relevant
  * paths/content. Higher = packed sooner.
  */
-function scoreFile(file: SourceFile, keywords: string[]): number {
+function scoreFile(file: SourceFile, keywordRes: KeywordRE[]): number {
   const path = file.path.toLowerCase();
-  const content = file.content.toLowerCase();
   let score = 0;
 
-  for (const kw of keywords) {
+  for (let i = 0; i < keywordRes.length; i++) {
+    const { kw, re } = keywordRes[i];
     if (path.includes(kw)) score += 5; // a keyword in the path is a strong signal
+
     // count content occurrences (capped so one huge file can't dominate)
-    let idx = content.indexOf(kw);
     let hits = 0;
-    while (idx !== -1 && hits < 20) {
+    re.lastIndex = 0;
+    while (re.test(file.content) && hits < 20) {
       hits++;
-      idx = content.indexOf(kw, idx + kw.length);
     }
     score += hits;
   }
 
-  for (const hint of SECURITY_HINTS) {
+  for (let i = 0; i < SECURITY_HINT_RES.length; i++) {
+    const { hint, re } = SECURITY_HINT_RES[i];
     if (path.includes(hint)) score += 4;
-    if (content.includes(hint)) score += 1;
+    if (re.test(file.content)) score += 1;
   }
 
   return score;
@@ -281,8 +292,12 @@ export function packContext(bundle: SourceBundle, opts: PackOptions): PackedCont
   const repoMap = buildRepoMap(files, mapCap);
 
   const keywords = extractKeywords(opts.objective, opts.priorIntel);
+  const keywordRes = keywords.map(kw => ({
+    kw,
+    re: new RegExp(kw, 'gi'),
+  }));
   const ranked = files
-    .map((file, i) => ({ file, i, score: scoreFile(file, keywords) }))
+    .map((file, i) => ({ file, i, score: scoreFile(file, keywordRes) }))
     // stable: score desc, then original order (keeps deterministic packing)
     .sort((a, b) => (b.score - a.score) || (a.i - b.i));
 
