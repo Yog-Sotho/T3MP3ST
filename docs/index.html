@@ -7598,7 +7598,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                             <div style="font-size: 10px; color: #888;">${escapeHtml(t.ports || 'All ports')} • ${escapeHtml(t.scope.toUpperCase())}</div>
                         </div>
                     </div>
-                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;">✕</button>
+                    <button onclick="removeTarget(${t.id})" aria-label="Remove target" title="Remove target" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;">✕</button>
                 </div>
             `).join('');
         }
@@ -19921,15 +19921,15 @@ ${entries}
                             border-radius: 6px; color: #0088ff; cursor: pointer; font-size: 11px; font-weight: bold;
                         ">Load</button>
                         ${!isDefault ? `
-                        <button onclick="setAsDefault('${config.id}')" style="
+                        <button onclick="setAsDefault('${config.id}')" aria-label="Set config as default" title="Set config as default" style="
                             padding: 8px 12px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.5);
                             border-radius: 6px; color: #ffd700; cursor: pointer; font-size: 11px;
                         ">⭐</button>` : `
-                        <button onclick="clearDefaultConfig()" style="
+                        <button onclick="clearDefaultConfig()" aria-label="Clear default config" title="Clear default config" style="
                             padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid #333;
                             border-radius: 6px; color: #888; cursor: pointer; font-size: 11px;
                         ">✕</button>`}
-                        <button onclick="deleteConfig('${config.id}')" style="
+                        <button onclick="deleteConfig('${config.id}')" aria-label="Delete config" title="Delete config" style="
                             padding: 8px 12px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3);
                             border-radius: 6px; color: #ff4444; cursor: pointer; font-size: 11px;
                         ">🗑️</button>
