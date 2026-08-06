@@ -3369,7 +3369,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
-                <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
+                <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" title="Toggle navigation sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
                 <h1 class="header-title" id="pageTitle">War Room</h1>
                 <div class="header-actions">
                     <button class="btn btn-secondary" onclick="if(window.t3mpTour)t3mpTour.start()" title="Take the guided tour" aria-label="Guided tour" style="font-weight:700;">?</button>
@@ -5666,7 +5666,7 @@ tempest.operators.<span class="function">spawn</span>(<span class="string">'scan
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Modal</h3>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close modal" title="Close modal">×</button>
             </div>
             <div class="modal-body" id="modalBody"></div>
         </div>
@@ -5677,7 +5677,7 @@ tempest.operators.<span class="function">spawn</span>(<span class="string">'scan
         <div class="modal" style="max-width: 460px;">
             <div class="modal-header">
                 <h3 class="modal-title">👋 Welcome to T3MP3ST</h3>
-                <button class="modal-close" onclick="dismissWelcome()">×</button>
+                <button class="modal-close" onclick="dismissWelcome()" aria-label="Close welcome modal" title="Close welcome modal">×</button>
             </div>
             <div class="modal-body" style="padding: 16px; line-height: 1.6; font-size: 13px;">
                 <p style="margin: 0 0 12px;">T3MP3ST is an AI-driven offensive-security workbench — you point operators at a target and it hunts, validates, and reports findings.</p>
@@ -7598,7 +7598,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                             <div style="font-size: 10px; color: #888;">${escapeHtml(t.ports || 'All ports')} • ${escapeHtml(t.scope.toUpperCase())}</div>
                         </div>
                     </div>
-                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;">✕</button>
+                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;" aria-label="Remove target" title="Remove target">✕</button>
                 </div>
             `).join('');
         }
@@ -7861,7 +7861,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                         <div class="loadout-chip">
                             <span class="chip-icon">${t.icon}</span>
                             <span>${t.name}</span>
-                            <span class="chip-remove" onclick="toggleLoadout('${t.id}')">×</span>
+                            <span class="chip-remove" onclick="toggleLoadout('${t.id}')" role="button" tabindex="0" aria-label="Remove tool from loadout" title="Remove tool from loadout">×</span>
                         </div>
                     `;
                 }).join('');
@@ -7983,7 +7983,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                                 <h2>${tool.name}</h2>
                                 <div class="tool-category">${tool.cat}</div>
                             </div>
-                            <button class="tool-info-close" onclick="this.closest('.tool-info-modal').remove()">×</button>
+                            <button class="tool-info-close" onclick="this.closest('.tool-info-modal').remove()" aria-label="Close tool details" title="Close tool details">×</button>
                         </div>
                         <div class="tool-info-body">
                             <div class="tool-info-section">
@@ -8565,7 +8565,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                     '<div class="modal" style="max-width:520px;">' +
                       '<div class="modal-header">' +
                         '<h3 class="modal-title">🔐 Approve target to continue</h3>' +
-                        '<button class="modal-close" data-appr-cancel>×</button>' +
+                        '<button class="modal-close" data-appr-cancel aria-label="Close approval modal" title="Close approval modal">×</button>' +
                       '</div>' +
                       '<div class="modal-body" style="font-size:12px;line-height:1.55;">' +
                         '<p><b>' + escapeHtml(target) + '</b> is an external target. The scope gate holds active execution until you grant an explicit approval receipt — nothing runs against it until you approve.</p>' +
@@ -13856,7 +13856,7 @@ Be brutally honest. This is not a pep talk.`;
                 <div style="color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor:pointer;" title="Click for full detail — ${escapeHtml(f.detail || f.title)}" onclick="showFindingDetail(${f.id - 1})">${escapeHtml(f.title)}${provBadge}</div>
                 <div style="color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px;" title="${escapeHtml(f.target)}">${escapeHtml(f.target)}</div>
                 <div style="color: #555; font-size: 9px;">${f.phase}</div>
-                <div><button onclick="copyFinding(${f.id - 1})" title="Copy" style="background: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; color: #555; cursor: pointer; font-size: 10px; padding: 1px 5px;">⧉</button></div>
+                <div><button onclick="copyFinding(${f.id - 1})" title="Copy finding to clipboard" aria-label="Copy finding to clipboard" style="background: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; color: #555; cursor: pointer; font-size: 10px; padding: 1px 5px;">⧉</button></div>
             `;
 
             body.insertBefore(row, body.firstChild);
@@ -19924,15 +19924,15 @@ ${entries}
                         <button onclick="setAsDefault('${config.id}')" style="
                             padding: 8px 12px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.5);
                             border-radius: 6px; color: #ffd700; cursor: pointer; font-size: 11px;
-                        ">⭐</button>` : `
+                        " aria-label="Set config as default" title="Set config as default">⭐</button>` : `
                         <button onclick="clearDefaultConfig()" style="
                             padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid #333;
                             border-radius: 6px; color: #888; cursor: pointer; font-size: 11px;
-                        ">✕</button>`}
+                        " aria-label="Clear default config" title="Clear default config">✕</button>`}
                         <button onclick="deleteConfig('${config.id}')" style="
                             padding: 8px 12px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3);
                             border-radius: 6px; color: #ff4444; cursor: pointer; font-size: 11px;
-                        ">🗑️</button>
+                        " aria-label="Delete config" title="Delete config">🗑️</button>
                     </div>
                 </div>`;
             }).join('');
@@ -20037,7 +20037,7 @@ ${entries}
                         </div>
                         <div style="margin-top: 8px; display: flex; gap: 6px;">
                             <button onclick="event.stopPropagation(); runSingleChallenge('${ch.id}')" class="btn btn-sm" style="flex: 1; font-size: 10px; padding: 4px 8px;">🤖 Run Agent</button>
-                            <button onclick="event.stopPropagation(); toggleContainer('${ch.id}')" class="btn btn-sm" style="font-size: 10px; padding: 4px 8px;">${containerStatus === 'running' ? '⏹️' : '▶️'}</button>
+                            <button onclick="event.stopPropagation(); toggleContainer('${ch.id}')" class="btn btn-sm" style="font-size: 10px; padding: 4px 8px;" aria-label="${containerStatus === 'running' ? 'Stop container' : 'Start container'}" title="${containerStatus === 'running' ? 'Stop container' : 'Start container'}">${containerStatus === 'running' ? '⏹️' : '▶️'}</button>
                         </div>
                     </div>`;
             }).join('');
@@ -25157,7 +25157,7 @@ Be specific and actionable. Format as structured JSON.`;
       o.onclick = (e)=>{ if(e.target===o) window.closeAdmiralWizard(); };
       o.innerHTML = '<div style="'+css.card+'" onclick="event.stopPropagation()">'
         + '<div style="'+css.head+'"><div style="font-size:16px;font-weight:800;color:#5bb8ff;">⚓ Op Admiral — Guided Hunt</div>'
-        +   '<span style="cursor:pointer;color:#7f93a5;font-size:20px;line-height:1;" onclick="window.closeAdmiralWizard()">✕</span></div>'
+        +   '<button type="button" aria-label="Close guided hunt wizard" title="Close guided hunt wizard" style="background:none;border:none;outline:none;padding:0;cursor:pointer;color:#7f93a5;font-size:20px;line-height:1;font-family:inherit;" onclick="window.closeAdmiralWizard()">✕</button></div>'
         + '<div id="admiralBody" style="'+css.body+'"></div>'
         + '<div style="'+css.foot+'"><span id="admiralDots" style="font-size:11px;color:#6b8090;"></span><div style="display:flex;gap:8px;">'
         +   '<button id="admiralBack" onclick="window.admiralBack()" style="'+css.btn+'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#bcd;">‹ Back</button>'
@@ -25339,7 +25339,7 @@ Be specific and actionable. Format as structured JSON.`;
     m.innerHTML = '<div onclick="event.stopPropagation()" style="width:min(840px,97vw);max-height:92vh;overflow:auto;background:linear-gradient(160deg,#0a141f,#0c1118);border:1px solid '+c+'55;border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,0.6);">'
       + '<div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);"><span style="font-size:24px;">'+(IC[o.archetype]||'🤖')+'</span>'
       +   '<div><div style="font-size:17px;font-weight:800;color:#e8f0f3;">'+esc(o.name)+'</div><div style="font-size:10px;color:'+c+';">'+esc(o.archetype)+' · '+esc(o.description)+'</div></div>'
-      +   '<span onclick="closeOperative()" style="margin-left:auto;cursor:pointer;color:#7f93a5;font-size:20px;">✕</span></div>'
+      +   '<button type="button" aria-label="Close operative details" title="Close operative details" style="margin-left:auto;background:none;border:none;outline:none;padding:0;cursor:pointer;color:#7f93a5;font-size:20px;line-height:1;font-family:inherit;" onclick="closeOperative()">✕</button></div>'
       + '<div style="padding:18px 20px;">'
       +   '<div style="font-size:10px;color:#8aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Tools ('+(o.defaultTools||[]).length+')</div>'
       +   '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;">'+(o.defaultTools||[]).map(t=>'<span style="font-size:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 7px;color:#bcd;font-family:\'JetBrains Mono\',monospace;">'+esc(t)+'</span>').join('')+'</div>'
