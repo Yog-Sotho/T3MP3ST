@@ -19,3 +19,7 @@
 ## 2025-03-07 - [O(1) Excludes Check and Object/Regex Allocation Hot Paths]
 **Learning:** File crawling can be slowed down significantly by repeated path-segment splits and array list-scans against multiple exclusions. Similarly, instantiating regexes or calling `Object.entries` on hot loops produces high GC overhead due to intermediate array allocation.
 **Action:** Pre-compute file excludes into a plain names `Set` to check in O(1) time before falling back to full wildcard path matching. Hoist RegExp literals to static constants and replace `Object.entries` with a fast `for ... in` loop using `hasOwnProperty` in performance-critical loops.
+
+## 2025-03-08 - [Case-Insensitive Hot-Path String Allocation Bottleneck]
+**Learning:** Scoring files for context-packing relevance involved repeatedly calling `.toLowerCase()` on the full content of large source files for every keyword and security hint check. This caused massive heap allocations, high garbage collection pressure, and CPU overhead during heavy workspace packing runs.
+**Action:** Pre-compile static security hints and dynamic keyword search strings into case-insensitive, global `RegExp` objects, enabling native `.test()` checks on original case-sensitive source code without allocating temporary lowercase strings.
