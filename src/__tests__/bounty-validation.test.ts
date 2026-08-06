@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials } from '../integrations/bounty.js';
+import { validateBountyCredentials, isValidProgramHandle, getConnector, type BountyCredentials } from '../integrations/bounty.js';
 import { isRestrictedInternalIP } from '../arsenal/adapter-tools.js';
 
 // =============================================================================
@@ -262,5 +262,26 @@ describe('isValidProgramHandle', () => {
     expect(isValidProgramHandle('program<script>')).toBe(false);
     expect(isValidProgramHandle('program&other')).toBe(false);
     expect(isValidProgramHandle('program|command')).toBe(false);
+  });
+});
+
+// =============================================================================
+// getConnector & validateBountyCredentials prototype bypass protection
+// =============================================================================
+
+describe('bounty integration prototype bypass protection', () => {
+  it('validateBountyCredentials rejects prototype properties as platform', () => {
+    const result = validateBountyCredentials({ platform: 'toString' as any });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('Invalid platform'))).toBe(true);
+
+    const result2 = validateBountyCredentials({ platform: '__proto__' as any });
+    expect(result2.valid).toBe(false);
+  });
+
+  it('getConnector throws on prototype properties', () => {
+    expect(() => getConnector('toString' as any)).toThrow('Unknown bounty platform');
+    expect(() => getConnector('__proto__' as any)).toThrow('Unknown bounty platform');
+    expect(() => getConnector('constructor' as any)).toThrow('Unknown bounty platform');
   });
 });

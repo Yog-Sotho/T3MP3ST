@@ -14,3 +14,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function checked if a given hostname was a restricted loopback or private IP, but failed to handle IPv4-mapped IPv6 address formats (e.g. `::ffff:127.0.0.1` or `[::ffff:10.0.0.1]`). Since underlying HTTP clients and DNS resolution libraries naturally resolve these mapped formats back to their IPv4 equivalents, this allowed SSRF protection to be bypassed on the `http_request` tool and other networked adapters.
 **Learning:** Checking for standard IPv4/IPv6 strings or simple prefixes is insufficient when resolving mechanisms/libraries are capable of interpreting hybrid or mapped address spaces (such as IPv4-mapped IPv6).
 **Prevention:** Always sanitize IP and host inputs by stripping brackets and mapped prefixes (like `::ffff:`) before passing them to defensive IP validation regexes or list checks.
+
+## 2026-07-31 - Prototype Bypass Vulnerability in Platform Resolution
+**Vulnerability:** The `/api/bounty/...` endpoints allowed arbitrary platform parameters to be parsed and passed directly to the connector resolver. If prototype property names like `toString`, `constructor`, or `__proto__` were supplied, `CONNECTORS[platform]` retrieved prototype properties instead of valid connector objects, causing runtime crashes or bypass of platform checks.
+**Learning:** Checking elements inside an object lookup is vulnerable to prototype pollution and lookup bypasses unless guarded by strict own-property checks or constrained to explicitly whitelisted keys.
+**Prevention:** Always use `Object.prototype.hasOwnProperty.call(obj, key)` or strict array inclusion (e.g. `listConnectors().includes(key)`) to validate user-controlled keys before looking them up in static mappings.
