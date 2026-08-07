@@ -1,10 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials } from '../integrations/bounty.js';
+import { validateBountyCredentials, isValidProgramHandle, getConnector, type BountyCredentials } from '../integrations/bounty.js';
 import { isRestrictedInternalIP } from '../arsenal/adapter-tools.js';
 
 // =============================================================================
 // validateBountyCredentials
 // =============================================================================
+
+describe('getConnector', () => {
+  it('successfully retrieves valid connectors', () => {
+    const connector = getConnector('hackerone');
+    expect(connector).toBeDefined();
+    expect(connector.platform).toBe('hackerone');
+  });
+
+  it('rejects unknown connectors', () => {
+    expect(() => getConnector('invalid' as any)).toThrowError('Unknown bounty platform');
+  });
+
+  it('rejects prototype properties as connector platforms', () => {
+    const bypasses = ['toString', 'valueOf', '__proto__', 'constructor', 'hasOwnProperty'];
+    for (const bypass of bypasses) {
+      expect(() => getConnector(bypass as any)).toThrowError('Unknown bounty platform');
+    }
+  });
+});
 
 describe('validateBountyCredentials', () => {
   function creds(overrides: Partial<BountyCredentials> = {}): BountyCredentials {
@@ -23,6 +42,15 @@ describe('validateBountyCredentials', () => {
       const result = validateBountyCredentials({ platform: 'evil' as any });
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.includes('Invalid platform'))).toBe(true);
+    });
+
+    it('rejects platform values targeting object prototype properties', () => {
+      const bypasses = ['toString', 'valueOf', '__proto__', 'constructor', 'hasOwnProperty'];
+      for (const bypass of bypasses) {
+        const result = validateBountyCredentials({ platform: bypass as any });
+        expect(result.valid).toBe(false);
+        expect(result.errors.some(e => e.includes('Invalid platform'))).toBe(true);
+      }
     });
   });
 

@@ -117,8 +117,8 @@ export function validateBountyCredentials(creds: BountyCredentials): {
 } {
   const errors: string[] = [];
 
-  // Validate platform
-  const validPlatforms = ['hackerone', 'bugcrowd', 'intigriti', 'immunefi', 'huntr', 'code4rena'];
+  // Validate platform using safe own properties of CONNECTORS via listConnectors() to prevent prototype bypasses
+  const validPlatforms = listConnectors();
   if (!validPlatforms.includes(creds.platform)) {
     errors.push(`Invalid platform: must be one of ${validPlatforms.join(', ')}`);
   }
@@ -626,16 +626,20 @@ export const code4renaConnector: BountyConnector = {
 // REGISTRY — resolve platform name → connector
 // =============================================================================
 
-const CONNECTORS: Record<BountyPlatform, BountyConnector> = {
+const CONNECTORS: Record<BountyPlatform, BountyConnector> = Object.assign(Object.create(null), {
   hackerone: hackeroneConnector,
   bugcrowd: bugcrowdConnector,
   intigriti: intigritiConnector,
   immunefi: immunefiConnector,
   huntr: huntrConnector,
   code4rena: code4renaConnector,
-};
+});
 
 export function getConnector(platform: BountyPlatform): BountyConnector {
+  // Validate using own properties of CONNECTORS to prevent prototype bypasses (e.g. toString or __proto__)
+  if (!Object.prototype.hasOwnProperty.call(CONNECTORS, platform)) {
+    throw new Error(`Unknown bounty platform: ${platform}`);
+  }
   const c = CONNECTORS[platform];
   if (!c) throw new Error(`Unknown bounty platform: ${platform}`);
   return c;
