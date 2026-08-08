@@ -3997,7 +3997,7 @@
                                         <option value="webapp">Web</option>
                                         <option value="api">API</option>
                                     </select>
-                                    <button class="btn btn-primary" onclick="addTarget()" style="white-space: nowrap; font-size: 10px; padding: 6px 10px;">+</button>
+                                    <button class="btn btn-primary" onclick="addTarget()" style="white-space: nowrap; font-size: 10px; padding: 6px 10px;" aria-label="Add target" title="Add target">+</button>
                                 </div>
                                 <input type="text" class="form-input" id="targetPorts" placeholder="Ports: 80,443,8080" style="width: 100%; font-size: 10px; padding: 5px 8px; margin-bottom: 6px; box-sizing: border-box;">
                                 <div style="display: flex; gap: 4px; margin-bottom: 6px;">
@@ -7598,7 +7598,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                             <div style="font-size: 10px; color: #888;">${escapeHtml(t.ports || 'All ports')} • ${escapeHtml(t.scope.toUpperCase())}</div>
                         </div>
                     </div>
-                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;">✕</button>
+                    <button onclick="removeTarget(${t.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 14px;" aria-label="Remove target" title="Remove target">✕</button>
                 </div>
             `).join('');
         }
@@ -19924,15 +19924,15 @@ ${entries}
                         <button onclick="setAsDefault('${config.id}')" style="
                             padding: 8px 12px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.5);
                             border-radius: 6px; color: #ffd700; cursor: pointer; font-size: 11px;
-                        ">⭐</button>` : `
+                        " aria-label="Set default config" title="Set default config">⭐</button>` : `
                         <button onclick="clearDefaultConfig()" style="
                             padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid #333;
                             border-radius: 6px; color: #888; cursor: pointer; font-size: 11px;
-                        ">✕</button>`}
+                        " aria-label="Clear default config" title="Clear default config">✕</button>`}
                         <button onclick="deleteConfig('${config.id}')" style="
                             padding: 8px 12px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3);
                             border-radius: 6px; color: #ff4444; cursor: pointer; font-size: 11px;
-                        ">🗑️</button>
+                        " aria-label="Delete config" title="Delete config">🗑️</button>
                     </div>
                 </div>`;
             }).join('');
@@ -25157,7 +25157,7 @@ Be specific and actionable. Format as structured JSON.`;
       o.onclick = (e)=>{ if(e.target===o) window.closeAdmiralWizard(); };
       o.innerHTML = '<div style="'+css.card+'" onclick="event.stopPropagation()">'
         + '<div style="'+css.head+'"><div style="font-size:16px;font-weight:800;color:#5bb8ff;">⚓ Op Admiral — Guided Hunt</div>'
-        +   '<span style="cursor:pointer;color:#7f93a5;font-size:20px;line-height:1;" onclick="window.closeAdmiralWizard()">✕</span></div>'
+        +   '<button type="button" class="modal-close" style="color:#7f93a5;font-size:20px;line-height:1;" onclick="window.closeAdmiralWizard()" aria-label="Close guided hunt wizard" title="Close">✕</button></div>'
         + '<div id="admiralBody" style="'+css.body+'"></div>'
         + '<div style="'+css.foot+'"><span id="admiralDots" style="font-size:11px;color:#6b8090;"></span><div style="display:flex;gap:8px;">'
         +   '<button id="admiralBack" onclick="window.admiralBack()" style="'+css.btn+'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#bcd;">‹ Back</button>'
@@ -25339,7 +25339,7 @@ Be specific and actionable. Format as structured JSON.`;
     m.innerHTML = '<div onclick="event.stopPropagation()" style="width:min(840px,97vw);max-height:92vh;overflow:auto;background:linear-gradient(160deg,#0a141f,#0c1118);border:1px solid '+c+'55;border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,0.6);">'
       + '<div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);"><span style="font-size:24px;">'+(IC[o.archetype]||'🤖')+'</span>'
       +   '<div><div style="font-size:17px;font-weight:800;color:#e8f0f3;">'+esc(o.name)+'</div><div style="font-size:10px;color:'+c+';">'+esc(o.archetype)+' · '+esc(o.description)+'</div></div>'
-      +   '<span onclick="closeOperative()" style="margin-left:auto;cursor:pointer;color:#7f93a5;font-size:20px;">✕</span></div>'
+      +   '<button type="button" class="modal-close" style="margin-left:auto;color:#7f93a5;font-size:20px;" onclick="closeOperative()" aria-label="Close specialist editor" title="Close">✕</button></div>'
       + '<div style="padding:18px 20px;">'
       +   '<div style="font-size:10px;color:#8aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Tools ('+(o.defaultTools||[]).length+')</div>'
       +   '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;">'+(o.defaultTools||[]).map(t=>'<span style="font-size:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 7px;color:#bcd;font-family:\'JetBrains Mono\',monospace;">'+esc(t)+'</span>').join('')+'</div>'
