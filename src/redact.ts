@@ -73,13 +73,15 @@ export function redactLedgerText(value: string, limit = 4000): string {
   return `${redacted.slice(0, limit)}...[truncated ${redacted.length - limit} chars]`;
 }
 
-export function redactSecrets(value: unknown, seen = new WeakSet<object>()): unknown {
+export function redactSecrets(value: unknown, seen?: WeakSet<object>): unknown {
   if (typeof value === 'string') return redactString(value);
   if (value === null || typeof value !== 'object') return value;
-  if (seen.has(value)) return '[circular]';
-  seen.add(value);
 
-  if (Array.isArray(value)) return value.map((item) => redactSecrets(item, seen));
+  const actualSeen = seen ?? new WeakSet<object>();
+  if (actualSeen.has(value)) return '[circular]';
+  actualSeen.add(value);
+
+  if (Array.isArray(value)) return value.map((item) => redactSecrets(item, actualSeen));
 
   const result: Record<string, unknown> = {};
 
@@ -93,7 +95,7 @@ export function redactSecrets(value: unknown, seen = new WeakSet<object>()): unk
       if (SECRET_KEY_RE.test(key)) {
         result[key] = '[redacted]';
       } else {
-        result[key] = redactSecrets(nested, seen);
+        result[key] = redactSecrets(nested, actualSeen);
       }
     }
   }
