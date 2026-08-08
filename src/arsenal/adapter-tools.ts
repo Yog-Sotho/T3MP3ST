@@ -73,10 +73,11 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip IPv4-mapped IPv6 address prefixes to extract raw IPv4
   ip = ip.replace(/^::ffff:(?:0:)?/i, '');
 
-  // Loopback addresses
-  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1') return true;
+  // Loopback and unspecified/wildcard addresses
+  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '0.0.0.0' || ip === '::') return true;
 
-  // Private IPv4 ranges
+  // Private IPv4 and local ranges
+  if (/^0\./.test(ip)) return true; // 0.0.0.0/8 (local network/wildcard addresses)
   if (/^10\./.test(ip)) return true; // 10.0.0.0/8
   if (/^192\.168\./.test(ip)) return true; // 192.168.0.0/16
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return true; // 172.16.0.0/12
