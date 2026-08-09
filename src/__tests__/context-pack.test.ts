@@ -147,4 +147,34 @@ describe('packContext', () => {
     expect(packed.includedFiles).toContain('(source)');
     expect(packed.droppedFiles).toHaveLength(0);
   });
+
+  it('benchmark: packContext handles 100 large files (100KB each) with dynamic keywords and security hints quickly', () => {
+    // Generate 100 large dummy files (100KB each) filled with text, occasional keywords, and security hints
+    const bundle: SourceBundle = Array.from({ length: 100 }, (_, i) => {
+      const parts = [];
+      for (let j = 0; j < 1000; j++) {
+        parts.push(`line_${j}_random_content_for_context_packing_benchmark_data_structure_efficiency`);
+      }
+      // Insert some keywords and security hints at intervals
+      parts[100] = 'route handler auth login session controller';
+      parts[500] = 'target_objective_keyword_match_relevance_booster';
+      return {
+        path: `src/performance_bench/large_module_${i}.py`,
+        content: parts.join('\n'),
+      };
+    });
+
+    const start = performance.now();
+    const packed = packContext(bundle, {
+      tokenBudget: 50000,
+      objective: 'find the target_objective_keyword_match_relevance_booster route handler',
+    });
+    const duration = performance.now() - start;
+
+    console.log(`[Bolt Benchmark] packContext for 100 large files (10MB total) took: ${duration.toFixed(2)}ms`);
+
+    expect(packed.includedFiles.length).toBeGreaterThan(0);
+    // Performance expectation: With our O(1) lowercasing elimination, it should easily run in under 150ms.
+    expect(duration).toBeLessThan(150);
+  });
 });
