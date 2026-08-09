@@ -617,47 +617,69 @@ export function reachability(
 ): Record<string, Reachability> {
   const result: Record<string, Reachability> = {};
   for (const id of Object.keys(callGraph)) {
-    result[id] = { reachable: false, reachDepth: Infinity, paths: [] };
+    result[id] = { reachable: false, reachDepth: -1, paths: [] };
   }
 
   interface QItem {
     id: string;
     depth: number;
-    path: string[];
   }
   const queue: QItem[] = [];
+  const parentMap = new Map<string, string | null>();
 
   for (const id of entryPointIds) {
     if (!(id in result)) continue;
-    result[id] = { reachable: true, reachDepth: 0, paths: [[id]] };
-    queue.push({ id, depth: 0, path: [id] });
+    result[id].reachable = true;
+    result[id].reachDepth = 0;
+    parentMap.set(id, null);
+    queue.push({ id, depth: 0 });
   }
 
-  while (queue.length) {
-    const { id, depth, path } = queue.shift()!;
+  // ⚡ BOLT OPTIMIZATION: Replacing queue.shift() with a read pointer 'head' loop.
+  // Shifting elements from the front of a JS array in a loop causes high memory/garbage
+  // collection overhead and has O(N^2) complexity. Using an index pointer keeps the operation O(1)
+  // per element and achieves O(V + E) runtime complexity for the BFS traversal.
+  let head = 0;
+  while (head < queue.length) {
+    const { id, depth } = queue[head++];
     const entry = callGraph[id];
     if (!entry) continue;
     for (const callee of entry.callees) {
       const cur = result[callee];
       if (!cur) continue;
       if (!cur.reachable) {
-        const newPath = [...path, callee];
-        result[callee] = {
-          reachable: true,
-          reachDepth: depth + 1,
-          paths: [newPath],
-        };
-        queue.push({ id: callee, depth: depth + 1, path: newPath });
+        cur.reachable = true;
+        cur.reachDepth = depth + 1;
+        parentMap.set(callee, id);
+        queue.push({ id: callee, depth: depth + 1 });
       }
       // shortest-path only (BFS visits shortest first); deeper re-discoveries
       // are ignored so reachDepth stays the minimum hop count.
     }
   }
 
-  // Normalize unreachable Infinity depths to a sentinel that survives JSON.
+  // ⚡ BOLT OPTIMIZATION: Memoized path reconstruction at the very end of reachability.
+  // Instead of copying path arrays during the hot BFS traversal loop, we keep parent pointers in parentMap
+  // and construct/memoize the reachability paths on demand at the end. This saves massive allocation overhead.
+  const memoPaths = new Map<string, string[]>();
+  const getPath = (nodeId: string): string[] => {
+    const cached = memoPaths.get(nodeId);
+    if (cached) return cached;
+    const parent = parentMap.get(nodeId);
+    if (parent === null || parent === undefined) {
+      const p = [nodeId];
+      memoPaths.set(nodeId, p);
+      return p;
+    }
+    const p = [...getPath(parent), nodeId];
+    memoPaths.set(nodeId, p);
+    return p;
+  };
+
   for (const id of Object.keys(result)) {
-    if (!result[id].reachable) {
-      result[id].reachDepth = -1;
+    const cur = result[id];
+    if (cur.reachable) {
+      cur.paths = [getPath(id)];
     }
   }
 

@@ -23,3 +23,7 @@
 ## 2025-03-08 - [Case-Insensitive Context Packing Keyword Search Bottleneck]
 **Learning:** During token-budgeted context packing, scoring files with `file.content.toLowerCase()` and `file.path.toLowerCase()` created brand-new string allocations on the V8 heap for every single file in the bundle. For codebases with multi-megabyte files, this led to massive GC pauses, high heap churn, and high CPU usage.
 **Action:** Pre-compile case-insensitive, global `RegExp` objects for security hints (at the module level) and dynamic keywords (once per pack session) to search directly on original, uncopied content. This completely eliminates large-string `.toLowerCase()` allocations on hot scoring paths.
+
+## 2025-03-09 - [BFS Queue Traversal and Path Copying Bottleneck]
+**Learning:** Performing array-shifting (`queue.shift()`) in BFS loops on large graphs causes significant memory allocation and has O(N^2) complexity in JS arrays. Additionally, copying path string arrays (`[...path, callee]`) during active traversal causes massive garbage collection churn and high CPU overhead on deep graphs.
+**Action:** Replace `queue.shift()` with an index pointer `head` to achieve true O(1) dequeues, and defer/memoize path reconstruction by keeping parent pointers during BFS and rebuilding paths recursively once at the end of the traversal. This keeps BFS traversal highly efficient and O(V + E).
