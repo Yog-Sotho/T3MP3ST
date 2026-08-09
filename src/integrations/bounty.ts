@@ -626,16 +626,26 @@ export const code4renaConnector: BountyConnector = {
 // REGISTRY — resolve platform name → connector
 // =============================================================================
 
-const CONNECTORS: Record<BountyPlatform, BountyConnector> = {
-  hackerone: hackeroneConnector,
-  bugcrowd: bugcrowdConnector,
-  intigriti: intigritiConnector,
-  immunefi: immunefiConnector,
-  huntr: huntrConnector,
-  code4rena: code4renaConnector,
-};
+const CONNECTORS: Record<BountyPlatform, BountyConnector> = Object.assign(
+  Object.create(null),
+  {
+    hackerone: hackeroneConnector,
+    bugcrowd: bugcrowdConnector,
+    intigriti: intigritiConnector,
+    immunefi: immunefiConnector,
+    huntr: huntrConnector,
+    code4rena: code4renaConnector,
+  }
+);
 
 export function getConnector(platform: BountyPlatform): BountyConnector {
+  // SECURITY: Ensure we don't resolve prototype properties or other inherited methods
+  if (
+    typeof platform !== 'string' ||
+    !Object.prototype.hasOwnProperty.call(CONNECTORS, platform)
+  ) {
+    throw new Error(`Unknown bounty platform: ${platform}`);
+  }
   const c = CONNECTORS[platform];
   if (!c) throw new Error(`Unknown bounty platform: ${platform}`);
   return c;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials } from '../integrations/bounty.js';
+import { validateBountyCredentials, isValidProgramHandle, getConnector, type BountyCredentials } from '../integrations/bounty.js';
 import { isRestrictedInternalIP } from '../arsenal/adapter-tools.js';
 
 // =============================================================================
@@ -269,5 +269,23 @@ describe('isValidProgramHandle', () => {
     expect(isValidProgramHandle('program<script>')).toBe(false);
     expect(isValidProgramHandle('program&other')).toBe(false);
     expect(isValidProgramHandle('program|command')).toBe(false);
+  });
+});
+
+// =============================================================================
+// getConnector Prototype Lookup Hardening Tests
+// =============================================================================
+
+describe('getConnector prototype lookup hardening', () => {
+  it('allows valid registered connectors', () => {
+    expect(getConnector('hackerone')).toBeDefined();
+    expect(getConnector('bugcrowd')).toBeDefined();
+  });
+
+  it('rejects prototype properties', () => {
+    expect(() => getConnector('__proto__' as any)).toThrowError(/Unknown bounty platform/);
+    expect(() => getConnector('constructor' as any)).toThrowError(/Unknown bounty platform/);
+    expect(() => getConnector('toString' as any)).toThrowError(/Unknown bounty platform/);
+    expect(() => getConnector('hasOwnProperty' as any)).toThrowError(/Unknown bounty platform/);
   });
 });
