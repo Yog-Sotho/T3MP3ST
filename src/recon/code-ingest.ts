@@ -620,37 +620,45 @@ export function reachability(
     result[id] = { reachable: false, reachDepth: Infinity, paths: [] };
   }
 
-  interface QItem {
-    id: string;
-    depth: number;
-    path: string[];
-  }
-  const queue: QItem[] = [];
+  // ⚡ BOLT OPTIMIZATION: Avoid expensive O(N) array-shifting (`queue.shift()`)
+  // by using a read pointer index (`head`). We also defer path reconstruction
+  // using a parent-pointer backtracking map (`parentMap`) to completely avoid
+  // O(V * depth) array allocation and copying during BFS traversal.
+  const queue: string[] = [];
+  const parentMap = new Map<string, string>();
+  let head = 0;
 
   for (const id of entryPointIds) {
     if (!(id in result)) continue;
-    result[id] = { reachable: true, reachDepth: 0, paths: [[id]] };
-    queue.push({ id, depth: 0, path: [id] });
+    result[id].reachable = true;
+    result[id].reachDepth = 0;
+    queue.push(id);
   }
 
-  while (queue.length) {
-    const { id, depth, path } = queue.shift()!;
+  while (head < queue.length) {
+    const id = queue[head++];
+    const depth = result[id].reachDepth;
     const entry = callGraph[id];
     if (!entry) continue;
     for (const callee of entry.callees) {
       const cur = result[callee];
-      if (!cur) continue;
-      if (!cur.reachable) {
-        const newPath = [...path, callee];
-        result[callee] = {
-          reachable: true,
-          reachDepth: depth + 1,
-          paths: [newPath],
-        };
-        queue.push({ id: callee, depth: depth + 1, path: newPath });
+      if (cur && !cur.reachable) {
+        cur.reachable = true;
+        cur.reachDepth = depth + 1;
+        parentMap.set(callee, id);
+        queue.push(callee);
       }
-      // shortest-path only (BFS visits shortest first); deeper re-discoveries
-      // are ignored so reachDepth stays the minimum hop count.
+    }
+  }
+
+  // Backtrack and construct paths in topological/BFS order so parents are always done before children.
+  for (let i = 0; i < queue.length; i++) {
+    const id = queue[i];
+    const parent = parentMap.get(id);
+    if (parent !== undefined) {
+      result[id].paths = [[...(result[parent].paths[0]), id]];
+    } else {
+      result[id].paths = [[id]];
     }
   }
 
