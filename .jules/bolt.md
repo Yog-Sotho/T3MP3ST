@@ -23,3 +23,7 @@
 ## 2025-03-08 - [Case-Insensitive Context Packing Keyword Search Bottleneck]
 **Learning:** During token-budgeted context packing, scoring files with `file.content.toLowerCase()` and `file.path.toLowerCase()` created brand-new string allocations on the V8 heap for every single file in the bundle. For codebases with multi-megabyte files, this led to massive GC pauses, high heap churn, and high CPU usage.
 **Action:** Pre-compile case-insensitive, global `RegExp` objects for security hints (at the module level) and dynamic keywords (once per pack session) to search directly on original, uncopied content. This completely eliminates large-string `.toLowerCase()` allocations on hot scoring paths.
+
+## 2025-03-09 - [BFS Reachability Queue Shifting and Backtracking Bottlenecks]
+**Learning:** In BFS reachability traversals over code call graphs, calling `queue.shift()` inside a while loop is $O(N)$ per element, leading to $O(N^2)$ time complexity on large graphs. Additionally, replicating and copying path arrays with `[...path, callee]` at every step incurs massive allocation/GC overhead. Finally, reconstructing paths backwards with individual backtracking on deeply nested linear structures results in $O(N^2)$ backtracking traversals.
+**Action:** Use a fast-read pointer index to dequeue in $O(1)$ time, record parent pointers during BFS in a simple `Map`, and reconstruct the paths in a single topological/BFS order pass to build path arrays with optimal $O(1)$ prepending of previously cached parent paths.
