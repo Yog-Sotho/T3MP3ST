@@ -5666,18 +5666,18 @@ tempest.operators.<span class="function">spawn</span>(<span class="string">'scan
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Modal</h3>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <button type="button" class="modal-close" onclick="closeModal()" aria-label="Close modal" title="Close modal">×</button>
             </div>
             <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 
     <!-- First-run welcome / orientation (dismissible, no backend calls) -->
-    <div class="modal-overlay" id="welcomeOverlay" onclick="if(event.target===this)dismissWelcome()">
+    <div class="modal-overlay" id="welcomeOverlay" onclick="if(event.target===this)dismissWelcome()" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" tabindex="-1">
         <div class="modal" style="max-width: 460px;">
             <div class="modal-header">
-                <h3 class="modal-title">👋 Welcome to T3MP3ST</h3>
-                <button class="modal-close" onclick="dismissWelcome()">×</button>
+                <h3 class="modal-title" id="welcomeTitle">👋 Welcome to T3MP3ST</h3>
+                <button type="button" class="modal-close" onclick="dismissWelcome()" aria-label="Close welcome modal" title="Close welcome modal">×</button>
             </div>
             <div class="modal-body" style="padding: 16px; line-height: 1.6; font-size: 13px;">
                 <p style="margin: 0 0 12px;">T3MP3ST is an AI-driven offensive-security workbench — you point operators at a target and it hunts, validates, and reports findings.</p>
@@ -7861,7 +7861,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                         <div class="loadout-chip">
                             <span class="chip-icon">${t.icon}</span>
                             <span>${t.name}</span>
-                            <span class="chip-remove" onclick="toggleLoadout('${t.id}')">×</span>
+                            <button type="button" class="chip-remove" onclick="toggleLoadout('${t.id}')" aria-label="Remove ${t.name} from loadout" title="Remove ${t.name} from loadout" style="background: none; border: none; padding: 0; font: inherit;">×</button>
                         </div>
                     `;
                 }).join('');
@@ -7983,7 +7983,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                                 <h2>${tool.name}</h2>
                                 <div class="tool-category">${tool.cat}</div>
                             </div>
-                            <button class="tool-info-close" onclick="this.closest('.tool-info-modal').remove()">×</button>
+                            <button type="button" class="tool-info-close" onclick="this.closest('.tool-info-modal').remove()" aria-label="Close tool info modal" title="Close tool info modal">×</button>
                         </div>
                         <div class="tool-info-body">
                             <div class="tool-info-section">
@@ -8565,7 +8565,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                     '<div class="modal" style="max-width:520px;">' +
                       '<div class="modal-header">' +
                         '<h3 class="modal-title">🔐 Approve target to continue</h3>' +
-                        '<button class="modal-close" data-appr-cancel>×</button>' +
+                        '<button type="button" class="modal-close" data-appr-cancel aria-label="Close approval modal" title="Close approval modal">×</button>' +
                       '</div>' +
                       '<div class="modal-body" style="font-size:12px;line-height:1.55;">' +
                         '<p><b>' + escapeHtml(target) + '</b> is an external target. The scope gate holds active execution until you grant an explicit approval receipt — nothing runs against it until you approve.</p>' +
