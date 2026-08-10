@@ -118,7 +118,7 @@ export function validateBountyCredentials(creds: BountyCredentials): {
   const errors: string[] = [];
 
   // Validate platform
-  const validPlatforms = ['hackerone', 'bugcrowd', 'intigriti', 'immunefi', 'huntr', 'code4rena'];
+  const validPlatforms = listConnectors();
   if (!validPlatforms.includes(creds.platform)) {
     errors.push(`Invalid platform: must be one of ${validPlatforms.join(', ')}`);
   }
@@ -626,16 +626,22 @@ export const code4renaConnector: BountyConnector = {
 // REGISTRY — resolve platform name → connector
 // =============================================================================
 
-const CONNECTORS: Record<BountyPlatform, BountyConnector> = {
-  hackerone: hackeroneConnector,
-  bugcrowd: bugcrowdConnector,
-  intigriti: intigritiConnector,
-  immunefi: immunefiConnector,
-  huntr: huntrConnector,
-  code4rena: code4renaConnector,
-};
+const CONNECTORS: Record<BountyPlatform, BountyConnector> = Object.assign(
+  Object.create(null),
+  {
+    hackerone: hackeroneConnector,
+    bugcrowd: bugcrowdConnector,
+    intigriti: intigritiConnector,
+    immunefi: immunefiConnector,
+    huntr: huntrConnector,
+    code4rena: code4renaConnector,
+  }
+);
 
 export function getConnector(platform: BountyPlatform): BountyConnector {
+  if (!Object.prototype.hasOwnProperty.call(CONNECTORS, platform)) {
+    throw new Error(`Unknown bounty platform: ${platform}`);
+  }
   const c = CONNECTORS[platform];
   if (!c) throw new Error(`Unknown bounty platform: ${platform}`);
   return c;
