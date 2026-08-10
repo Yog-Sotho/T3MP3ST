@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials } from '../integrations/bounty.js';
+import { validateBountyCredentials, isValidProgramHandle, type BountyCredentials, getConnector, listConnectors } from '../integrations/bounty.js';
 import { isRestrictedInternalIP } from '../arsenal/adapter-tools.js';
 
 // =============================================================================
@@ -269,5 +269,30 @@ describe('isValidProgramHandle', () => {
     expect(isValidProgramHandle('program<script>')).toBe(false);
     expect(isValidProgramHandle('program&other')).toBe(false);
     expect(isValidProgramHandle('program|command')).toBe(false);
+  });
+});
+
+// =============================================================================
+// CONNECTORS and getConnector hardening tests
+// =============================================================================
+
+describe('getConnector and CONNECTORS hardening against prototype pollution', () => {
+  it('rejects standard prototype properties like toString', () => {
+    expect(() => getConnector('toString' as any)).toThrow('Unknown bounty platform: toString');
+    expect(() => getConnector('__proto__' as any)).toThrow('Unknown bounty platform: __proto__');
+  });
+
+  it('rejects toString in validateBountyCredentials platform check', () => {
+    const result = validateBountyCredentials({ platform: 'toString' as any });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('Invalid platform'))).toBe(true);
+  });
+
+  it('listConnectors returns only the expected own keys of CONNECTORS', () => {
+    const connectors = listConnectors();
+    expect(connectors).toContain('hackerone');
+    expect(connectors).toContain('bugcrowd');
+    expect(connectors).not.toContain('toString');
+    expect(connectors).not.toContain('__proto__');
   });
 });

@@ -19,3 +19,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function validated hostnames against loopback, link-local, and private IP ranges to block SSRF, but failed to intercept the IPv4 unspecified address `0.0.0.0`, the `0.0.0.0/8` local network block, or the IPv6 unspecified address `::` / `[::]`. Since many operating systems and network libraries resolve unspecified or wildcard addresses back to loopback (localhost), this allowed SSRF protection to be bypassed for networked adapters.
 **Learning:** Standard private/loopback IP validation must cover both unspecified/wildcard addresses and their broad local address blocks (`0.0.0.0/8` and `::`), as they route to localhost on most Unix-like platforms.
 **Prevention:** Explicitly block wildcard/unspecified IP formats (such as `0.0.0.0`, `::`) and the entire local network block `0.0.0.0/8` within any SSRF filtering layer.
+
+## 2026-08-01 - Prototype Pollution and Lookup Bypass in Bounty Connectors Registry
+**Vulnerability:** The bounty platform CONNECTORS registry was initialized as a standard object literal. Consequently, standard Javascript prototype properties (such as `toString` or `__proto__`) were queryable and could bypass platform checks or cause unexpected runtime behavior / prototype lookup vulnerabilities when calling platform connector helpers.
+**Learning:** Standard object literals inherit prototype properties that can be exploited in dynamic property lookups if user-supplied inputs are used as keys.
+**Prevention:** Instantiate internal registries using `Object.create(null)` to completely strip the prototype, check properties securely using `Object.prototype.hasOwnProperty.call`, and validate input dynamically using the registry's own keys via `listConnectors()`.
