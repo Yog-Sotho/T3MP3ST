@@ -899,6 +899,7 @@ class ConfigManager {
         openai: settings.apiKeys.openai ? '***REDACTED***' : undefined,
         xai: settings.apiKeys.xai ? '***REDACTED***' : undefined,
         nvidia: settings.apiKeys.nvidia ? '***REDACTED***' : undefined,
+        local: settings.apiKeys.local ? '***REDACTED***' : undefined,
       },
     };
     writeFileSync(filePath, JSON.stringify(safeSettings, null, 2));

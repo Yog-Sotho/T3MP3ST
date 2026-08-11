@@ -52,7 +52,7 @@ describe('API key environment handling hardening', () => {
   it('exportConfig redacts every supported provider key slot', () => {
     const block = exportConfigBlock();
 
-    for (const provider of ['openrouter', 'venice', 'anthropic', 'openai', 'xai']) {
+    for (const provider of ['openrouter', 'venice', 'anthropic', 'openai', 'xai', 'nvidia', 'local']) {
       expect(block).toContain(`${provider}: settings.apiKeys.${provider} ? '***REDACTED***' : undefined`);
     }
   });
