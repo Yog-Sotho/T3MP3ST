@@ -27,3 +27,7 @@
 ## 2025-03-09 - [BFS Reachability Queue Shifting and Backtracking Bottlenecks]
 **Learning:** In BFS reachability traversals over code call graphs, calling `queue.shift()` inside a while loop is $O(N)$ per element, leading to $O(N^2)$ time complexity on large graphs. Additionally, replicating and copying path arrays with `[...path, callee]` at every step incurs massive allocation/GC overhead. Finally, reconstructing paths backwards with individual backtracking on deeply nested linear structures results in $O(N^2)$ backtracking traversals.
 **Action:** Use a fast-read pointer index to dequeue in $O(1)$ time, record parent pointers during BFS in a simple `Map`, and reconstruct the paths in a single topological/BFS order pass to build path arrays with optimal $O(1)$ prepending of previously cached parent paths.
+
+## 2025-03-10 - [EvidenceVault High-Throughput Redundant Cloning and Allocation Bottlenecks]
+**Learning:** Query and statistic methods on database-like storage classes (such as `EvidenceVault`) can easily introduce silent, heavy CPU and memory churn if we first copy/clone all stored values (`getAllFindings()`) and then filter or aggregate them. Deeply cloning complex objects like findings recursively is extremely expensive, and creating multiple intermediate array allocations causes heavy GC pressure.
+**Action:** Use single-pass, allocation-free iteration (directly over Map `.values()`) and perform conditional/lazy cloning, copying only the matched elements. Compute all statistics in a single-pass loop without intermediate `.filter()` arrays.
