@@ -182,30 +182,58 @@ export class EvidenceVault extends EventEmitter<EvidenceVaultEvents> {
 
   /**
    * Get findings by severity
+   * ⚡ BOLT OPTIMIZATION: Avoid cloning all findings first. Instead, iterate through values and only clone matches.
    */
   getFindingsBySeverity(severity: Severity): Finding[] {
-    return this.getAllFindings().filter(f => f.severity === severity);
+    const matched: Finding[] = [];
+    for (const f of this.findings.values()) {
+      if (f.severity === severity) {
+        matched.push(cloneFinding(f));
+      }
+    }
+    return matched;
   }
 
   /**
    * Get findings by target
+   * ⚡ BOLT OPTIMIZATION: Avoid cloning all findings first. Instead, iterate through values and only clone matches.
    */
   getFindingsByTarget(targetId: string): Finding[] {
-    return this.getAllFindings().filter(f => f.targetId === targetId);
+    const matched: Finding[] = [];
+    for (const f of this.findings.values()) {
+      if (f.targetId === targetId) {
+        matched.push(cloneFinding(f));
+      }
+    }
+    return matched;
   }
 
   /**
    * Get findings by operator
+   * ⚡ BOLT OPTIMIZATION: Avoid cloning all findings first. Instead, iterate through values and only clone matches.
    */
   getFindingsByOperator(operatorId: string): Finding[] {
-    return this.getAllFindings().filter(f => f.operatorId === operatorId);
+    const matched: Finding[] = [];
+    for (const f of this.findings.values()) {
+      if (f.operatorId === operatorId) {
+        matched.push(cloneFinding(f));
+      }
+    }
+    return matched;
   }
 
   /**
    * Get verified findings
+   * ⚡ BOLT OPTIMIZATION: Avoid allocating intermediate arrays. Clone only when verified gate passes.
    */
   getVerifiedFindings(): Finding[] {
-    return Array.from(this.findings.values()).filter(hasPassedVerificationGate).map(cloneFinding);
+    const matched: Finding[] = [];
+    for (const f of this.findings.values()) {
+      if (hasPassedVerificationGate(f)) {
+        matched.push(cloneFinding(f));
+      }
+    }
+    return matched;
   }
 
   /**
@@ -248,20 +276,35 @@ export class EvidenceVault extends EventEmitter<EvidenceVaultEvents> {
 
   /**
    * Get credentials by type
+   * ⚡ BOLT OPTIMIZATION: Avoid intermediate getAllCredentials() array allocation.
    */
   getCredentialsByType(type: Credential['type']): Credential[] {
-    return this.getAllCredentials().filter(c => c.type === type);
+    const matched: Credential[] = [];
+    for (const c of this.credentials.values()) {
+      if (c.type === type) {
+        matched.push(c);
+      }
+    }
+    return matched;
   }
 
   /**
    * Get credentials by target
+   * ⚡ BOLT OPTIMIZATION: Avoid intermediate getAllCredentials() array allocation.
    */
   getCredentialsByTarget(targetId: string): Credential[] {
-    return this.getAllCredentials().filter(c => c.targetId === targetId);
+    const matched: Credential[] = [];
+    for (const c of this.credentials.values()) {
+      if (c.targetId === targetId) {
+        matched.push(c);
+      }
+    }
+    return matched;
   }
 
   /**
    * Get vault statistics
+   * ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding multiple intermediate array allocations and filter iterations.
    */
   getStats(): {
     totalFindings: number;
@@ -271,9 +314,6 @@ export class EvidenceVault extends EventEmitter<EvidenceVaultEvents> {
     validatedCredentials: number;
     riskScore: number;
   } {
-    const findings = Array.from(this.findings.values());
-    const credentials = this.getAllCredentials();
-
     const bySeverity: Record<Severity, number> = {
       critical: 0,
       high: 0,
@@ -283,17 +323,32 @@ export class EvidenceVault extends EventEmitter<EvidenceVaultEvents> {
     };
 
     let riskScore = 0;
-    for (const finding of findings) {
+    let verifiedFindings = 0;
+    let totalFindings = 0;
+    for (const finding of this.findings.values()) {
+      totalFindings++;
       bySeverity[finding.severity]++;
       riskScore += SEVERITY_SCORES[finding.severity];
+      if (hasPassedVerificationGate(finding)) {
+        verifiedFindings++;
+      }
+    }
+
+    let totalCredentials = 0;
+    let validatedCredentials = 0;
+    for (const credential of this.credentials.values()) {
+      totalCredentials++;
+      if (credential.validatedAt !== undefined) {
+        validatedCredentials++;
+      }
     }
 
     return {
-      totalFindings: findings.length,
-      verifiedFindings: findings.filter(hasPassedVerificationGate).length,
+      totalFindings,
+      verifiedFindings,
       bySeverity,
-      totalCredentials: credentials.length,
-      validatedCredentials: credentials.filter(c => c.validatedAt !== undefined).length,
+      totalCredentials,
+      validatedCredentials,
       riskScore,
     };
   }

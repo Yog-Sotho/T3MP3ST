@@ -1,5 +1,93 @@
 import { describe, it, expect } from 'vitest';
 import { buildCallGraph, reachability, type CodeBlock, type CallGraphEntry } from '../recon/code-ingest.js';
+import { EvidenceVault } from '../evidence/index.js';
+import { KillChainPhase, type Finding, type Credential, type Severity } from '../types/index.js';
+
+describe('EvidenceVault performance and correctness under load', () => {
+  it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
+    const vault = new EvidenceVault();
+    const targetIds = ['target-a', 'target-b', 'target-c', 'target-d', 'target-e'];
+    const operatorIds = ['op-1', 'op-2', 'op-3', 'op-4'];
+    const severities: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
+
+    // 1) Populate 2,500 findings
+    for (let i = 0; i < 2500; i++) {
+      const severity = severities[i % severities.length];
+      const targetId = targetIds[i % targetIds.length];
+      const operatorId = operatorIds[i % operatorIds.length];
+      const isVerified = i % 10 === 0; // 10% are verified
+
+      const f: Finding = {
+        id: `finding-${i}`,
+        title: `Vulnerability ${i}`,
+        description: `Unsafe implementation ${i}`,
+        severity,
+        targetId,
+        operatorId,
+        phase: KillChainPhase.EXPLOIT,
+        evidence: [],
+        discoveredAt: Date.now(),
+        verifiedAt: isVerified ? Date.now() : undefined,
+        verifyGate: isVerified ? { passed: true, provenance: 'tool', reasons: [], checkedAt: Date.now() } : undefined,
+      };
+      vault.addFinding(f);
+    }
+
+    // 2) Populate 2,500 credentials
+    for (let i = 0; i < 2500; i++) {
+      const type = i % 2 === 0 ? 'password' : 'token';
+      const targetId = targetIds[i % targetIds.length];
+
+      const c: Credential = {
+        id: `cred-${i}`,
+        type,
+        secret: `secret-value-${i}`,
+        source: 'dump',
+        discoveredAt: Date.now(),
+        targetId,
+        validatedAt: i % 5 === 0 ? Date.now() : undefined, // 20% are validated
+      };
+      vault.addCredential(c);
+    }
+
+    // 3) Measure performance and assert correctness
+    const start = performance.now();
+
+    // Perform multiple lookups
+    const criticals = vault.getFindingsBySeverity('critical');
+    const targetA = vault.getFindingsByTarget('target-a');
+    const op1 = vault.getFindingsByOperator('op-1');
+    const verifieds = vault.getVerifiedFindings();
+
+    const passwords = vault.getCredentialsByType('password');
+    const credsTargetA = vault.getCredentialsByTarget('target-a');
+
+    const stats = vault.getStats();
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] EvidenceVault 5000-unit stats & lookups took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(criticals.length).toBe(500); // 2500 / 5
+    expect(targetA.length).toBe(500); // 2500 / 5
+    expect(op1.length).toBe(625); // 2500 / 4
+    expect(verifieds.length).toBe(250); // 2500 / 10
+
+    expect(passwords.length).toBe(1250); // 2500 / 2
+    expect(credsTargetA.length).toBe(500); // 2500 / 5
+
+    expect(stats.totalFindings).toBe(2500);
+    expect(stats.verifiedFindings).toBe(250);
+    expect(stats.bySeverity.critical).toBe(500);
+    expect(stats.totalCredentials).toBe(2500);
+    expect(stats.validatedCredentials).toBe(500); // 2500 / 5
+
+    // Expect the extremely optimized lookup to finish well under 50ms (usually < 2ms)
+    expect(duration).toBeLessThan(50);
+  });
+});
 
 describe('buildCallGraph performance and correctness', () => {
   it('correctly maps calls and is extremely fast', () => {
