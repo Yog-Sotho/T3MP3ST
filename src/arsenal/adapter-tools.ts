@@ -70,8 +70,8 @@ export interface AdapterToolDeps {
 export function isRestrictedInternalIP(hostname: string): boolean {
   let ip = hostname.toLowerCase().replace(/^\[|\]$/g, '');
 
-  // Strip IPv4-mapped IPv6 address prefixes to extract raw IPv4
-  ip = ip.replace(/^::ffff:(?:0:)?/i, '');
+  // Strip IPv4-mapped and IPv4-compatible IPv6 address prefixes to extract raw IPv4
+  ip = ip.replace(/^::(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
 
   // Loopback and unspecified/wildcard addresses
   if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '0.0.0.0' || ip === '::') return true;
