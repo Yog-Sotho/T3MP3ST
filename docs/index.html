@@ -4171,8 +4171,8 @@
                             <span><kbd style="padding: 1px 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 3px; color: #888;">/</kbd> Search</span>
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <button onclick="toggleSoundCues()" id="soundToggleBtn" title="Toggle sound cues" style="padding: 3px 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; cursor: pointer; font-size: 10px; color: #555;">🔇</button>
-                            <button onclick="showMissionHistory()" title="Mission history" style="padding: 3px 8px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.15); border-radius: 3px; cursor: pointer; font-size: 8px; color: #0088ff; text-transform: uppercase; letter-spacing: 0.5px;">History</button>
+                            <button onclick="toggleSoundCues()" id="soundToggleBtn" title="Toggle sound cues" aria-label="Toggle sound cues" style="padding: 3px 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; cursor: pointer; font-size: 10px; color: #555;">🔇</button>
+                            <button onclick="showMissionHistory()" title="Mission history" aria-label="View mission history" style="padding: 3px 8px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.15); border-radius: 3px; cursor: pointer; font-size: 8px; color: #0088ff; text-transform: uppercase; letter-spacing: 0.5px;">History</button>
                         </div>
                     </div>
 
@@ -25157,7 +25157,7 @@ Be specific and actionable. Format as structured JSON.`;
       o.onclick = (e)=>{ if(e.target===o) window.closeAdmiralWizard(); };
       o.innerHTML = '<div style="'+css.card+'" onclick="event.stopPropagation()">'
         + '<div style="'+css.head+'"><div style="font-size:16px;font-weight:800;color:#5bb8ff;">⚓ Op Admiral — Guided Hunt</div>'
-        +   '<button type="button" class="modal-close" style="color:#7f93a5;font-size:20px;line-height:1;" onclick="window.closeAdmiralWizard()" aria-label="Close guided hunt wizard" title="Close">✕</button></div>'
+        +   '<button type="button" class="modal-close" style="color:#7f93a5;font-size:20px;line-height:1;" onclick="window.closeAdmiralWizard()" aria-label="Close guided hunt wizard" title="Close guided hunt wizard">✕</button></div>'
         + '<div id="admiralBody" style="'+css.body+'"></div>'
         + '<div style="'+css.foot+'"><span id="admiralDots" style="font-size:11px;color:#6b8090;"></span><div style="display:flex;gap:8px;">'
         +   '<button id="admiralBack" onclick="window.admiralBack()" style="'+css.btn+'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#bcd;">‹ Back</button>'
@@ -25339,7 +25339,7 @@ Be specific and actionable. Format as structured JSON.`;
     m.innerHTML = '<div onclick="event.stopPropagation()" style="width:min(840px,97vw);max-height:92vh;overflow:auto;background:linear-gradient(160deg,#0a141f,#0c1118);border:1px solid '+c+'55;border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,0.6);">'
       + '<div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);"><span style="font-size:24px;">'+(IC[o.archetype]||'🤖')+'</span>'
       +   '<div><div style="font-size:17px;font-weight:800;color:#e8f0f3;">'+esc(o.name)+'</div><div style="font-size:10px;color:'+c+';">'+esc(o.archetype)+' · '+esc(o.description)+'</div></div>'
-      +   '<button type="button" class="modal-close" style="margin-left:auto;color:#7f93a5;font-size:20px;" onclick="closeOperative()" aria-label="Close specialist editor" title="Close">✕</button></div>'
+      +   '<button type="button" class="modal-close" style="margin-left:auto;color:#7f93a5;font-size:20px;" onclick="closeOperative()" aria-label="Close specialist editor" title="Close specialist editor">✕</button></div>'
       + '<div style="padding:18px 20px;">'
       +   '<div style="font-size:10px;color:#8aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Tools ('+(o.defaultTools||[]).length+')</div>'
       +   '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;">'+(o.defaultTools||[]).map(t=>'<span style="font-size:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 7px;color:#bcd;font-family:\'JetBrains Mono\',monospace;">'+esc(t)+'</span>').join('')+'</div>'
