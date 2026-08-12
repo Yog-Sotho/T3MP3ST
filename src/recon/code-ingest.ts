@@ -616,8 +616,8 @@ export function reachability(
   entryPointIds: string[],
 ): Record<string, Reachability> {
   const result: Record<string, Reachability> = {};
-  for (const id of Object.keys(callGraph)) {
-    result[id] = { reachable: false, reachDepth: Infinity, paths: [] };
+  for (const id in callGraph) {
+    result[id] = { reachable: false, reachDepth: -1, paths: [] };
   }
 
   // ⚡ BOLT OPTIMIZATION: Avoid expensive O(N) array-shifting (`queue.shift()`)
@@ -628,11 +628,14 @@ export function reachability(
   const parentMap = new Map<string, string>();
   let head = 0;
 
-  for (const id of entryPointIds) {
-    if (!(id in result)) continue;
-    result[id].reachable = true;
-    result[id].reachDepth = 0;
-    queue.push(id);
+  for (let i = 0; i < entryPointIds.length; i++) {
+    const id = entryPointIds[i];
+    const res = result[id];
+    if (res) {
+      res.reachable = true;
+      res.reachDepth = 0;
+      queue.push(id);
+    }
   }
 
   while (head < queue.length) {
@@ -640,7 +643,9 @@ export function reachability(
     const depth = result[id].reachDepth;
     const entry = callGraph[id];
     if (!entry) continue;
-    for (const callee of entry.callees) {
+    const callees = entry.callees;
+    for (let i = 0; i < callees.length; i++) {
+      const callee = callees[i];
       const cur = result[callee];
       if (cur && !cur.reachable) {
         cur.reachable = true;
@@ -652,20 +657,14 @@ export function reachability(
   }
 
   // Backtrack and construct paths in topological/BFS order so parents are always done before children.
+  // ⚡ BOLT OPTIMIZATION: Use .concat() instead of spread operator to avoid iterator overhead and speed up array copy.
   for (let i = 0; i < queue.length; i++) {
     const id = queue[i];
     const parent = parentMap.get(id);
     if (parent !== undefined) {
-      result[id].paths = [[...(result[parent].paths[0]), id]];
+      result[id].paths = [result[parent].paths[0].concat(id)];
     } else {
       result[id].paths = [[id]];
-    }
-  }
-
-  // Normalize unreachable Infinity depths to a sentinel that survives JSON.
-  for (const id of Object.keys(result)) {
-    if (!result[id].reachable) {
-      result[id].reachDepth = -1;
     }
   }
 

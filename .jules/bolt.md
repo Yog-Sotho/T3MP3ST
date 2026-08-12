@@ -31,3 +31,7 @@
 ## 2025-03-10 - [EvidenceVault High-Throughput Redundant Cloning and Allocation Bottlenecks]
 **Learning:** Query and statistic methods on database-like storage classes (such as `EvidenceVault`) can easily introduce silent, heavy CPU and memory churn if we first copy/clone all stored values (`getAllFindings()`) and then filter or aggregate them. Deeply cloning complex objects like findings recursively is extremely expensive, and creating multiple intermediate array allocations causes heavy GC pressure.
 **Action:** Use single-pass, allocation-free iteration (directly over Map `.values()`) and perform conditional/lazy cloning, copying only the matched elements. Compute all statistics in a single-pass loop without intermediate `.filter()` arrays.
+
+## 2025-03-11 - [BFS Reachability Spread vs Concat and Post-Normalization Churn]
+**Learning:** In deeply linear call graphs, reconstructing traversal path arrays inside topological iteration using the spread operator `[...result[parent].paths[0], id]` triggers heavy ES6 iterator overhead and massive allocation churn. Additionally, performing a second O(N) pass to post-normalize unreached nodes' default `Infinity` to `-1` adds redundant loop/GC overhead.
+**Action:** Initialize reachDepth to `-1` directly to eliminate the post-normalization pass completely, and replace array spread copy syntax with native `.concat(id)` to bypass iterator allocation overhead.
