@@ -16,6 +16,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { isRestrictedInternalIP } from './arsenal/adapter-tools.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -123,6 +124,14 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
         return JSON.stringify({
           error: 'Invalid target: only hostnames, IPv4/IPv6 addresses are allowed ([A-Za-z0-9._:-]).',
           target: typeof target === 'string' ? target : String(target)
+        }, null, 2);
+      }
+
+      // SSRF Protection: Prevent scanning loopback, internal networks, or metadata endpoints.
+      if (isRestrictedInternalIP(target)) {
+        return JSON.stringify({
+          error: `SSRF Blocked: target "${target}" is a restricted internal or loopback address.`,
+          target
         }, null, 2);
       }
 

@@ -193,6 +193,10 @@ describe('isRestrictedInternalIP', () => {
     it('blocks the full 127.0.0.0/8 range', () => expect(isRestrictedInternalIP('127.99.0.1')).toBe(true));
     it('blocks ::1', () => expect(isRestrictedInternalIP('::1')).toBe(true));
     it('blocks [::1]', () => expect(isRestrictedInternalIP('[::1]')).toBe(true));
+    it('blocks [::1%eth0]', () => expect(isRestrictedInternalIP('[::1%eth0]')).toBe(true));
+    it('blocks [::1%25eth0]', () => expect(isRestrictedInternalIP('[::1%25eth0]')).toBe(true));
+    it('blocks ::1%eth0', () => expect(isRestrictedInternalIP('::1%eth0')).toBe(true));
+    it('blocks [::ffff:127.0.0.1%eth0]', () => expect(isRestrictedInternalIP('[::ffff:127.0.0.1%eth0]')).toBe(true));
   });
 
   describe('RFC 1918 private ranges', () => {

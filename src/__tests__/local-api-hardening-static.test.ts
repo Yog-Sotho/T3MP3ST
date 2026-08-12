@@ -46,4 +46,10 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/bin === 'curl'/);
     expect(block).toMatch(/\/\^\[@<\]\/\.test/);
   });
+
+  it('mcp-server.ts contains SSRF protection using isRestrictedInternalIP', () => {
+    const mcpSource = readFileSync(join(process.cwd(), 'src/mcp-server.ts'), 'utf8');
+    expect(mcpSource).toMatch(/import\s+.*isRestrictedInternalIP/);
+    expect(mcpSource).toMatch(/isRestrictedInternalIP\(target\)/);
+  });
 });
