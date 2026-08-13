@@ -154,37 +154,77 @@ export class TargetEnvironment extends EventEmitter<TargetEvents> {
 
   /**
    * Get targets by zone
+   * ⚡ BOLT OPTIMIZATION: Use single-pass iteration directly over Map values,
+   * completely avoiding redundant intermediate array allocation and `.filter()` calls.
    */
   getTargetsByZone(zone: TargetZone): Target[] {
-    return this.getAllTargets().filter(t => t.zone === zone);
+    const matched: Target[] = [];
+    for (const t of this.targets.values()) {
+      if (t.zone === zone) {
+        matched.push(t);
+      }
+    }
+    return matched;
   }
 
   /**
    * Get targets by type
+   * ⚡ BOLT OPTIMIZATION: Use single-pass iteration directly over Map values,
+   * completely avoiding redundant intermediate array allocation and `.filter()` calls.
    */
   getTargetsByType(type: TargetType): Target[] {
-    return this.getAllTargets().filter(t => t.type === type);
+    const matched: Target[] = [];
+    for (const t of this.targets.values()) {
+      if (t.type === type) {
+        matched.push(t);
+      }
+    }
+    return matched;
   }
 
   /**
    * Get targets by status
+   * ⚡ BOLT OPTIMIZATION: Use single-pass iteration directly over Map values,
+   * completely avoiding redundant intermediate array allocation and `.filter()` calls.
    */
   getTargetsByStatus(status: TargetStatus): Target[] {
-    return this.getAllTargets().filter(t => t.status === status);
+    const matched: Target[] = [];
+    for (const t of this.targets.values()) {
+      if (t.status === status) {
+        matched.push(t);
+      }
+    }
+    return matched;
   }
 
   /**
    * Get owned targets
+   * ⚡ BOLT OPTIMIZATION: Use single-pass iteration directly over Map values,
+   * completely avoiding redundant intermediate array allocation and `.filter()` calls.
    */
   getOwnedTargets(): Target[] {
-    return this.getAllTargets().filter(t => t.status === 'owned');
+    const matched: Target[] = [];
+    for (const t of this.targets.values()) {
+      if (t.status === 'owned') {
+        matched.push(t);
+      }
+    }
+    return matched;
   }
 
   /**
    * Get vulnerable targets
+   * ⚡ BOLT OPTIMIZATION: Use single-pass iteration directly over Map values,
+   * completely avoiding redundant intermediate array allocation and `.filter()` calls.
    */
   getVulnerableTargets(): Target[] {
-    return this.getAllTargets().filter(t => t.status === 'vulnerable');
+    const matched: Target[] = [];
+    for (const t of this.targets.values()) {
+      if (t.status === 'vulnerable') {
+        matched.push(t);
+      }
+    }
+    return matched;
   }
 
   /**
@@ -196,6 +236,9 @@ export class TargetEnvironment extends EventEmitter<TargetEvents> {
 
   /**
    * Get statistics
+   * ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values.
+   * Completely avoids intermediate `getAllTargets()` array allocation, which saves
+   * memory allocations and GC overhead on hot paths.
    */
   getStats(): {
     total: number;
@@ -206,8 +249,6 @@ export class TargetEnvironment extends EventEmitter<TargetEvents> {
     vulnerable: number;
     totalVulnerabilities: number;
   } {
-    const targets = this.getAllTargets();
-
     const byZone: Record<TargetZone, number> = {
       external: 0,
       dmz: 0,
@@ -238,8 +279,10 @@ export class TargetEnvironment extends EventEmitter<TargetEvents> {
     };
 
     let totalVulnerabilities = 0;
+    let total = 0;
 
-    for (const target of targets) {
+    for (const target of this.targets.values()) {
+      total++;
       byZone[target.zone]++;
       byType[target.type]++;
       byStatus[target.status]++;
@@ -247,7 +290,7 @@ export class TargetEnvironment extends EventEmitter<TargetEvents> {
     }
 
     return {
-      total: targets.length,
+      total,
       byZone,
       byType,
       byStatus,

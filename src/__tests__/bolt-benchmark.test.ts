@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildCallGraph, reachability, type CodeBlock, type CallGraphEntry } from '../recon/code-ingest.js';
 import { EvidenceVault } from '../evidence/index.js';
-import { KillChainPhase, type Finding, type Credential, type Severity } from '../types/index.js';
+import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
+import { TargetEnvironment } from '../target/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -85,6 +86,56 @@ describe('EvidenceVault performance and correctness under load', () => {
     expect(stats.validatedCredentials).toBe(500); // 2500 / 5
 
     // Expect the extremely optimized lookup to finish well under 50ms (usually < 2ms)
+    expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('TargetEnvironment performance and correctness under load', () => {
+  it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
+    const env = new TargetEnvironment();
+    const zones: TargetZone[] = ['external', 'dmz', 'internal', 'restricted', 'airgapped'];
+    const types: TargetType[] = ['web_application', 'api', 'network', 'host', 'database', 'cloud', 'mobile', 'iot', 'container'];
+
+    // Populate 5,000 targets
+    for (let i = 0; i < 5000; i++) {
+      env.addTarget({
+        name: `Target-${i}`,
+        type: types[i % types.length],
+        zone: zones[i % zones.length],
+        address: `10.0.0.${i % 255}`,
+        port: 80 + (i % 100),
+        protocol: 'tcp',
+      });
+    }
+
+    const start = performance.now();
+
+    // Perform queries
+    const externalTargets = env.getTargetsByZone('external');
+    const apiTargets = env.getTargetsByType('api');
+    const scanningTargets = env.getTargetsByStatus('scanning');
+    const ownedTargets = env.getOwnedTargets();
+    const vulnerableTargets = env.getVulnerableTargets();
+
+    const stats = env.getStats();
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] TargetEnvironment 5000-unit stats & lookups took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(externalTargets.length).toBe(1000); // 5000 / 5
+    expect(apiTargets.length).toBe(556); // Math.ceil(5000 / 9)
+    expect(scanningTargets.length).toBe(0); // None are scanning initially
+    expect(ownedTargets.length).toBe(0); // None are owned initially
+    expect(vulnerableTargets.length).toBe(0); // None are vulnerable initially
+
+    expect(stats.total).toBe(5000);
+    expect(stats.byZone.external).toBe(1000);
+    expect(stats.byType.api).toBe(556);
+
+    // Expect the optimized lookup to finish extremely quickly, well under 50ms
     expect(duration).toBeLessThan(50);
   });
 });
