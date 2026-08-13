@@ -178,6 +178,9 @@ describe('isRestrictedInternalIP', () => {
     it('blocks [::127.0.0.1]', () => expect(isRestrictedInternalIP('[::127.0.0.1]')).toBe(true));
     it('blocks ::10.0.0.1', () => expect(isRestrictedInternalIP('::10.0.0.1')).toBe(true));
     it('allows ::8.8.8.8', () => expect(isRestrictedInternalIP('::8.8.8.8')).toBe(false));
+    it('blocks ::ffff:127.0.0.1%eth0', () => expect(isRestrictedInternalIP('::ffff:127.0.0.1%eth0')).toBe(true));
+    it('blocks [::ffff:127.0.0.1%25eth0]', () => expect(isRestrictedInternalIP('[::ffff:127.0.0.1%25eth0]')).toBe(true));
+    it('blocks ::ffff:10.0.0.1%eth0', () => expect(isRestrictedInternalIP('::ffff:10.0.0.1%eth0')).toBe(true));
   });
 
   describe('unspecified and wildcard addresses (0.0.0.0/8 and ::)', () => {

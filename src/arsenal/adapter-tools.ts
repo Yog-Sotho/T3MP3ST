@@ -70,6 +70,9 @@ export interface AdapterToolDeps {
 export function isRestrictedInternalIP(hostname: string): boolean {
   let ip = hostname.toLowerCase().replace(/^\[|\]$/g, '');
 
+  // Strip IPv6 zone indices (e.g., %eth0 or %25eth0)
+  ip = ip.split('%')[0];
+
   // Strip IPv4-mapped and IPv4-compatible IPv6 address prefixes to extract raw IPv4
   ip = ip.replace(/^::(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
 
