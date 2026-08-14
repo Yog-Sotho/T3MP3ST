@@ -248,7 +248,7 @@ describe('CommsChannel performance and correctness under load', () => {
         from,
         to,
         channel: channel.id,
-        type: 'text',
+        type: 'intel',
         content: `Message content ${i}`,
       });
     }
