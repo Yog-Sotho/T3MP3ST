@@ -4171,7 +4171,7 @@
                             <span><kbd style="padding: 1px 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 3px; color: #888;">/</kbd> Search</span>
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <button onclick="toggleSoundCues()" id="soundToggleBtn" title="Toggle sound cues" style="padding: 3px 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; cursor: pointer; font-size: 10px; color: #555;">🔇</button>
+                            <button onclick="toggleSoundCues()" id="soundToggleBtn" title="Toggle sound cues" aria-label="Unmute sound cues" style="padding: 3px 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; cursor: pointer; font-size: 10px; color: #555;">🔇</button>
                             <button onclick="showMissionHistory()" title="Mission history" style="padding: 3px 8px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.15); border-radius: 3px; cursor: pointer; font-size: 8px; color: #0088ff; text-transform: uppercase; letter-spacing: 0.5px;">History</button>
                         </div>
                     </div>
@@ -14031,7 +14031,10 @@ Be brutally honest. This is not a pep talk.`;
         function toggleSoundCues() {
             soundEnabled = !soundEnabled;
             const btn = document.getElementById('soundToggleBtn');
-            if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
+            if (btn) {
+                btn.textContent = soundEnabled ? '🔊' : '🔇';
+                btn.setAttribute('aria-label', soundEnabled ? 'Mute sound cues' : 'Unmute sound cues');
+            }
             if (soundEnabled && !audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
