@@ -34,3 +34,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function checked resolved IPv4-mapped/compatible IPv6 addresses against private/loopback IP blocks, but failed to strip IPv6 zone indices (such as `%eth0` or URL-encoded `%25eth0`) if appended to the input IP string. This allowed the address to bypass the extraction regex pattern matching, resulting in an SSRF bypass.
 **Learning:** Checking for IPv4-mapped formats using strict regex patterns can be bypassed if characters like zone indices are allowed to persist at the end of the address. Any network/URI parsers and resolvers might still process the address as loopback or local.
 **Prevention:** Explicitly strip zone indices (by splitting on `%` character) before executing any format-dependent security filtering or IP regex matches.
+
+## 2026-08-04 - SSRF Bypass via Alternative IPv4 Formats
+**Vulnerability:** The `isRestrictedInternalIP` function checked if a given hostname was a restricted loopback or private IP, but failed to handle alternative IPv4 representations (such as decimal IPs like `2130706433`, hexadecimal IPs like `0x7f000001`, octal IPs like `0177.0.0.1`, or shortened notations like `127.1`). Since many operating systems, DNS/IP resolvers, and HTTP libraries naturally parse these representations to standard internal IPs, this allowed SSRF protection to be bypassed for networked adapters.
+**Learning:** Hardened IP filtering must not rely on simple dot-decimal regex pattern matching. It must convert any potential IP string into its standard canonical representation before performing range checks.
+**Prevention:** Implement a full `inet_aton` parser to normalize alternative IPv4 formats into standard dot-decimal form before checking private, loopback, and local address spaces.
