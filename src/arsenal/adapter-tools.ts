@@ -63,6 +63,58 @@ export interface AdapterToolDeps {
 // =============================================================================
 
 /**
+ * Parse an alternative IPv4 representation (hex, octal, decimal, or shortened)
+ * to its standard dot-decimal format. Returns null if invalid or not an alternative IP.
+ */
+function parseAlternativeIPv4(hostname: string): string | null {
+  const parts = hostname.split('.');
+  if (parts.length > 4 || parts.length === 0) return null;
+
+  const numericParts: number[] = [];
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) return null;
+
+    let val = -1;
+    if (/^0x[0-9a-f]+$/i.test(trimmed)) {
+      val = parseInt(trimmed, 16);
+    } else if (/^0[0-7]+$/.test(trimmed)) {
+      val = parseInt(trimmed, 8);
+    } else if (/^\d+$/.test(trimmed)) {
+      val = parseInt(trimmed, 10);
+    } else {
+      return null;
+    }
+
+    if (isNaN(val) || val < 0) return null;
+    numericParts.push(val);
+  }
+
+  const len = numericParts.length;
+  if (len === 4) {
+    if (numericParts.some(x => x > 255)) return null;
+    return numericParts.join('.');
+  }
+  if (len === 3) {
+    if (numericParts[0] > 255 || numericParts[1] > 255 || numericParts[2] > 65535) return null;
+    const p3 = numericParts[2];
+    return `${numericParts[0]}.${numericParts[1]}.${(p3 >> 8) & 255}.${p3 & 255}`;
+  }
+  if (len === 2) {
+    if (numericParts[0] > 255 || numericParts[1] > 16777215) return null;
+    const p2 = numericParts[1];
+    return `${numericParts[0]}.${(p2 >> 16) & 255}.${(p2 >> 8) & 255}.${p2 & 255}`;
+  }
+  if (len === 1) {
+    if (numericParts[0] > 4294967295) return null;
+    const p1 = numericParts[0];
+    return `${(p1 >>> 24) & 255}.${(p1 >>> 16) & 255}.${(p1 >>> 8) & 255}.${p1 & 255}`;
+  }
+
+  return null;
+}
+
+/**
  * SSRF Protection: Detect restricted internal IP addresses and metadata endpoints.
  * Prevents access to localhost, private ranges, and cloud provider metadata services.
  * Used defensively by all HTTP-based tools to block SSRF attacks.
@@ -73,8 +125,17 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip IPv6 zone indices (e.g., %eth0 or %25eth0)
   ip = ip.split('%')[0];
 
-  // Strip IPv4-mapped and IPv4-compatible IPv6 address prefixes to extract raw IPv4
-  ip = ip.replace(/^::(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
+  // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped IPv6)
+  const ipv6PrefixRegex = /^::(?:ffff:(?:0:)?)?/i;
+  const hasPrefix = ipv6PrefixRegex.test(ip);
+  const potentialIp = hasPrefix ? ip.replace(ipv6PrefixRegex, '') : ip;
+  const parsed = parseAlternativeIPv4(potentialIp);
+  if (parsed) {
+    ip = parsed;
+  } else {
+    // Fallback to legacy mapped/compatible regex
+    ip = ip.replace(/^::(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
+  }
 
   // Loopback and unspecified/wildcard addresses
   if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '0.0.0.0' || ip === '::') return true;

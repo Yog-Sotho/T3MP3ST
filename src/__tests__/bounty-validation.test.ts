@@ -220,6 +220,28 @@ describe('isRestrictedInternalIP', () => {
     it('is case-insensitive for IPv6', () => expect(isRestrictedInternalIP('FE80::1')).toBe(true));
   });
 
+  describe('alternative IPv4 representation formats (decimal, hex, octal, shortened)', () => {
+    it('blocks decimal representation of 127.0.0.1', () => expect(isRestrictedInternalIP('2130706433')).toBe(true));
+    it('blocks hexadecimal representation of 127.0.0.1', () => expect(isRestrictedInternalIP('0x7f000001')).toBe(true));
+    it('blocks octal representation of 127.0.0.1', () => expect(isRestrictedInternalIP('0177.0.0.1')).toBe(true));
+    it('blocks shortened decimal/hex representations of 127.0.0.1', () => {
+      expect(isRestrictedInternalIP('127.1')).toBe(true);
+      expect(isRestrictedInternalIP('127.0.1')).toBe(true);
+      expect(isRestrictedInternalIP('0x7f.1')).toBe(true);
+    });
+    it('blocks IPv4-mapped alternative representations', () => {
+      expect(isRestrictedInternalIP('::ffff:2130706433')).toBe(true);
+      expect(isRestrictedInternalIP('[::ffff:0x7f000001]')).toBe(true);
+    });
+    it('blocks octal private ranges (e.g. 10.0.0.1 in octal is 012.0.0.1)', () => {
+      expect(isRestrictedInternalIP('012.0.0.1')).toBe(true);
+    });
+    it('allows non-restricted alternative IPs', () => {
+      expect(isRestrictedInternalIP('134744072')).toBe(false); // 8.8.8.8 in decimal
+      expect(isRestrictedInternalIP('0x08080808')).toBe(false); // 8.8.8.8 in hex
+    });
+  });
+
   describe('public addresses (should not block)', () => {
     it('allows 8.8.8.8', () => expect(isRestrictedInternalIP('8.8.8.8')).toBe(false));
     it('allows 1.1.1.1', () => expect(isRestrictedInternalIP('1.1.1.1')).toBe(false));
