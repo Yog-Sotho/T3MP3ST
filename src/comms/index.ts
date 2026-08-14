@@ -41,6 +41,11 @@ export class CommsChannel extends EventEmitter<CommsEvents> {
   private messages: Message[] = [];
   private subscriptions: Map<string, Set<string>> = new Map(); // channelId -> Set<operatorId>
 
+  // ⚡ BOLT OPTIMIZATION: Indexing Maps to provide O(1) message lookups and avoid slow O(N) array filtering.
+  private messagesByRecipient: Map<string, Message[]> = new Map();
+  private messagesBySender: Map<string, Message[]> = new Map();
+  private messagesByChannel: Map<string, Message[]> = new Map();
+
   /**
    * Create a new channel
    */
@@ -160,6 +165,41 @@ export class CommsChannel extends EventEmitter<CommsEvents> {
     };
 
     this.messages.push(message);
+
+    // ⚡ BOLT OPTIMIZATION: Add to O(1) indices
+    let senderMsgs = this.messagesBySender.get(message.from);
+    if (!senderMsgs) {
+      senderMsgs = [];
+      this.messagesBySender.set(message.from, senderMsgs);
+    }
+    senderMsgs.push(message);
+
+    let channelMsgs = this.messagesByChannel.get(message.channel);
+    if (!channelMsgs) {
+      channelMsgs = [];
+      this.messagesByChannel.set(message.channel, channelMsgs);
+    }
+    channelMsgs.push(message);
+
+    if (typeof message.to === 'string') {
+      let recipientMsgs = this.messagesByRecipient.get(message.to);
+      if (!recipientMsgs) {
+        recipientMsgs = [];
+        this.messagesByRecipient.set(message.to, recipientMsgs);
+      }
+      recipientMsgs.push(message);
+    } else {
+      for (let j = 0; j < message.to.length; j++) {
+        const r = message.to[j];
+        let recipientMsgs = this.messagesByRecipient.get(r);
+        if (!recipientMsgs) {
+          recipientMsgs = [];
+          this.messagesByRecipient.set(r, recipientMsgs);
+        }
+        recipientMsgs.push(message);
+      }
+    }
+
     this.emit('message:sent', message);
 
     // Emit received event for each recipient
@@ -202,28 +242,29 @@ export class CommsChannel extends EventEmitter<CommsEvents> {
 
   /**
    * Get messages for an operator
+   * ⚡ BOLT OPTIMIZATION: O(1) indexed lookup with O(K) shallow copy
    */
   getMessagesFor(operatorId: string): Message[] {
-    return this.messages.filter(m => {
-      if (typeof m.to === 'string') {
-        return m.to === operatorId;
-      }
-      return m.to.includes(operatorId);
-    });
+    const list = this.messagesByRecipient.get(operatorId);
+    return list ? [...list] : [];
   }
 
   /**
    * Get messages from an operator
+   * ⚡ BOLT OPTIMIZATION: O(1) indexed lookup with O(K) shallow copy
    */
   getMessagesFrom(operatorId: string): Message[] {
-    return this.messages.filter(m => m.from === operatorId);
+    const list = this.messagesBySender.get(operatorId);
+    return list ? [...list] : [];
   }
 
   /**
    * Get messages in a channel
+   * ⚡ BOLT OPTIMIZATION: O(1) indexed lookup with O(K) shallow copy
    */
   getChannelMessages(channelId: string): Message[] {
-    return this.messages.filter(m => m.channel === channelId);
+    const list = this.messagesByChannel.get(channelId);
+    return list ? [...list] : [];
   }
 
   /**
@@ -238,6 +279,9 @@ export class CommsChannel extends EventEmitter<CommsEvents> {
    */
   clearMessages(): void {
     this.messages = [];
+    this.messagesByRecipient.clear();
+    this.messagesBySender.clear();
+    this.messagesByChannel.clear();
   }
 }
 
