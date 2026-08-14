@@ -298,6 +298,32 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 5px 10px; font-size: 11px; }
 
+        .sound-toggle-btn {
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .sound-toggle-btn:hover {
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .sound-toggle-btn.active {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .sound-toggle-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+
         .page-content { padding: 25px; flex: 1; }
 
         .page { display: none; }
@@ -4171,7 +4197,7 @@
                             <span><kbd style="padding: 1px 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 3px; color: #888;">/</kbd> Search</span>
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <button onclick="toggleSoundCues()" id="soundToggleBtn" title="Toggle sound cues" aria-label="Unmute sound cues" style="padding: 3px 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; cursor: pointer; font-size: 10px; color: #555;">🔇</button>
+                            <button onclick="toggleSoundCues()" id="soundToggleBtn" class="sound-toggle-btn" title="Toggle sound cues" aria-label="Unmute sound cues">🔇</button>
                             <button onclick="showMissionHistory()" title="Mission history" style="padding: 3px 8px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.15); border-radius: 3px; cursor: pointer; font-size: 8px; color: #0088ff; text-transform: uppercase; letter-spacing: 0.5px;">History</button>
                         </div>
                     </div>
@@ -14034,6 +14060,11 @@ Be brutally honest. This is not a pep talk.`;
             if (btn) {
                 btn.textContent = soundEnabled ? '🔊' : '🔇';
                 btn.setAttribute('aria-label', soundEnabled ? 'Mute sound cues' : 'Unmute sound cues');
+                if (soundEnabled) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
             }
             if (soundEnabled && !audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();

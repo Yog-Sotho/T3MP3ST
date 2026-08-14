@@ -11,3 +11,7 @@
 ## 2025-02-23 - [Keyboard Accessibility and Semantic Buttons for Close Controls]
 **Learning:** Clickable span and icon-only text elements used for close controls inside dynamic templates are inherently non-semantic and hidden from standard screen reader navigation. Replacing them with native HTML `<button type="button">` elements inheriting Reset styles (such as `.modal-close`) seamlessly ensures screen reader detection, tab order, and standard Enter/Space keydown handling. Furthermore, adding specific `aria-label` and `title` attributes delivers proper accessibility and desktop hover tooltips.
 **Action:** When creating or modifying close icons or symbol buttons in HTML templates, always use native `<button type="button">` elements styled appropriately, and always accompany them with informative `aria-label` and `title` pairs.
+
+## 2025-03-01 - [High-Contrast Theme-Aligned Styling for Interactive Dashboard Cues]
+**Learning:** Interactive controls positioned on dark/black backgrounds suffer from severe visibility issues when using static low-contrast colors (like gray `#555`). Utilizing theme-aligned variables (`var(--text-secondary)`, `var(--accent)`) and interactive states (`hover`, `.active`, `:focus-visible`) resolves contrast ratios, ensures seamless keyboard navigation, and provides visual delight and clear affordances.
+**Action:** When styling toggle or control buttons in the dashboard toolbar, define clear hover, active state variations using theme variables, and include focus ring styling for focus-visible elements.
