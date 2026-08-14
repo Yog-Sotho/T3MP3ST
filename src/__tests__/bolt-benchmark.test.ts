@@ -3,6 +3,7 @@ import { buildCallGraph, reachability, type CodeBlock, type CallGraphEntry } fro
 import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
+import { CommsChannel } from '../comms/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -230,5 +231,46 @@ describe('buildCallGraph performance and correctness', () => {
 
     // Verify performance
     expect(duration).toBeLessThan(150);
+  });
+});
+
+describe('CommsChannel performance and correctness under load', () => {
+  it('correctly retrieves and indexes large message datasets with zero redundant filtering', () => {
+    const comms = new CommsChannel();
+    const channel = comms.createChannel({ name: 'test-channel', type: 'team' });
+    const operators = ['op-1', 'op-2', 'op-3', 'op-4'];
+
+    // 1) Populate 5,000 messages
+    for (let i = 0; i < 5000; i++) {
+      const from = operators[i % operators.length];
+      const to = operators[(i + 1) % operators.length];
+      comms.send({
+        from,
+        to,
+        channel: channel.id,
+        type: 'text',
+        content: `Message content ${i}`,
+      });
+    }
+
+    // 2) Measure performance and assert correctness
+    const start = performance.now();
+
+    const op1Recv = comms.getMessagesFor('op-1');
+    const op1Sent = comms.getMessagesFrom('op-1');
+    const channelMsgs = comms.getChannelMessages(channel.id);
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] CommsChannel 5000-unit stats & lookups took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(op1Recv.length).toBe(1250); // 5000 / 4
+    expect(op1Sent.length).toBe(1250); // 5000 / 4
+    expect(channelMsgs.length).toBe(5000);
+
+    // Expect the optimized index lookup to finish extremely quickly, well under 50ms
+    expect(duration).toBeLessThan(50);
   });
 });

@@ -35,3 +35,7 @@
 ## 2025-03-11 - [TargetEnvironment Redundant Array Allocation and Filter Bottlenecks]
 **Learning:** Storage/environment query methods (such as those in `TargetEnvironment`) that perform repeated filtering/searching of active targets are highly susceptible to redundant memory allocations and CPU churn when calling intermediate getters like `getAllTargets()`. Converting Map values into a full array only to immediately run `.filter()` creates massive array footprint allocations and garbage collection pauses under high-throughput settings.
 **Action:** Utilize single-pass, allocation-free iteration (looping directly over the Map `.values()`) and perform direct checks to push only match-filtered results into the final returned array. Compute all target statistics inside `getStats()` in a single-pass loop directly over the Map values.
+
+## 2025-03-12 - [CommsChannel Query Filter Bottleneck and Reference State Safety]
+**Learning:** High-throughput query routes on communication hubs (such as `CommsChannel`) can suffer from severe $O(N)$ linear-scan filter performance degradation under dense agent message polling. Simply returning the internal indexed array reference directly is a major reference-leak risk that allows external code to mutate private internal indexes.
+**Action:** Replace $O(N)$ message-filtering loops with $O(1)$ lookup maps and return a shallow copy of the matched subset `[...list]` to achieve extremely high throughput without compromising data encapsulation and state safety.
