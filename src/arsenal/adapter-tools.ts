@@ -126,7 +126,7 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   ip = ip.split('%')[0];
 
   // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped IPv6)
-  const ipv6PrefixRegex = /^::(?:ffff:(?:0:)?)?/i;
+  const ipv6PrefixRegex = /^(?:(?:0*:){1,5}|::)(?:ffff:(?:0:)?)?/i;
   const hasPrefix = ipv6PrefixRegex.test(ip);
   const potentialIp = hasPrefix ? ip.replace(ipv6PrefixRegex, '') : ip;
   const parsed = parseAlternativeIPv4(potentialIp);
@@ -134,11 +134,11 @@ export function isRestrictedInternalIP(hostname: string): boolean {
     ip = parsed;
   } else {
     // Fallback to legacy mapped/compatible regex
-    ip = ip.replace(/^::(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
+    ip = ip.replace(/^(?:(?:0*:){1,5}|::)(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
   }
 
   // Loopback and unspecified/wildcard addresses
-  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '0.0.0.0' || ip === '::') return true;
+  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '0.0.0.0' || /^(?:0|:)*1$/i.test(ip) || /^(?:0|:)+$/i.test(ip)) return true;
 
   // Private IPv4 and local ranges
   if (/^0\./.test(ip)) return true; // 0.0.0.0/8 (local network/wildcard addresses)
