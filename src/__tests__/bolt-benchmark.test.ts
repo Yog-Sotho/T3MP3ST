@@ -4,6 +4,60 @@ import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
+import { PackBoard, type LeadInput } from '../pack/board.js';
+
+describe('PackBoard performance and correctness under load', () => {
+  it('correctly retrieves and formats situationReport with zero redundant array allocations', () => {
+    const board = new PackBoard({ reportCharCap: 4000 });
+
+    // 1) Populate 5,000 leads across different agents and CWEs
+    for (let i = 0; i < 5000; i++) {
+      const leadInput: LeadInput = {
+        kind: i % 10 === 0 ? 'work' : 'lead',
+        title: `Vulnerability lead ${i} with extra text to test string length and formatting`,
+        where: { file: `src/module_${i % 100}.js`, line: (i * 13) % 500 },
+        vulnClass: i % 2 === 0 ? 'injection' : 'xss',
+        confidence: i % 3 === 0 ? 'high' : 'medium',
+        provenance: 'tool',
+        cwe: `CWE-${i % 50}`,
+      };
+      const lead = board.postLead(`agent-${i % 8}`, leadInput);
+
+      // Claim some leads
+      if (i % 7 === 0) {
+        board.claim(lead.id, `agent-${i % 8}`, lead.version, 120_000);
+      } else if (i % 13 === 0) {
+        board.setLeadStatus(`agent-${i % 8}`, lead.id, 'refuted');
+      }
+
+      // Endorse some leads
+      if (i % 5 === 0) {
+        board.endorse(`agent-${(i + 1) % 8}`, lead.id);
+      }
+    }
+
+    // 2) Populate agent heartbeats
+    for (let i = 0; i < 8; i++) {
+      board.heartbeat(`agent-${i}`, 'hunting', `Hunting on module ${i}`);
+    }
+
+    // 3) Measure performance for generating 100 situation reports
+    const start = performance.now();
+
+    for (let i = 0; i < 100; i++) {
+      const report = board.situationReport(`agent-${i % 8}`, { maxLeads: 8 });
+      expect(report.length).toBeLessThanOrEqual(4000);
+      expect(report).toContain('PACK BOARD');
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] PackBoard 5000-unit situationReport (x100) took: ${duration.toFixed(2)}ms`);
+
+    expect(duration).toBeLessThan(100);
+  });
+});
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {

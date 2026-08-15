@@ -39,3 +39,7 @@
 ## 2025-03-12 - [CommsChannel Query Filter Bottleneck and Reference State Safety]
 **Learning:** High-throughput query routes on communication hubs (such as `CommsChannel`) can suffer from severe $O(N)$ linear-scan filter performance degradation under dense agent message polling. Simply returning the internal indexed array reference directly is a major reference-leak risk that allows external code to mutate private internal indexes.
 **Action:** Replace $O(N)$ message-filtering loops with $O(1)$ lookup maps and return a shallow copy of the matched subset `[...list]` to achieve extremely high throughput without compromising data encapsulation and state safety.
+
+## 2025-03-13 - [PackBoard Situation Report Allocation Bottleneck]
+**Learning:** In shared agent workspaces like `PackBoard`, `situationReport()` is called at task start by every agent in the pack. Converting all board leads/agents into full intermediate arrays via `Array.from()` and chaining `.filter()`, `.sort()`, and `.slice()` created heavy heap allocation churn and GC overhead when boards held thousands of leads. Additionally, calling `this.getAllLeads()` cloned every lead on the board before filtering.
+**Action:** Use single-pass direct iteration over `Map.values()` to classify open, claimed, and refuted leads in a single loop, clone only matching items lazily, and truncate array length in-place after sorting only top candidates.

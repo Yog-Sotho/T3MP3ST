@@ -422,27 +422,50 @@ export class PackBoard extends EventEmitter<PackBoardEvents> {
     const cap = this.cfg.reportCharCap;
     const maxLeads = Math.max(0, opts.maxLeads ?? this.cfg.defaultMaxLeads);
     const now = this.now();
-    const all = Array.from(this.leads.values());
+
+    // Perform single-pass allocation-free classification directly over Map values to avoid
+    // generating intermediate arrays (e.g. Array.from(this.leads.values())) or multiple filter passes.
+    let totalLeads = 0;
+    const unclaimed: Lead[] = [];
+    const mine: Lead[] = [];
+    const refuted: Lead[] = [];
+
+    for (const l of this.leads.values()) {
+      totalLeads++;
+      if (l.status === 'open' && !(l.claim && l.claim.leaseUntil > now)) {
+        unclaimed.push(l);
+      }
+      if (l.claim && l.claim.by === forAgentId && l.claim.leaseUntil > now) {
+        mine.push(l);
+      }
+      if (l.status === 'refuted') {
+        refuted.push(l);
+      }
+    }
 
     // ── top-K UNCLAIMED open leads, ranked by smoke (chase-the-smoke), then recency ──
-    const unclaimed = all
-      .filter((l) => l.status === 'open' && !(l.claim && l.claim.leaseUntil > now))
-      .sort((a, b) => b.smoke - a.smoke || b.updatedAt - a.updatedAt)
-      .slice(0, maxLeads);
-
-    // ── the leads THIS agent currently holds a live lease on ──
-    const mine = all.filter((l) => l.claim && l.claim.by === forAgentId && l.claim.leaseUntil > now);
-
-    // ── refuted-guard keys to steer clear of (leads the quorum killed) ──
-    const refuted = all.filter((l) => l.status === 'refuted');
+    if (maxLeads > 0 && unclaimed.length > 0) {
+      unclaimed.sort((a, b) => b.smoke - a.smoke || b.updatedAt - a.updatedAt);
+      if (unclaimed.length > maxLeads) {
+        unclaimed.length = maxLeads;
+      }
+    } else if (maxLeads === 0) {
+      unclaimed.length = 0;
+    }
 
     // ── live agents (fresh heartbeat within the liveness window) ──
-    const live = Array.from(this.agents.values())
-      .filter((a) => a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs)
-      .sort((a, b) => b.lastSeen - a.lastSeen);
+    const live: AgentStatus[] = [];
+    for (const a of this.agents.values()) {
+      if (a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs) {
+        live.push(a);
+      }
+    }
+    if (live.length > 1) {
+      live.sort((a, b) => b.lastSeen - a.lastSeen);
+    }
 
     const lines: string[] = [];
-    lines.push(`PACK BOARD — situation for ${forAgentId} (${all.length} lead(s) total)`);
+    lines.push(`PACK BOARD — situation for ${forAgentId} (${totalLeads} lead(s) total)`);
 
     if (unclaimed.length) {
       lines.push('OPEN LEADS — unclaimed, hottest first (claim before you dig; don\'t re-tread):');
@@ -458,7 +481,8 @@ export class PackBoard extends EventEmitter<PackBoardEvents> {
     }
     if (refuted.length) {
       lines.push('REFUTED / CLEARED (quorum killed these — do NOT resurface):');
-      for (const l of refuted.slice(0, maxLeads)) {
+      const refutedSlice = refuted.length > maxLeads ? refuted.slice(0, maxLeads) : refuted;
+      for (const l of refutedSlice) {
         const g = l.refutations.find((r) => r.guard)?.guard;
         lines.push(`  ✗ ${this.coords(l)} — ${clip(l.title, 70)}${g ? ` (guard: ${clip(g, 60)})` : ''}`);
       }
@@ -500,16 +524,32 @@ export class PackBoard extends EventEmitter<PackBoardEvents> {
 
   /** Open, currently-unclaimed leads (what a fresh agent can pick up). */
   getOpenLeads(now: number = this.now()): Lead[] {
-    return this.getAllLeads().filter((l) => l.status === 'open' && !(l.claim && l.claim.leaseUntil > now));
+    const openLeads: Lead[] = [];
+    for (const l of this.leads.values()) {
+      if (l.status === 'open' && !(l.claim && l.claim.leaseUntil > now)) {
+        openLeads.push(this.snapshotLead(l));
+      }
+    }
+    return openLeads;
   }
 
   getAgents(): AgentStatus[] {
-    return Array.from(this.agents.values(), (a) => ({ ...a }));
+    const agents: AgentStatus[] = [];
+    for (const a of this.agents.values()) {
+      agents.push({ ...a });
+    }
+    return agents;
   }
 
   /** Agents whose last heartbeat is within the liveness window. */
   getLiveAgents(now: number = this.now()): AgentStatus[] {
-    return this.getAgents().filter((a) => a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs);
+    const liveAgents: AgentStatus[] = [];
+    for (const a of this.agents.values()) {
+      if (a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs) {
+        liveAgents.push({ ...a });
+      }
+    }
+    return liveAgents;
   }
 }
 
