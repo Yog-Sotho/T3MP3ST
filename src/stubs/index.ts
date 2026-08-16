@@ -686,6 +686,20 @@ export const VULNERABILITY_PATTERNS: VulnerabilityPattern[] = [
   { pattern: "BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY", type: 'key-exposure' },
 ];
 
+// ⚡ BOLT OPTIMIZATION: Cache case-insensitive RegExp instances per pattern string.
+// Instantiating `new RegExp(p.pattern, 'i')` inside `matchPatterns` on hot string scanning loops
+// causes continuous regex compilation overhead and high heap allocation/GC churn.
+const PATTERN_REGEX_CACHE = new Map<string, RegExp>();
+
+function getPatternRegex(pattern: string): RegExp {
+  let re = PATTERN_REGEX_CACHE.get(pattern);
+  if (!re) {
+    re = new RegExp(pattern, 'i');
+    PATTERN_REGEX_CACHE.set(pattern, re);
+  }
+  return re;
+}
+
 export class KnowledgeBase extends EventEmitter<KnowledgeEvents> {
   private cves: CVEEntry[] = [...CVE_DATABASE];
   private techniques: MITRETechnique[] = [...MITRE_TECHNIQUES];
@@ -756,7 +770,16 @@ export class KnowledgeBase extends EventEmitter<KnowledgeEvents> {
   }
 
   matchPatterns(content: string): VulnerabilityPattern[] {
-    return this.patterns.filter((p) => new RegExp(p.pattern, 'i').test(content));
+    // ⚡ BOLT OPTIMIZATION: Use cached RegExp instances and indexed iteration to bypass iterator
+    // overhead and avoid creating new RegExp instances per call, supporting custom/cloned patterns safely.
+    const matched: VulnerabilityPattern[] = [];
+    for (let i = 0; i < this.patterns.length; i++) {
+      const p = this.patterns[i];
+      if (getPatternRegex(p.pattern).test(content)) {
+        matched.push(p);
+      }
+    }
+    return matched;
   }
 }
 
