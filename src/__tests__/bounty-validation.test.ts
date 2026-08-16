@@ -188,6 +188,8 @@ describe('isRestrictedInternalIP', () => {
     it('blocks the full 0.0.0.0/8 range', () => expect(isRestrictedInternalIP('0.1.2.3')).toBe(true));
     it('blocks ::', () => expect(isRestrictedInternalIP('::')).toBe(true));
     it('blocks [::]', () => expect(isRestrictedInternalIP('[::]')).toBe(true));
+    it('blocks zero-padded unspecified IPv6 0:0:0:0:0:0:0:0', () => expect(isRestrictedInternalIP('0:0:0:0:0:0:0:0')).toBe(true));
+    it('blocks zero-padded unspecified IPv6 ::0000', () => expect(isRestrictedInternalIP('::0000')).toBe(true));
   });
 
   describe('loopback addresses', () => {
@@ -196,6 +198,9 @@ describe('isRestrictedInternalIP', () => {
     it('blocks the full 127.0.0.0/8 range', () => expect(isRestrictedInternalIP('127.99.0.1')).toBe(true));
     it('blocks ::1', () => expect(isRestrictedInternalIP('::1')).toBe(true));
     it('blocks [::1]', () => expect(isRestrictedInternalIP('[::1]')).toBe(true));
+    it('blocks uncompressed loopback 0:0:0:0:0:0:0:1', () => expect(isRestrictedInternalIP('0:0:0:0:0:0:0:1')).toBe(true));
+    it('blocks bracketed uncompressed loopback [0000:0000:0000:0000:0000:0000:0000:0001]', () => expect(isRestrictedInternalIP('[0000:0000:0000:0000:0000:0000:0000:0001]')).toBe(true));
+    it('blocks zero-padded loopback ::0001', () => expect(isRestrictedInternalIP('::0001')).toBe(true));
   });
 
   describe('RFC 1918 private ranges', () => {
@@ -232,6 +237,8 @@ describe('isRestrictedInternalIP', () => {
     it('blocks IPv4-mapped alternative representations', () => {
       expect(isRestrictedInternalIP('::ffff:2130706433')).toBe(true);
       expect(isRestrictedInternalIP('[::ffff:0x7f000001]')).toBe(true);
+      expect(isRestrictedInternalIP('0:0:0:0:0:ffff:127.0.0.1')).toBe(true);
+      expect(isRestrictedInternalIP('[0000:0000:0000:0000:0000:ffff:10.0.0.1]')).toBe(true);
     });
     it('blocks octal private ranges (e.g. 10.0.0.1 in octal is 012.0.0.1)', () => {
       expect(isRestrictedInternalIP('012.0.0.1')).toBe(true);
