@@ -16,6 +16,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { isRestrictedInternalIP } from './arsenal/adapter-tools.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -106,7 +107,7 @@ async function runTool(
 
 
 
-async function handleToolCall(name: string, args: Record<string, unknown>): Promise<string> {
+export async function handleToolCall(name: string, args: Record<string, unknown>): Promise<string> {
   switch (name) {
     // =========================================================================
     // SECURITY RECON
@@ -123,6 +124,21 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
         return JSON.stringify({
           error: 'Invalid target: only hostnames, IPv4/IPv6 addresses are allowed ([A-Za-z0-9._:-]).',
           target: typeof target === 'string' ? target : String(target)
+        }, null, 2);
+      }
+
+      // Hardening: Block option-looking targets (flag injection) & SSRF targets
+      if (target.startsWith('-')) {
+        return JSON.stringify({
+          error: `Invalid target: option-looking target '${target}' is not allowed.`,
+          target
+        }, null, 2);
+      }
+
+      if (isRestrictedInternalIP(target)) {
+        return JSON.stringify({
+          error: `SSRF DENIED: Target '${target}' resolves to a restricted loopback, local, or private address.`,
+          target
         }, null, 2);
       }
 
