@@ -3506,8 +3506,8 @@
                                 <div style="font-size:10px; color:#0088ff; letter-spacing:1.5px; font-weight:bold;">▌ SYSTEM EVENTS</div>
                                 <div style="display:flex; gap:6px; align-items:center;">
                                     <span id="sysEventCount" style="font-size:9px; color:#555;">0</span>
-                                    <button onclick="t3mpSysEventsPaused=!t3mpSysEventsPaused; this.textContent=t3mpSysEventsPaused?'▶':'⏸';" title="Pause/resume stream" style="font-size:9px; background:none; border:1px solid #333; border-radius:3px; color:#888; cursor:pointer; padding:1px 6px;">⏸</button>
-                                    <button onclick="var t=document.getElementById('sysEventTerminal'); if(t)t.innerHTML='';" title="Clear" style="font-size:9px; background:none; border:1px solid #333; border-radius:3px; color:#888; cursor:pointer; padding:1px 6px;">CLR</button>
+                                    <button type="button" onclick="t3mpSysEventsPaused=!t3mpSysEventsPaused; this.textContent=t3mpSysEventsPaused?'▶':'⏸'; this.title=t3mpSysEventsPaused?'Resume stream':'Pause stream'; this.setAttribute('aria-label', t3mpSysEventsPaused?'Resume system event stream':'Pause system event stream');" title="Pause stream" aria-label="Pause system event stream" style="font-size:9px; background:none; border:1px solid #333; border-radius:3px; color:#888; cursor:pointer; padding:1px 6px;">⏸</button>
+                                    <button type="button" onclick="var t=document.getElementById('sysEventTerminal'); if(t)t.innerHTML='';" title="Clear system event log" aria-label="Clear system event log" style="font-size:9px; background:none; border:1px solid #333; border-radius:3px; color:#888; cursor:pointer; padding:1px 6px;">CLR</button>
                                 </div>
                             </div>
                             <div id="sysEventTerminal" style="flex:1; max-height:188px; min-height:132px; overflow-y:auto; padding:7px 12px; font-size:10.5px; line-height:1.5;">
