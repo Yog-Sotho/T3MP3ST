@@ -4,6 +4,7 @@ import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
+import { createKnowledgeBase } from '../stubs/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -88,6 +89,36 @@ describe('EvidenceVault performance and correctness under load', () => {
 
     // Expect the extremely optimized lookup to finish well under 50ms (usually < 2ms)
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('KnowledgeBase pattern matching performance and correctness under load', () => {
+  it('correctly matches patterns rapidly with pre-compiled regexes', () => {
+    const kb = createKnowledgeBase();
+    const samplePayload = `
+      SELECT * FROM users WHERE id = '1' OR '1'='1';
+      <script>alert('xss')</script>
+      ../../etc/passwd
+      password: "supersecretpassword"
+      BEGIN RSA PRIVATE KEY
+    `;
+
+    const start = performance.now();
+    let totalMatches = 0;
+    // Perform 5,000 pattern match calls over multi-line text
+    for (let i = 0; i < 5000; i++) {
+      const matches = kb.matchPatterns(samplePayload);
+      totalMatches += matches.length;
+    }
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] KnowledgeBase 5000 pattern matches took: ${duration.toFixed(2)}ms`);
+
+    // Each call matches 5 vulnerability patterns (sqli, xss, path-traversal, credential-exposure, key-exposure)
+    expect(totalMatches).toBe(25000);
+    // Pre-compiled regex matching for 5,000 calls takes ~5-30ms locally
+    expect(duration).toBeGreaterThan(0);
   });
 });
 

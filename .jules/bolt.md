@@ -39,3 +39,7 @@
 ## 2025-03-12 - [CommsChannel Query Filter Bottleneck and Reference State Safety]
 **Learning:** High-throughput query routes on communication hubs (such as `CommsChannel`) can suffer from severe $O(N)$ linear-scan filter performance degradation under dense agent message polling. Simply returning the internal indexed array reference directly is a major reference-leak risk that allows external code to mutate private internal indexes.
 **Action:** Replace $O(N)$ message-filtering loops with $O(1)$ lookup maps and return a shallow copy of the matched subset `[...list]` to achieve extremely high throughput without compromising data encapsulation and state safety.
+
+## 2025-03-13 - [KnowledgeBase Pattern Match RegExp Compilation Bottleneck]
+**Learning:** Instantiating `new RegExp(p.pattern, 'i')` dynamically inside `matchPatterns` loops recreates regex objects on every scan invocation. Additionally, relying on array identity checks (e.g. `this.patterns === DEFAULT_PATTERNS`) is fragile and breaks whenever patterns are cloned or dynamically modified.
+**Action:** Maintain a pattern string to `RegExp` lookup Map (`PATTERN_REGEX_CACHE`) to lazily cache compiled RegExp objects per pattern string, avoiding RegExp instantiation overhead across all custom and default pattern lists.
