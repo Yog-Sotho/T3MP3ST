@@ -46,4 +46,11 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/bin === 'curl'/);
     expect(block).toMatch(/\/\^\[@<\]\/\.test/);
   });
+
+  it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {
+    const route = routeBlock("app.post('/api/tools/recon'", "app.get('/api/tools'");
+
+    expect(route).toMatch(/targetHost\.startsWith\(['"]-['"]\)/);
+    expect(route).toMatch(/isRestrictedInternalIP\(targetHost\)/);
+  });
 });

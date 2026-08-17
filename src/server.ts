@@ -32,6 +32,7 @@ import type { OperatorArchetype } from './types/index.js';
 import { listOperatorPrompts, setOperatorOverride, resetOperatorOverride, type OperatorOverride } from './operators/index.js';
 import { ingestRepoToSourceContext, runWhiteboxAnalysis, resolveContainedRepoPath, RepoPathError } from './recon/whitebox.js';
 import { redactCredential } from './evidence/index.js';
+import { isRestrictedInternalIP } from './arsenal/adapter-tools.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -5989,6 +5990,14 @@ app.post('/api/tools/recon', async (req: Request, res: Response): Promise<void> 
   const targetHost = hostFromTarget(target);
   if (!/^[a-z0-9._:-]+$/i.test(targetHost)) {
     res.status(400).json({ error: 'Target contains unsupported characters' });
+    return;
+  }
+  if (targetHost.startsWith('-')) {
+    res.status(400).json({ error: `Option-looking target '${targetHost}' is not allowed.` });
+    return;
+  }
+  if (isRestrictedInternalIP(targetHost)) {
+    res.status(400).json({ error: `SSRF DENIED: Target '${targetHost}' resolves to a restricted loopback, local, or private address.` });
     return;
   }
   const guard = guardAction(body, 'network_request', targetHost, `Recon scan against ${targetHost}`);
