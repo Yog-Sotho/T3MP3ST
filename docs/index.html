@@ -298,6 +298,13 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 5px 10px; font-size: 11px; }
 
+        .btn:focus-visible,
+        .api-reconnect-btn:focus-visible,
+        .cmd-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
         .sound-toggle-btn {
             padding: 3px 8px;
             background: rgba(255, 255, 255, 0.05);
