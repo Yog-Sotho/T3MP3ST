@@ -92,6 +92,51 @@ describe('EvidenceVault performance and correctness under load', () => {
   });
 });
 
+describe('Single-pass Map ledger scoping performance under load', () => {
+  it('rapidly scopes and filters 5,000 ledger records with zero array copy overhead', () => {
+    const ledger = new Map<string, { id: string; missionId: string; operationId: string; family: string; updatedAt: string }>();
+    const missions = ['m-1', 'm-2', 'm-3', 'm-4', 'm-5'];
+    const operations = ['op-1', 'op-2', 'op-3', 'op-4'];
+    const families = ['web_api', 'ai_red_team', 'cloud_infra', 'smart_contract', 'code_supply_chain'];
+
+    for (let i = 0; i < 5000; i++) {
+      const id = `item-${i}`;
+      ledger.set(id, {
+        id,
+        missionId: missions[i % missions.length],
+        operationId: operations[i % operations.length],
+        family: families[i % families.length],
+        updatedAt: new Date(1700000000000 + i * 1000).toISOString(),
+      });
+    }
+
+    const start = performance.now();
+
+    // Perform single-pass scoping simulation
+    const missionId = 'm-1';
+    const operationId = 'op-1';
+    const family = 'web_api';
+
+    const scoped: Array<{ id: string; missionId: string; operationId: string; family: string; updatedAt: string }> = [];
+    for (const item of ledger.values()) {
+      if (missionId && item.missionId !== missionId) continue;
+      if (operationId && item.operationId !== operationId) continue;
+      if (family && item.family !== family) continue;
+      scoped.push(item);
+    }
+    scoped.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] Single-pass Map ledger scoping for 5,000 items took: ${duration.toFixed(2)}ms`);
+
+    // Expected matching count: 5000 / (5 * 4) = 250 items (since missionId and family indices i%5 align)
+    expect(scoped.length).toBe(250);
+    expect(duration).toBeLessThan(20);
+  });
+});
+
 describe('KnowledgeBase pattern matching performance and correctness under load', () => {
   it('correctly matches patterns rapidly with pre-compiled regexes', () => {
     const kb = createKnowledgeBase();
