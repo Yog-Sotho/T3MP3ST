@@ -1653,19 +1653,27 @@ function buildMissionGate(operationDraft: Record<string, unknown>): Record<strin
 }
 
 function scopedHypotheses(missionId = '', operationId = '', family?: MissionFamily): HypothesisRecord[] {
-  return [...hypothesisLedger.values()]
-    .filter(hypothesis => !missionId || hypothesis.missionId === missionId)
-    .filter(hypothesis => !operationId || hypothesis.operationId === operationId)
-    .filter(hypothesis => !family || hypothesis.family === family)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding multiple intermediate array allocations and filter passes.
+  const res: HypothesisRecord[] = [];
+  for (const h of hypothesisLedger.values()) {
+    if (missionId && h.missionId !== missionId) continue;
+    if (operationId && h.operationId !== operationId) continue;
+    if (family && h.family !== family) continue;
+    res.push(h);
+  }
+  return res.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 function scopedWorkOrders(missionId = '', operationId = '', family?: MissionFamily): WorkOrderRecord[] {
-  return [...workOrderLedger.values()]
-    .filter(order => !missionId || order.missionId === missionId)
-    .filter(order => !operationId || order.operationId === operationId)
-    .filter(order => !family || order.family === family)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding multiple intermediate array allocations and filter passes.
+  const res: WorkOrderRecord[] = [];
+  for (const o of workOrderLedger.values()) {
+    if (missionId && o.missionId !== missionId) continue;
+    if (operationId && o.operationId !== operationId) continue;
+    if (family && o.family !== family) continue;
+    res.push(o);
+  }
+  return res.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 function missionLaneSummary(params: {
@@ -2587,21 +2595,29 @@ function buildReproPacks(params: Record<string, unknown>): Record<string, any> {
   const requestedFamily = typeof params.family === 'string' ? normalizeMissionFamily(params.family, 'web_api') : undefined;
   const target = normalizeTargetValue(params.target || operationDraft.target);
   const findingId = typeof params.findingId === 'string' ? params.findingId : '';
-  const scopedFindings = [...findingsLedger.values()]
-    .filter(finding => !missionId || finding.missionId === missionId)
-    .filter(finding => !operationId || finding.operationId === operationId)
-    .filter(finding => !requestedFamily || finding.family === requestedFamily)
-    .filter(finding => !findingId || finding.id === findingId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values and Set-based lookup for linked evidence.
+  const scopedFindings: FindingRecord[] = [];
+  for (const finding of findingsLedger.values()) {
+    if (missionId && finding.missionId !== missionId) continue;
+    if (operationId && finding.operationId !== operationId) continue;
+    if (requestedFamily && finding.family !== requestedFamily) continue;
+    if (findingId && finding.id !== findingId) continue;
+    scopedFindings.push(finding);
+  }
+  scopedFindings.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
   const scopedHypothesesList = scopedHypotheses(missionId, operationId, requestedFamily);
   const scopedOrders = scopedWorkOrders(missionId, operationId, requestedFamily);
   const packs = scopedFindings.map(finding => {
-    const evidence = uniqueStrings([
-      ...finding.evidenceIds,
-      ...[...evidenceLedger.values()]
-        .filter(entry => entry.findingId === finding.id)
-        .map(entry => entry.id),
-    ]).map(id => evidenceLedger.get(id)).filter(Boolean) as EvidenceEntry[];
+    const linkedEvidenceIds = new Set(finding.evidenceIds);
+    for (const entry of evidenceLedger.values()) {
+      if (entry.findingId === finding.id) linkedEvidenceIds.add(entry.id);
+    }
+    const evidence: EvidenceEntry[] = [];
+    for (const id of linkedEvidenceIds) {
+      const e = evidenceLedger.get(id);
+      if (e) evidence.push(e);
+    }
     const evidenceProvenance = summarizeEvidenceProvenance(evidence);
     const proofLevel = strongestEvidenceStrength(evidence);
     const strongEvidence = evidence.filter(entry => evidenceStrengthRank(entry.provenanceStrength || inferEvidenceProvenanceStrength(entry)) >= evidenceStrengthRank('tool'));
