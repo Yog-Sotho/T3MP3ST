@@ -43,3 +43,7 @@
 ## 2025-03-13 - [KnowledgeBase Pattern Match RegExp Compilation Bottleneck]
 **Learning:** Instantiating `new RegExp(p.pattern, 'i')` dynamically inside `matchPatterns` loops recreates regex objects on every scan invocation. Additionally, relying on array identity checks (e.g. `this.patterns === DEFAULT_PATTERNS`) is fragile and breaks whenever patterns are cloned or dynamically modified.
 **Action:** Maintain a pattern string to `RegExp` lookup Map (`PATTERN_REGEX_CACHE`) to lazily cache compiled RegExp objects per pattern string, avoiding RegExp instantiation overhead across all custom and default pattern lists.
+
+## 2025-03-14 - [TaskQueue Linear Search and Multi-Pass Sort Bottlenecks]
+**Learning:** High-throughput mission task queues that perform $O(N)$ linear array searches (`this.tasks.find(...)`) on every status update, assignment, or task check experience significant CPU degradation under large task volume. Additionally, calling `add()` iteratively in `addMany()` re-sorts the queue array $N$ times unnecessarily.
+**Action:** Maintain an internal `tasksById` Map index to execute $O(1)$ task lookups across `getTask`, `updateStatus`, `assign`, and `remove`. Defer array sorting in `addMany` to a single pass after all tasks are populated.

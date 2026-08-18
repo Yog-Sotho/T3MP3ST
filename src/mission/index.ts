@@ -77,12 +77,15 @@ export function createStrictRoE(): RulesOfEngagement {
 
 export class TaskQueue extends EventEmitter<TaskQueueEvents> {
   private tasks: Task[] = [];
+  // ⚡ BOLT OPTIMIZATION: Maintain an O(1) task lookup map by ID to avoid linear scans on update, assign, getTask, and remove.
+  private tasksById: Map<string, Task> = new Map();
 
   /**
    * Add a task to the queue
    */
   add(task: Task): void {
     this.tasks.push(task);
+    this.tasksById.set(task.id, task);
     this.sortByPriority();
     this.emit('task:added', task);
   }
@@ -91,8 +94,14 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    * Add multiple tasks
    */
   addMany(tasks: Task[]): void {
+    // ⚡ BOLT OPTIMIZATION: Populate all tasks and sort once at the end instead of re-sorting N times in a loop.
     for (const task of tasks) {
-      this.add(task);
+      this.tasks.push(task);
+      this.tasksById.set(task.id, task);
+    }
+    this.sortByPriority();
+    for (const task of tasks) {
+      this.emit('task:added', task);
     }
   }
 
@@ -130,7 +139,7 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    * Update a task's status
    */
   updateStatus(taskId: string, status: Task['status'], result?: TaskResult): Task | undefined {
-    const task = this.tasks.find(t => t.id === taskId);
+    const task = this.tasksById.get(taskId);
     if (task) {
       task.status = status;
       if (result) task.result = result;
@@ -144,14 +153,14 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    * Get a task by ID
    */
   getTask(taskId: string): Task | undefined {
-    return this.tasks.find(t => t.id === taskId);
+    return this.tasksById.get(taskId);
   }
 
   /**
    * Mark a task as assigned to an operator
    */
   assign(taskId: string, operatorId: string): void {
-    const task = this.tasks.find(t => t.id === taskId);
+    const task = this.tasksById.get(taskId);
     if (task) {
       task.status = 'assigned';
       task.assignedTo = operatorId;
@@ -177,9 +186,13 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    * Remove a task
    */
   remove(taskId: string): Task | undefined {
-    const index = this.tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) {
-      const [task] = this.tasks.splice(index, 1);
+    const task = this.tasksById.get(taskId);
+    if (task) {
+      this.tasksById.delete(taskId);
+      const index = this.tasks.findIndex(t => t.id === taskId);
+      if (index !== -1) {
+        this.tasks.splice(index, 1);
+      }
       this.emit('task:removed', task);
       if (this.tasks.length === 0) {
         this.emit('queue:empty');
@@ -215,6 +228,7 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    */
   clear(): void {
     this.tasks = [];
+    this.tasksById.clear();
   }
 }
 
