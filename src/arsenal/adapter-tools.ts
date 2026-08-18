@@ -120,7 +120,34 @@ function parseAlternativeIPv4(hostname: string): string | null {
  * Used defensively by all HTTP-based tools to block SSRF attacks.
  */
 export function isRestrictedInternalIP(hostname: string): boolean {
-  let ip = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  let ip = hostname.toLowerCase().trim();
+
+  // Strip scheme if present (e.g. http://, https://)
+  ip = ip.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+
+  // Strip path, query, and fragment (e.g. /path, ?query, #fragment)
+  ip = ip.split('/')[0].split('?')[0].split('#')[0];
+
+  // Strip brackets for IPv6 / bracketed hosts (e.g. [::1]:8080 or [127.0.0.1])
+  if (ip.startsWith('[')) {
+    const end = ip.indexOf(']');
+    if (end !== -1) {
+      ip = ip.slice(1, end);
+    } else {
+      ip = ip.slice(1);
+    }
+  } else {
+    // Strip port suffix for IPv4 / hostname / single-colon target if present
+    const firstColon = ip.indexOf(':');
+    const lastColon = ip.lastIndexOf(':');
+    if (firstColon !== -1 && firstColon === lastColon) {
+      const possiblePort = ip.slice(lastColon + 1);
+      const portNum = Number(possiblePort);
+      if (/^\d{1,5}$/.test(possiblePort) && Number.isInteger(portNum) && portNum >= 0 && portNum <= 65535) {
+        ip = ip.slice(0, lastColon);
+      }
+    }
+  }
 
   // Strip IPv6 zone indices (e.g., %eth0 or %25eth0)
   ip = ip.split('%')[0];

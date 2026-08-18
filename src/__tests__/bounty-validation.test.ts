@@ -255,6 +255,28 @@ describe('isRestrictedInternalIP', () => {
     it('allows example.com', () => expect(isRestrictedInternalIP('example.com')).toBe(false));
     it('allows 203.0.113.1', () => expect(isRestrictedInternalIP('203.0.113.1')).toBe(false));
     it('allows 2001:db8::1 (documentation prefix)', () => expect(isRestrictedInternalIP('2001:db8::1')).toBe(false));
+
+    describe('port-appended, scheme-prefixed, and path-appended target inputs', () => {
+      it('blocks localhost with port numbers', () => expect(isRestrictedInternalIP('localhost:8080')).toBe(true));
+      it('blocks 127.0.0.1 with port numbers', () => expect(isRestrictedInternalIP('127.0.0.1:8080')).toBe(true));
+      it('blocks bracketed IPv6 loopback with port numbers', () => expect(isRestrictedInternalIP('[::1]:8080')).toBe(true));
+      it('blocks bracketed unspecified IPv6 with port numbers', () => expect(isRestrictedInternalIP('[::]:8000')).toBe(true));
+      it('blocks decimal IP with port numbers', () => expect(isRestrictedInternalIP('2130706433:8080')).toBe(true));
+      it('blocks hex IP with port numbers', () => expect(isRestrictedInternalIP('0x7f000001:8080')).toBe(true));
+      it('blocks link-local IPv6 with port numbers', () => expect(isRestrictedInternalIP('[fe80::1]:8080')).toBe(true));
+      it('blocks cloud metadata endpoint with port numbers', () => expect(isRestrictedInternalIP('169.254.169.254:80')).toBe(true));
+      it('blocks mapped IPv6 with port numbers', () => expect(isRestrictedInternalIP('[::ffff:10.0.0.1]:8080')).toBe(true));
+      it('blocks scheme and path prefixed internal addresses', () => {
+        expect(isRestrictedInternalIP('http://localhost:8080/latest/meta-data/')).toBe(true);
+        expect(isRestrictedInternalIP('https://[::1]:8443/api/v1')).toBe(true);
+        expect(isRestrictedInternalIP('http://127.0.0.1:3333/ui/')).toBe(true);
+      });
+      it('allows public IPs/hostnames with port numbers and paths', () => {
+        expect(isRestrictedInternalIP('8.8.8.8:53')).toBe(false);
+        expect(isRestrictedInternalIP('example.com:8080')).toBe(false);
+        expect(isRestrictedInternalIP('https://example.com:8443/test')).toBe(false);
+      });
+    });
   });
 });
 
