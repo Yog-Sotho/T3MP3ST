@@ -13889,7 +13889,7 @@ Be brutally honest. This is not a pep talk.`;
                 <div style="color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor:pointer;" title="Click for full detail — ${escapeHtml(f.detail || f.title)}" onclick="showFindingDetail(${f.id - 1})">${escapeHtml(f.title)}${provBadge}</div>
                 <div style="color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px;" title="${escapeHtml(f.target)}">${escapeHtml(f.target)}</div>
                 <div style="color: #555; font-size: 9px;">${f.phase}</div>
-                <div><button onclick="copyFinding(${f.id - 1})" title="Copy" style="background: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; color: #555; cursor: pointer; font-size: 10px; padding: 1px 5px;">⧉</button></div>
+                <div><button type="button" onclick="copyFinding(${f.id - 1}, this)" title="Copy finding details" aria-label="Copy finding details" style="background: none; border: 1px solid var(--border-color); border-radius: 3px; color: var(--text-secondary); cursor: pointer; font-size: 10px; padding: 1px 5px; transition: all 0.2s;" onmouseenter="this.style.color='var(--accent)'; this.style.borderColor='var(--accent)';" onmouseleave="this.style.color='var(--text-secondary)'; this.style.borderColor='var(--border-color)';">⧉</button></div>
             `;
 
             body.insertBefore(row, body.firstChild);
@@ -13912,12 +13912,24 @@ Be brutally honest. This is not a pep talk.`;
             });
         }
 
-        function copyFinding(index) {
+        function copyFinding(index, btn) {
             const f = missionFindings[index];
             if (!f) return;
             const text = `[${f.severity.toUpperCase()}] ${f.title}\nTarget: ${f.target}\nPhase: ${f.phase}\nTime: ${f.timestamp}\n${f.detail ? 'Detail: ' + f.detail + '\n' : ''}${f.evidence ? 'Evidence: ' + f.evidence : ''}`;
             navigator.clipboard.writeText(text).then(() => {
                 addIntel('SYSTEM', 'Finding copied to clipboard', 'success');
+                if (btn) {
+                    const origText = btn.textContent;
+                    const origLabel = btn.getAttribute('aria-label');
+                    btn.textContent = '✓';
+                    btn.style.color = 'var(--accent)';
+                    btn.setAttribute('aria-label', 'Copied finding details');
+                    setTimeout(() => {
+                        btn.textContent = origText;
+                        btn.style.color = 'var(--text-secondary)';
+                        if (origLabel) btn.setAttribute('aria-label', origLabel);
+                    }, 1500);
+                }
             }).catch(() => {});
         }
 
