@@ -49,3 +49,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function evaluated target hostnames for restricted internal addresses, but failed to strip scheme prefixes (`http://`, `https://`), path/query/fragment suffixes (`/path`), or port suffixes (`:port`) before parsing alternative IPv4 formats or matching loopback/private IP strings. As a result, inputs like `localhost:8080`, `[::1]:8080`, or `127.0.0.1:8080` bypassed internal IP checks when passed to networked tools or API parameters expecting full target strings.
 **Learning:** Security validation functions checking host/IP properties must canonicalize inputs by stripping schemes, paths, bracket wrappers, and port numbers before performing IP range or representation checks.
 **Prevention:** Normalize input targets in IP/host validators by stripping scheme prefixes (`/^[a-z][a-z0-9+.-]*:\/\//i`), URL paths (`split('/')[0]`), bracket wrappers (`[...]`), and trailing port numbers (`:\d+`) prior to address pattern matching.
+
+## 2026-08-07 - Whitelisted Binary Flag Injection via GDB/R2 Command Evaluation
+**Vulnerability:** Whitelisted binaries (`gdb`, `r2`, `file`, `sqlmap`, `nikto`) lacked flag injection guards in `parseCommand`, allowing arbitrary shell command execution via flags like `gdb -ex "shell <cmd>"` or `r2 -c "!<cmd>"` when passed to `/api/tools/execute`.
+**Learning:** Whitelisting binaries without restricting dangerous flags (command evaluation or file import options) permits arbitrary command execution or local file access through direct subprocess arguments.
+**Prevention:** Maintain explicit `dangerousFlags` regex filters blocking `-ex`, `-c`, `-f`, `--os-cmd`, and config/script options for all whitelisted tools that support nested command or file evaluation.

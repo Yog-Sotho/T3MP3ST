@@ -408,6 +408,11 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     curl: /^(-o|--output|-K|--config|-T|--upload-file|-x|--proxy|--preproxy|-D|--dump-header|--trace|--trace-ascii|-w|--write-out|--cert|--key|--cacert|--capath|--cert-type|--key-type|--output-dir|--create-dirs|-c|--cookie-jar)$/i,
     nmap: /^(-o[NXGAS]|--script|--script-args|--script-args-file|--script-help|--script-updatedb|-iL|--excludefile|--datadir|--servicedb|--versiondb|--resume|--stylesheet|--webxml)$/i,
     dig: /^(-f)$/i,
+    gdb: /^(-ex|-iex|-x|-ix|--command|--eval-command|--init-command|--init-eval-command)$/i,
+    r2: /^(-c|-i)$/i,
+    file: /^(-f|--files-from)$/i,
+    sqlmap: /^(--file-read|--file-write|--file-dest|--os-cmd|--os-shell|--os-pwn|--sql-shell|--sql-file|--config)$/i,
+    nikto: /^(-config|-mutate-options)$/i,
   };
 
   const pattern = dangerousFlags[bin];
