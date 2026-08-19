@@ -47,3 +47,7 @@
 ## 2025-03-14 - [TaskQueue Linear Search and Multi-Pass Sort Bottlenecks]
 **Learning:** High-throughput mission task queues that perform $O(N)$ linear array searches (`this.tasks.find(...)`) on every status update, assignment, or task check experience significant CPU degradation under large task volume. Additionally, calling `add()` iteratively in `addMany()` re-sorts the queue array $N$ times unnecessarily.
 **Action:** Maintain an internal `tasksById` Map index to execute $O(1)$ task lookups across `getTask`, `updateStatus`, `assign`, and `remove`. Defer array sorting in `addMany` to a single pass after all tasks are populated.
+
+## 2025-03-15 - [Panel Adjudication Cite-Check Re-Parsing Bottleneck]
+**Learning:** During pack audit adjudication, verifying cited killing guards across large panels of auditor/refuter votes re-tokenized and re-parsed source files on every single vote, causing $O(M \times L)$ CPU time (where $M$ is votes and $L$ is source lines) and taking over 4.7 seconds for 5,000 votes. Additionally, instantiating `new RegExp(...)` per source line inside guard checks caused heavy regex compilation overhead and heap object allocation.
+**Action:** Pre-compile `COMPARISON_G_RE` globally and reset `lastIndex = 0` per line. Cache cite-check verification results per unique file+quote in `downgradeUnverifiedRefutes()` to execute the cite-check once per unique guard across vote panels, reducing 5,000-vote adjudication time from ~4,777ms to 4.33ms (~1,100x speedup).

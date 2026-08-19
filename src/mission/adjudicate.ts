@@ -93,19 +93,31 @@ export interface Adjudication {
  * already been turned into SURVIVED before it's counted here.
  */
 export function adjudicate(verdicts: ReadonlyArray<RefuterVote | null | undefined>): Adjudication {
-  const valid = verdicts.filter(
-    (v): v is RefuterVote => v !== null && v !== undefined && (v.verdict === 'REFUTED' || v.verdict === 'SURVIVED'),
-  );
-  const refuted = valid.filter((v) => v.verdict === 'REFUTED');
-  const n = valid.length;
-  const majorityRefuted = n > 0 && refuted.length * 2 > n; // STRICT majority
+  // ⚡ BOLT OPTIMIZATION: Perform single-pass tallying over valid panel votes directly,
+  // completely eliminating intermediate `.filter()` and `.map()` array allocations.
+  let total = 0;
+  let refutedCount = 0;
+  const killing_guards: KillingGuard[] = [];
+
+  for (let i = 0; i < verdicts.length; i++) {
+    const v = verdicts[i];
+    if (v !== null && v !== undefined && (v.verdict === 'REFUTED' || v.verdict === 'SURVIVED')) {
+      total++;
+      if (v.verdict === 'REFUTED') {
+        refutedCount++;
+        if (v.killing_guard !== null && v.killing_guard !== undefined) {
+          killing_guards.push(v.killing_guard);
+        }
+      }
+    }
+  }
+
+  const majorityRefuted = total > 0 && refutedCount * 2 > total; // STRICT majority
   return {
-    verdict: n === 0 ? 'INCONCLUSIVE' : majorityRefuted ? 'REFUTED' : 'SURVIVED',
-    refutedCount: refuted.length,
-    total: n,
-    killing_guards: refuted
-      .map((v) => v.killing_guard)
-      .filter((g): g is KillingGuard => g !== null && g !== undefined),
+    verdict: total === 0 ? 'INCONCLUSIVE' : majorityRefuted ? 'REFUTED' : 'SURVIVED',
+    refutedCount,
+    total,
+    killing_guards,
   };
 }
 
@@ -124,10 +136,11 @@ const coreToken = (s: string): string => normalize(s).replace(/^[($@%\s]+/, '').
 
 // A comparison expression: `a OP b`, OP one of >= <= == != > < . The operand class allows the
 // token chars real code uses around a comparison (identifiers, member access `a.b`, pointer
-// `a->b`, calls `f()`, array `a[i]`). Kept as a SOURCE STRING so each scan spins up a fresh /g
-// instance — a shared `/g` RegExp is stateful (lastIndex) and would desync across lines.
+// `a->b`, calls `f()`, array `a[i]`). Pre-compiled global RegExp reused by resetting lastIndex=0.
 const COMPARISON_SRC = '([\\w.()\\[\\]>_$@-]+)\\s*(>=|<=|==|!=|>|<)\\s*([\\w.()\\[\\]>_$@-]+)';
 const COMPARISON_RE = new RegExp(COMPARISON_SRC);
+// ⚡ BOLT OPTIMIZATION: Module-level pre-compiled global RegExp to avoid re-compiling RegExp per source line.
+const COMPARISON_G_RE = new RegExp(COMPARISON_SRC, 'g');
 
 // The operator seen when the SAME comparison is written with its operands reversed (`a > b` ≡ `b < a`).
 // Used by the structural cite-check so a cited `a OP b` can verify against a source `b MIRROR[OP] a`.
@@ -332,7 +345,7 @@ function codeLinesOf(src: string, t: LangTraits): string[] {
       continue;
     }
     // ---- C++ raw string  (u8|u|U|L)?R"delim(…)delim"  ----
-    if (t.cppRaw && !isIdent(src[i - 1])) {
+    if (t.cppRaw && (c === 'R' || c === 'u' || c === 'U' || c === 'L') && !isIdent(src[i - 1])) {
       const m = src.slice(i, i + 4).match(/^(u8R|uR|UR|LR|R)"/);
       if (m) {
         let j = i + m[0].length, delim = '';
@@ -341,7 +354,7 @@ function codeLinesOf(src: string, t: LangTraits): string[] {
       }
     }
     // ---- Rust raw string  b?r#*"…"#*  ----
-    if (t.rustRaw && !isIdent(src[i - 1])) {
+    if (t.rustRaw && (c === 'r' || c === 'b') && !isIdent(src[i - 1])) {
       const m = src.slice(i, i + 260).match(/^b?r(#*)"/); // wide enough for any real `r####…"` hash run
       if (m) { blank(m[0].length); i = blankToClose(i + m[0].length, '"' + m[1]); continue; }
     }
@@ -493,19 +506,24 @@ export function guardExistsInSource(guard: KillingGuard | null | undefined, sour
     const b = coreToken(cited[3]);
     const op = cited[2];
     if (a && b && a !== b) {
-      for (const line of codeLines) {
-        const re = new RegExp(COMPARISON_SRC, 'g');
+      // ⚡ BOLT OPTIMIZATION: Reuse pre-compiled COMPARISON_G_RE and reset lastIndex=0 per line,
+      // avoiding thousands of `new RegExp` compilations on hot line scanning loops.
+      const re = COMPARISON_G_RE;
+      for (let i = 0; i < codeLines.length; i++) {
+        const line = codeLines[i];
+        re.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = re.exec(line)) !== null) {
           const la = coreToken(m[1]);
           const lb = coreToken(m[3]);
           const lop = m[2];
           // A source `<` whose right operand is immediately followed by `,`, `>`, or `<` opens a GENERIC
-          // argument list (`Map<K, V>`, `Vec<u8>`, `Nested<Vec<…>>`), not a comparison — skip it. A
-          // single-arg generic (`Box<T>`) is already rejected because the operand class captures its `>`
-          // (`t>` ≠ `t`); this closes the multi-arg case where a comma cleanly ends the operand.
+          // argument list (`Map<K, V>`, `Vec<u8>`, `Nested<Vec<…>>`), not a comparison — skip it.
           if (lop === '<') {
-            const nextCh = (line.slice(re.lastIndex).match(/^\s*(\S)/) ?? [])[1];
+            // ⚡ BOLT OPTIMIZATION: Direct character index check to skip whitespace without intermediate `slice` or match allocations.
+            let k = re.lastIndex;
+            while (k < line.length && (line[k] === ' ' || line[k] === '\t' || line[k] === '\r')) k++;
+            const nextCh = line[k];
             if (nextCh === ',' || nextCh === '>' || nextCh === '<') continue;
           }
           if (la === a && lb === b && lop === op) return true; // same order, same operator
@@ -544,15 +562,52 @@ export function downgradeUnverifiedRefutes(
   verdicts: ReadonlyArray<RefuterVote | null | undefined>,
   resolveSource: (file: string) => string | undefined,
 ): Array<RefuterVote | null> {
-  return verdicts.map((v) => {
-    if (v === null || v === undefined) return null;
-    if (v.verdict !== 'REFUTED') return { ...v };
-    const guard = v.killing_guard ?? null;
-    const source = guard ? resolveSource(guard.file) ?? '' : '';
-    if (guard && guardExistsInSource(guard, source)) {
-      return { ...v, guard_check: 'verified' as const };
+  // ⚡ BOLT OPTIMIZATION: Pre-allocate array size and use direct indexed loop over `verdicts`.
+  // Cache cite-check results per unique file+quote to avoid re-parsing/re-tokenizing source
+  // files repeatedly for identical cited guards across large vote panels.
+  const n = verdicts.length;
+  const out: Array<RefuterVote | null> = new Array(n);
+  const guardCheckCache = new Map<string, boolean>();
+
+  for (let i = 0; i < n; i++) {
+    const v = verdicts[i];
+    if (v === null || v === undefined) {
+      out[i] = null;
+      continue;
     }
-    // hallucinated / paraphrased-absent / missing-guard → cannot refute.
-    return { ...v, original_verdict: 'REFUTED' as const, verdict: 'SURVIVED' as const, guard_check: 'unverified' as const };
-  });
+    if (v.verdict !== 'REFUTED') {
+      out[i] = { ...v };
+      continue;
+    }
+    const guard = v.killing_guard ?? null;
+    if (!guard || !guard.quote || !guard.file) {
+      out[i] = {
+        ...v,
+        original_verdict: 'REFUTED' as const,
+        verdict: 'SURVIVED' as const,
+        guard_check: 'unverified' as const,
+      };
+      continue;
+    }
+
+    const cacheKey = `${guard.file}\0${guard.quote}`;
+    let verified = guardCheckCache.get(cacheKey);
+    if (verified === undefined) {
+      const source = resolveSource(guard.file) ?? '';
+      verified = guardExistsInSource(guard, source);
+      guardCheckCache.set(cacheKey, verified);
+    }
+
+    if (verified) {
+      out[i] = { ...v, guard_check: 'verified' as const };
+    } else {
+      out[i] = {
+        ...v,
+        original_verdict: 'REFUTED' as const,
+        verdict: 'SURVIVED' as const,
+        guard_check: 'unverified' as const,
+      };
+    }
+  }
+  return out;
 }

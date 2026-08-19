@@ -6,6 +6,7 @@ import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
 import { createKnowledgeBase } from '../stubs/index.js';
 import { TaskQueue } from '../mission/index.js';
+import { adjudicate, guardExistsInSource, downgradeUnverifiedRefutes, type RefuterVote } from '../mission/adjudicate.js';
 import type { Task } from '../types/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
@@ -360,6 +361,60 @@ describe('TaskQueue performance and correctness under load', () => {
     expect(queue.getTask('task-0')?.status).toBe('assigned');
     expect(queue.getTask('task-4200')).toBeUndefined();
     expect(duration).toBeLessThan(150);
+  });
+});
+
+describe('Adjudication and guardExistsInSource performance under load', () => {
+  it('rapidly verifies source guards and tallies large vote panels without redundant regex or array allocations', () => {
+    // 1) Prepare a 1,000-line mock source file
+    const sourceLines: string[] = [];
+    for (let i = 0; i < 1000; i++) {
+      if (i === 500) {
+        sourceLines.push('  if (n > cap) return; // real killing guard');
+      } else {
+        sourceLines.push(`  const var_${i} = ${i} * 2;`);
+      }
+    }
+    const source = sourceLines.join('\n');
+
+    // 2) Run 50 guard exists checks against the 1,000-line source file
+    const guardStart = performance.now();
+    let matches = 0;
+    const testGuard = { file: 'main.c', line: 501, quote: 'if (n > cap) return' };
+    for (let i = 0; i < 50; i++) {
+      if (guardExistsInSource(testGuard, source)) {
+        matches++;
+      }
+    }
+    const guardDuration = performance.now() - guardStart;
+
+    console.log(`[Bolt Benchmark] guardExistsInSource 50 checks over 1000-line source took: ${guardDuration.toFixed(2)}ms`);
+    expect(matches).toBe(50);
+    expect(guardDuration).toBeLessThan(150);
+
+    // 3) Create and adjudicate a 5,000-vote panel
+    const votes: RefuterVote[] = [];
+    for (let i = 0; i < 5000; i++) {
+      const isRefuted = i % 2 === 0;
+      votes.push({
+        verdict: isRefuted ? 'REFUTED' : 'SURVIVED',
+        killing_guard: isRefuted ? testGuard : null,
+      });
+    }
+
+    const resolveSource = (file: string) => (file === 'main.c' ? source : '');
+
+    const adjudicateStart = performance.now();
+    const downgraded = downgradeUnverifiedRefutes(votes, resolveSource);
+    const result = adjudicate(downgraded);
+    const adjudicateDuration = performance.now() - adjudicateStart;
+
+    console.log(`[Bolt Benchmark] Panel adjudication & cite-check for 5000 votes took: ${adjudicateDuration.toFixed(2)}ms`);
+
+    expect(result.total).toBe(5000);
+    expect(result.refutedCount).toBe(2500); // 5000 / 2 (strict majority requires > 2500)
+    expect(result.verdict).toBe('SURVIVED');
+    expect(adjudicateDuration).toBeLessThan(100);
   });
 });
 
