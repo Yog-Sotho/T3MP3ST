@@ -109,14 +109,23 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    * Get the next pending task
    */
   getNext(): Task | undefined {
-    return this.tasks.find(t => t.status === 'pending');
+    // ⚡ BOLT OPTIMIZATION: Use fast indexed loop to bypass iterator allocation.
+    for (let i = 0; i < this.tasks.length; i++) {
+      if (this.tasks[i].status === 'pending') return this.tasks[i];
+    }
+    return undefined;
   }
 
   /**
    * Get the next pending task for a specific operator type
    */
   getNextForArchetype(archetype: OperatorArchetype): Task | undefined {
-    return this.tasks.find(t => t.status === 'pending' && t.operatorType === archetype);
+    // ⚡ BOLT OPTIMIZATION: Use fast indexed loop to bypass iterator allocation.
+    for (let i = 0; i < this.tasks.length; i++) {
+      const t = this.tasks[i];
+      if (t.status === 'pending' && t.operatorType === archetype) return t;
+    }
+    return undefined;
   }
 
   /**
@@ -125,14 +134,24 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
   getPending(): Task[] {
     // Priority-ordered (desc): tool-verified follow-up tasks carry a higher priority than the static
     // seed tasks, so the swarm chases its hottest verified leads first — light orchestration.
-    return this.tasks.filter(t => t.status === 'pending').sort((a, b) => b.priority - a.priority);
+    // ⚡ BOLT OPTIMIZATION: Use single-pass indexed loop to collect pending tasks.
+    const pending: Task[] = [];
+    for (let i = 0; i < this.tasks.length; i++) {
+      if (this.tasks[i].status === 'pending') pending.push(this.tasks[i]);
+    }
+    return pending.sort((a, b) => b.priority - a.priority);
   }
 
   /**
    * Get all tasks for a mission
    */
   getForMission(missionId: string): Task[] {
-    return this.tasks.filter(t => t.missionId === missionId);
+    // ⚡ BOLT OPTIMIZATION: Single-pass loop to eliminate array allocation overhead.
+    const res: Task[] = [];
+    for (let i = 0; i < this.tasks.length; i++) {
+      if (this.tasks[i].missionId === missionId) res.push(this.tasks[i]);
+    }
+    return res;
   }
 
   /**
@@ -189,7 +208,9 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
     const task = this.tasksById.get(taskId);
     if (task) {
       this.tasksById.delete(taskId);
-      const index = this.tasks.findIndex(t => t.id === taskId);
+      // ⚡ BOLT OPTIMIZATION: Use native C++ reference equality via indexOf(task)
+      // instead of executing a JS closure function in findIndex for every array element.
+      const index = this.tasks.indexOf(task);
       if (index !== -1) {
         this.tasks.splice(index, 1);
       }
@@ -220,7 +241,12 @@ export class TaskQueue extends EventEmitter<TaskQueueEvents> {
    * Get pending count
    */
   get pendingCount(): number {
-    return this.tasks.filter(t => t.status === 'pending').length;
+    // ⚡ BOLT OPTIMIZATION: Count directly in single pass to avoid allocating intermediate array via .filter().
+    let count = 0;
+    for (let i = 0; i < this.tasks.length; i++) {
+      if (this.tasks[i].status === 'pending') count++;
+    }
+    return count;
   }
 
   /**
