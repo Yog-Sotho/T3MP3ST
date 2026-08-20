@@ -47,3 +47,7 @@
 ## 2025-03-14 - [TaskQueue Linear Search and Multi-Pass Sort Bottlenecks]
 **Learning:** High-throughput mission task queues that perform $O(N)$ linear array searches (`this.tasks.find(...)`) on every status update, assignment, or task check experience significant CPU degradation under large task volume. Additionally, calling `add()` iteratively in `addMany()` re-sorts the queue array $N$ times unnecessarily.
 **Action:** Maintain an internal `tasksById` Map index to execute $O(1)$ task lookups across `getTask`, `updateStatus`, `assign`, and `remove`. Defer array sorting in `addMany` to a single pass after all tasks are populated.
+
+## 2025-03-15 - [Native Reference Equality and Allocation-Free Iteration in TaskQueue]
+**Learning:** Calling `this.tasks.findIndex(t => t.id === taskId)` in `TaskQueue.prototype.remove` executes a JavaScript closure $N$ times per call. Replacing this with `this.tasks.indexOf(task)` leverages V8's native C++ reference equality check (`===`) directly over array elements, dramatically accelerating task removal. Additionally, replacing `.filter().length` in `pendingCount` and `.find()` in task lookup paths with indexed `for` loops eliminates intermediate array and iterator allocations on hot queuing loops.
+**Action:** Prefer native `indexOf(ref)` over `findIndex(predicate)` when looking up objects by known reference in arrays, and replace `.filter()` with indexed `for` loops on hot property getters to avoid intermediate array allocations.
