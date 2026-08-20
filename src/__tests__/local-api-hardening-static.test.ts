@@ -45,6 +45,11 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/dangerousFlags/);
     expect(block).toMatch(/bin === 'curl'/);
     expect(block).toMatch(/\/\^\[@<\]\/\.test/);
+    expect(block).toMatch(/gdb:\s*\/\^\(-ex\|-iex\|-x\|-ix\|--command\|--eval-command\|--init-command\|--init-eval-command\)\$\//);
+    expect(block).toMatch(/r2:\s*\/\^\(-c\|-i\)\$\//);
+    expect(block).toMatch(/file:\s*\/\^\(-f\|--files-from\)\$\//);
+    expect(block).toMatch(/sqlmap:\s*\/\^\(--file-read\|--file-write\|--file-dest\|--os-cmd\|--os-shell\|--os-pwn\|--sql-shell\|--sql-file\|--config\)\$\//);
+    expect(block).toMatch(/nikto:\s*\/\^\(-config\|-mutate-options\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {

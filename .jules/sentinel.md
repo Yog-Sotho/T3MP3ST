@@ -50,6 +50,10 @@
 **Learning:** Security validation functions checking host/IP properties must canonicalize inputs by stripping schemes, paths, bracket wrappers, and port numbers before performing IP range or representation checks.
 **Prevention:** Normalize input targets in IP/host validators by stripping scheme prefixes (`/^[a-z][a-z0-9+.-]*:\/\//i`), URL paths (`split('/')[0]`), bracket wrappers (`[...]`), and trailing port numbers (`:\d+`) prior to address pattern matching.
 
+## 2026-08-07 - Whitelisted Binary Flag Injection via GDB/R2 Command Evaluation
+**Vulnerability:** Whitelisted binaries (`gdb`, `r2`, `file`, `sqlmap`, `nikto`) lacked flag injection guards in `parseCommand`, allowing arbitrary shell command execution via flags like `gdb -ex "shell <cmd>"` or `r2 -c "!<cmd>"` when passed to `/api/tools/execute`.
+**Learning:** Whitelisting binaries without restricting dangerous flags (command evaluation or file import options) permits arbitrary command execution or local file access through direct subprocess arguments.
+**Prevention:** Maintain explicit `dangerousFlags` regex filters blocking `-ex`, `-c`, `-f`, `--os-cmd`, and config/script options for all whitelisted tools that support nested command or file evaluation.
 ## 2026-08-07 - SSRF Bypass via Userinfo Credentials in Target URLs
 **Vulnerability:** The `isRestrictedInternalIP` function evaluated target hostnames/URLs for restricted internal addresses, but failed to strip userinfo prefixes (e.g. `user:pass@`) prior to extracting bracketed IPv6/IPv4 hosts or parsing IP representations. As a result, target inputs containing userinfo like `user:pass@127.0.0.1` or `http://admin@169.254.169.254` bypassed SSRF checks because the `@` symbol prevented matching IP patterns or parsing logic.
 **Learning:** Host/IP validation logic must strip userinfo segments (`@`) along with schemes, paths, and ports during target URL canonicalization.
