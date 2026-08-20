@@ -4204,8 +4204,8 @@
                             <span><kbd style="padding: 1px 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 3px; color: #888;">/</kbd> Search</span>
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <button onclick="toggleSoundCues()" id="soundToggleBtn" class="sound-toggle-btn" title="Toggle sound cues" aria-label="Unmute sound cues">🔇</button>
-                            <button onclick="showMissionHistory()" title="Mission history" style="padding: 3px 8px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.15); border-radius: 3px; cursor: pointer; font-size: 8px; color: #0088ff; text-transform: uppercase; letter-spacing: 0.5px;">History</button>
+                            <button onclick="toggleSoundCues()" id="soundToggleBtn" class="sound-toggle-btn" title="Unmute sound cues" aria-label="Unmute sound cues">🔇</button>
+                            <button onclick="showMissionHistory()" title="View mission history" aria-label="View mission history" style="padding: 3px 8px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.15); border-radius: 3px; cursor: pointer; font-size: 8px; color: #0088ff; text-transform: uppercase; letter-spacing: 0.5px;">History</button>
                         </div>
                     </div>
 
@@ -8616,9 +8616,20 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
         }
 
         // First-run welcome overlay (lightweight, dismissible, no backend calls)
+        let welcomeKeydownHandler = null;
+        let welcomePreviousActiveElement = null;
+
         function dismissWelcome() {
             const el = document.getElementById('welcomeOverlay');
             if (el) el.classList.remove('active');
+            if (welcomeKeydownHandler && el) {
+                el.removeEventListener('keydown', welcomeKeydownHandler);
+                welcomeKeydownHandler = null;
+            }
+            if (welcomePreviousActiveElement && typeof welcomePreviousActiveElement.focus === 'function') {
+                welcomePreviousActiveElement.focus();
+                welcomePreviousActiveElement = null;
+            }
             try { localStorage.setItem('t3mp3st_seen_welcome', '1'); } catch (e) {}
         }
         function maybeShowWelcome() {
@@ -8626,7 +8637,37 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             try { seen = localStorage.getItem('t3mp3st_seen_welcome'); } catch (e) { return; }
             if (seen) return;
             const el = document.getElementById('welcomeOverlay');
-            if (el) el.classList.add('active');
+            if (!el) return;
+            welcomePreviousActiveElement = document.activeElement;
+            el.classList.add('active');
+
+            const focusableElements = el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusableElements.length > 0) {
+                setTimeout(() => focusableElements[0].focus(), 50);
+            } else {
+                el.focus();
+            }
+
+            if (welcomeKeydownHandler) {
+                el.removeEventListener('keydown', welcomeKeydownHandler);
+            }
+            welcomeKeydownHandler = function(e) {
+                if (e.key === 'Escape') {
+                    dismissWelcome();
+                } else if (e.key === 'Tab') {
+                    if (focusableElements.length === 0) return;
+                    const first = focusableElements[0];
+                    const last = focusableElements[focusableElements.length - 1];
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            };
+            el.addEventListener('keydown', welcomeKeydownHandler);
         }
         window.addEventListener('load', maybeShowWelcome);
 
@@ -14077,8 +14118,10 @@ Be brutally honest. This is not a pep talk.`;
             soundEnabled = !soundEnabled;
             const btn = document.getElementById('soundToggleBtn');
             if (btn) {
+                const label = soundEnabled ? 'Mute sound cues' : 'Unmute sound cues';
                 btn.textContent = soundEnabled ? '🔊' : '🔇';
-                btn.setAttribute('aria-label', soundEnabled ? 'Mute sound cues' : 'Unmute sound cues');
+                btn.setAttribute('aria-label', label);
+                btn.setAttribute('title', label);
                 if (soundEnabled) {
                     btn.classList.add('active');
                 } else {
@@ -17695,6 +17738,8 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
             }
             // Escape = abort mission or close modal
             if (e.key === 'Escape') {
+                const welcome = document.getElementById('welcomeOverlay');
+                if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
                 const modal = document.getElementById('modalOverlay');
                 if (modal && modal.classList.contains('active')) { closeModal(); return; }
                 if (missionRunning) { abortMission(false); return; }

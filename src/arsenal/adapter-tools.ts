@@ -128,6 +128,11 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip path, query, and fragment (e.g. /path, ?query, #fragment)
   ip = ip.split('/')[0].split('?')[0].split('#')[0];
 
+  // Strip userinfo prefix if present (e.g. user:pass@host or admin@host)
+  if (ip.includes('@')) {
+    ip = ip.slice(ip.lastIndexOf('@') + 1);
+  }
+
   // Strip brackets for IPv6 / bracketed hosts (e.g. [::1]:8080 or [127.0.0.1])
   if (ip.startsWith('[')) {
     const end = ip.indexOf(']');
