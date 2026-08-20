@@ -271,10 +271,19 @@ describe('isRestrictedInternalIP', () => {
         expect(isRestrictedInternalIP('https://[::1]:8443/api/v1')).toBe(true);
         expect(isRestrictedInternalIP('http://127.0.0.1:3333/ui/')).toBe(true);
       });
+      it('blocks userinfo-prefixed internal addresses', () => {
+        expect(isRestrictedInternalIP('user:pass@127.0.0.1')).toBe(true);
+        expect(isRestrictedInternalIP('http://user:pass@127.0.0.1')).toBe(true);
+        expect(isRestrictedInternalIP('admin@localhost')).toBe(true);
+        expect(isRestrictedInternalIP('http://user:pass@169.254.169.254')).toBe(true);
+        expect(isRestrictedInternalIP('user:pass@[::1]:8080')).toBe(true);
+      });
       it('allows public IPs/hostnames with port numbers and paths', () => {
         expect(isRestrictedInternalIP('8.8.8.8:53')).toBe(false);
         expect(isRestrictedInternalIP('example.com:8080')).toBe(false);
         expect(isRestrictedInternalIP('https://example.com:8443/test')).toBe(false);
+        expect(isRestrictedInternalIP('user:pass@example.com')).toBe(false);
+        expect(isRestrictedInternalIP('https://user:pass@8.8.8.8:8443/test')).toBe(false);
       });
     });
   });
