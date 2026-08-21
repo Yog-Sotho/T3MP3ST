@@ -58,3 +58,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function evaluated target hostnames/URLs for restricted internal addresses, but failed to strip userinfo prefixes (e.g. `user:pass@`) prior to extracting bracketed IPv6/IPv4 hosts or parsing IP representations. As a result, target inputs containing userinfo like `user:pass@127.0.0.1` or `http://admin@169.254.169.254` bypassed SSRF checks because the `@` symbol prevented matching IP patterns or parsing logic.
 **Learning:** Host/IP validation logic must strip userinfo segments (`@`) along with schemes, paths, and ports during target URL canonicalization.
 **Prevention:** Always strip userinfo prefixes (`ip = ip.slice(ip.lastIndexOf('@') + 1)`) after stripping schemes and paths before performing IP address evaluation.
+
+## 2026-08-08 - SSRF Bypass via Trailing-Dot FQDN Targets and Domain Suffixes
+**Vulnerability:** The `isRestrictedInternalIP` function evaluated target hostnames for restricted internal addresses, but failed to strip trailing dots (e.g. `localhost.`, `127.0.0.1.`, `[::1].`, `0x7f000001.`) or match `.localhost` domain suffixes and `localhost.localdomain`. Because standard DNS resolvers treat trailing dots as valid FQDNs, inputs with trailing dots or subdomain suffixes bypassed exact string equality and regex matches.
+**Learning:** Target host/IP string validation must strip trailing dots (`ip = ip.replace(/\.+$/, '')`) during canonicalization and check domain suffix wildcards (such as `.endsWith('.localhost')`) so FQDN representations cannot evade loopback/private range detection.
+**Prevention:** Always strip trailing dots from hostname/IP strings prior to IPv4 alternative parsing and exact name/regex evaluations.

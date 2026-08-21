@@ -14,6 +14,7 @@ import {
   adapterToCustomTool,
   buildAdapterTools,
   toolNameFor,
+  isRestrictedInternalIP,
   type AdapterToolDeps,
   type SubprocessResult,
 } from '../arsenal/adapter-tools.js';
@@ -49,6 +50,33 @@ function makeDeps(overrides: Partial<AdapterToolDeps> = {}): AdapterToolDeps & {
 }
 
 const ctx = (parameters: Record<string, unknown>): ToolContext => ({ parameters });
+
+describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF protection', () => {
+  it('blocks trailing-dot FQDN targets', () => {
+    const trailingDotTargets = [
+      'localhost.',
+      'app.localhost.',
+      'localhost.localdomain.',
+      '127.0.0.1.',
+      '169.254.169.254.',
+      '0x7f000001.',
+      '2130706433.',
+      '0177.0.0.1.',
+      '::1.',
+      '[::1].',
+      'http://admin@localhost.:8080/path',
+    ];
+
+    for (const target of trailingDotTargets) {
+      expect(isRestrictedInternalIP(target), `Target ${target} should be blocked for SSRF`).toBe(true);
+    }
+  });
+
+  it('allows valid public trailing-dot FQDNs', () => {
+    expect(isRestrictedInternalIP('example.com.')).toBe(false);
+    expect(isRestrictedInternalIP('google.com.')).toBe(false);
+  });
+});
 
 describe('adapterToCustomTool — mint gate', () => {
   it('NEVER mints catalog_only / import_only adapters (metasploit, hydra, bloodhound → null)', () => {
