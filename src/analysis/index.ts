@@ -83,6 +83,12 @@ export class AnalysisEngine {
 
     const overview = this.generateOverviewText(findings, targetStats, riskRating);
 
+    // Single-pass count of exploited findings
+    let successfulExploits = 0;
+    for (let i = 0; i < findings.length; i++) {
+      if (findings[i].exploitedAt) successfulExploits++;
+    }
+
     return {
       overview,
       riskRating,
@@ -91,7 +97,7 @@ export class AnalysisEngine {
       mediumFindings: vaultStats.bySeverity.medium,
       lowFindings: vaultStats.bySeverity.low,
       infoFindings: vaultStats.bySeverity.info,
-      successfulExploits: findings.filter(f => f.exploitedAt).length,
+      successfulExploits,
       credentialsHarvested: vaultStats.totalCredentials,
       systemsCompromised: targetStats.owned,
     };
@@ -106,9 +112,11 @@ export class AnalysisEngine {
     riskRating: Severity
   ): string {
     const totalFindings = findings.length;
-    const criticalHigh = findings.filter(
-      f => f.severity === 'critical' || f.severity === 'high'
-    ).length;
+    let criticalHigh = 0;
+    for (let i = 0; i < totalFindings; i++) {
+      const sev = findings[i].severity;
+      if (sev === 'critical' || sev === 'high') criticalHigh++;
+    }
 
     if (totalFindings === 0) {
       return 'No security vulnerabilities were identified during this assessment.';
@@ -137,10 +145,14 @@ export class AnalysisEngine {
 
     // Group findings by target
     const byTarget = new Map<string, Finding[]>();
-    for (const finding of findings) {
-      const existing = byTarget.get(finding.targetId) || [];
+    for (let i = 0; i < findings.length; i++) {
+      const finding = findings[i];
+      let existing = byTarget.get(finding.targetId);
+      if (!existing) {
+        existing = [];
+        byTarget.set(finding.targetId, existing);
+      }
       existing.push(finding);
-      byTarget.set(finding.targetId, existing);
     }
 
     // Create attack paths for targets with multiple findings
@@ -178,13 +190,21 @@ export class AnalysisEngine {
   private generateRecommendations(findings: Finding[]): Recommendation[] {
     const recommendations: Recommendation[] = [];
 
-    // Group by severity for prioritization
-    const criticalFindings = findings.filter(f => f.severity === 'critical');
-    const highFindings = findings.filter(f => f.severity === 'high');
-    const mediumFindings = findings.filter(f => f.severity === 'medium');
+    // Single-pass partition by severity for prioritization without multi-pass .filter allocations
+    const criticalFindings: Finding[] = [];
+    const highFindings: Finding[] = [];
+    const mediumFindings: Finding[] = [];
+
+    for (let i = 0; i < findings.length; i++) {
+      const f = findings[i];
+      if (f.severity === 'critical') criticalFindings.push(f);
+      else if (f.severity === 'high') highFindings.push(f);
+      else if (f.severity === 'medium') mediumFindings.push(f);
+    }
 
     // Critical findings get immediate priority
-    for (const finding of criticalFindings) {
+    for (let i = 0; i < criticalFindings.length; i++) {
+      const finding = criticalFindings[i];
       recommendations.push({
         id: randomUUID(),
         findingId: finding.id,
@@ -197,7 +217,8 @@ export class AnalysisEngine {
     }
 
     // High findings get short-term priority
-    for (const finding of highFindings) {
+    for (let i = 0; i < highFindings.length; i++) {
+      const finding = highFindings[i];
       recommendations.push({
         id: randomUUID(),
         findingId: finding.id,
@@ -210,7 +231,8 @@ export class AnalysisEngine {
     }
 
     // Medium findings get long-term priority
-    for (const finding of mediumFindings) {
+    for (let i = 0; i < mediumFindings.length; i++) {
+      const finding = mediumFindings[i];
       recommendations.push({
         id: randomUUID(),
         findingId: finding.id,
@@ -334,36 +356,45 @@ export class AnalysisEngine {
       lines.push('## Recommendations');
       lines.push('');
 
-      const byPriority = {
-        immediate: report.recommendations.filter(r => r.priority === 'immediate'),
-        short_term: report.recommendations.filter(r => r.priority === 'short_term'),
-        long_term: report.recommendations.filter(r => r.priority === 'long_term'),
-      };
+      // Single-pass partition by priority to avoid 3x .filter() passes
+      const immediate: Recommendation[] = [];
+      const shortTerm: Recommendation[] = [];
+      const longTerm: Recommendation[] = [];
 
-      if (byPriority.immediate.length > 0) {
+      for (let i = 0; i < report.recommendations.length; i++) {
+        const rec = report.recommendations[i];
+        if (rec.priority === 'immediate') immediate.push(rec);
+        else if (rec.priority === 'short_term') shortTerm.push(rec);
+        else if (rec.priority === 'long_term') longTerm.push(rec);
+      }
+
+      if (immediate.length > 0) {
         lines.push('### Immediate Priority');
         lines.push('');
-        for (const rec of byPriority.immediate) {
+        for (let i = 0; i < immediate.length; i++) {
+          const rec = immediate[i];
           lines.push(`- **${redactString(rec.title)}** (Effort: ${rec.effort})`);
           lines.push(`  ${redactString(rec.description)}`);
         }
         lines.push('');
       }
 
-      if (byPriority.short_term.length > 0) {
+      if (shortTerm.length > 0) {
         lines.push('### Short-Term Priority');
         lines.push('');
-        for (const rec of byPriority.short_term) {
+        for (let i = 0; i < shortTerm.length; i++) {
+          const rec = shortTerm[i];
           lines.push(`- **${redactString(rec.title)}** (Effort: ${rec.effort})`);
           lines.push(`  ${redactString(rec.description)}`);
         }
         lines.push('');
       }
 
-      if (byPriority.long_term.length > 0) {
+      if (longTerm.length > 0) {
         lines.push('### Long-Term Priority');
         lines.push('');
-        for (const rec of byPriority.long_term) {
+        for (let i = 0; i < longTerm.length; i++) {
+          const rec = longTerm[i];
           lines.push(`- **${redactString(rec.title)}** (Effort: ${rec.effort})`);
           lines.push(`  ${redactString(rec.description)}`);
         }
