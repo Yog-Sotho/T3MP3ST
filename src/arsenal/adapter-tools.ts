@@ -157,6 +157,9 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip IPv6 zone indices (e.g., %eth0 or %25eth0)
   ip = ip.split('%')[0];
 
+  // Strip trailing dot(s) for FQDNs (e.g. localhost., 127.0.0.1., 0x7f000001.)
+  ip = ip.replace(/\.+$/, '');
+
   // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped IPv6)
   const ipv6PrefixRegex = /^(?:(?:0*:){1,5}|::)(?:ffff:(?:0:)?)?/i;
   const hasPrefix = ipv6PrefixRegex.test(ip);
@@ -170,7 +173,15 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   }
 
   // Loopback and unspecified/wildcard addresses
-  if (ip === 'localhost' || ip === '127.0.0.1' || ip === '0.0.0.0' || /^(?:0|:)*1$/i.test(ip) || /^(?:0|:)+$/i.test(ip)) return true;
+  if (
+    ip === 'localhost' ||
+    ip.endsWith('.localhost') ||
+    ip === 'localhost.localdomain' ||
+    ip === '127.0.0.1' ||
+    ip === '0.0.0.0' ||
+    /^(?:0|:)*1$/i.test(ip) ||
+    /^(?:0|:)+$/i.test(ip)
+  ) return true;
 
   // Private IPv4 and local ranges
   if (/^0\./.test(ip)) return true; // 0.0.0.0/8 (local network/wildcard addresses)
