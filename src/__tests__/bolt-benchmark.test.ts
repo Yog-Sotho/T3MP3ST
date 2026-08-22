@@ -7,6 +7,9 @@ import { CommsChannel } from '../comms/index.js';
 import { createKnowledgeBase } from '../stubs/index.js';
 import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
+import { AnalysisEngine } from '../analysis/index.js';
+import type { MissionControl } from '../mission/index.js';
+import type { OpsecController } from '../opsec/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -360,6 +363,58 @@ describe('TaskQueue performance and correctness under load', () => {
     expect(queue.getTask('task-0')?.status).toBe('assigned');
     expect(queue.getTask('task-4200')).toBeUndefined();
     expect(duration).toBeLessThan(250);
+  });
+});
+
+describe('AnalysisEngine performance and correctness under load', () => {
+  it('rapidly generates reports and exports markdown for 2,500 findings with zero multi-pass filter overhead', () => {
+    const vault = new EvidenceVault();
+    const targetEnv = new TargetEnvironment();
+    const engine = new AnalysisEngine(vault, targetEnv, {} as MissionControl, {} as OpsecController);
+
+    const severities: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
+
+    for (let i = 0; i < 2500; i++) {
+      const severity = severities[i % severities.length];
+      const targetId = `target-${i % 10}`;
+
+      const f: Finding = {
+        id: `finding-${i}`,
+        title: `Vulnerability Title ${i}`,
+        description: `Detailed description for vulnerability ${i}`,
+        severity,
+        targetId,
+        operatorId: 'op-1',
+        phase: KillChainPhase.EXPLOIT,
+        remediation: `Remediation advice for vulnerability ${i}`,
+        evidence: [
+          { type: 'log', content: `Sample evidence log output ${i}`, timestamp: Date.now() },
+        ],
+        discoveredAt: 1700000000000 + i * 1000,
+        exploitedAt: i % 2 === 0 ? 1700000000500 + i * 1000 : undefined,
+      };
+      vault.addFinding(f);
+    }
+
+    const start = performance.now();
+
+    const report = engine.generateReport('mission-test-1');
+    const markdown = engine.exportToMarkdown(report);
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] AnalysisEngine report generation & markdown export for 2500 findings took: ${duration.toFixed(2)}ms`);
+
+    expect(report.findings.length).toBe(2500);
+    expect(report.summary.criticalFindings).toBe(500);
+    expect(report.summary.highFindings).toBe(500);
+    expect(report.summary.successfulExploits).toBe(1250);
+    expect(report.recommendations.length).toBe(1500); // 500 critical + 500 high + 500 medium
+    expect(report.attackPaths.length).toBe(10); // 10 targets, each with >= 2 findings
+    expect(markdown).toContain('# Security Assessment Report');
+    expect(markdown).toContain('## Immediate Priority');
+    expect(duration).toBeLessThan(100);
   });
 });
 
