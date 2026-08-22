@@ -821,6 +821,23 @@
             color: var(--text-secondary);
             font-size: 20px;
             cursor: pointer;
+            border-radius: 4px;
+            padding: 2px 6px;
+            transition: color 0.2s, background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-close:focus-visible,
+        .tool-info-close:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
         .modal-body { padding: 16px; }
@@ -8674,12 +8691,12 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
         function openQuickActions() {
             openModal('Quick Actions', `
                 <div style="display:grid;gap:8px">
-                    <button class="btn btn-secondary" onclick="spawnAllOperators();closeModal()">🤖 Deploy All Operators</button>
-                    <button class="btn btn-secondary" onclick="navigateTo('warroom');closeModal()">⚔️ War Room</button>
-                    <button class="btn btn-secondary" onclick="navigateTo('evidence');closeModal()">🔐 Evidence Vault</button>
-                    <button class="btn btn-secondary" onclick="navigateTo('terminal');closeModal()">💻 Terminal</button>
-                    <button class="btn btn-secondary" onclick="navigateTo('benchmarks');closeModal()">📈 Run Benchmarks</button>
-                    <button class="btn btn-secondary" onclick="navigateTo('settings');closeModal()">⚙️ Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="spawnAllOperators();closeModal()" aria-label="Deploy All Operators">🤖 Deploy All Operators</button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('warroom');closeModal()" aria-label="Navigate to War Room">⚔️ War Room</button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('evidence');closeModal()" aria-label="Navigate to Evidence Vault">🔐 Evidence Vault</button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('terminal');closeModal()" aria-label="Navigate to Terminal">💻 Terminal</button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('benchmarks');closeModal()" aria-label="Run Benchmarks">📈 Run Benchmarks</button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('settings');closeModal()" aria-label="Navigate to Settings">⚙️ Settings</button>
                 </div>
             `);
         }
