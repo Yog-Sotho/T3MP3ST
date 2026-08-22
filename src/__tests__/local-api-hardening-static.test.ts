@@ -50,6 +50,8 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/file:\s*\/\^\(-f\|--files-from\)\$\//);
     expect(block).toMatch(/sqlmap:\s*\/\^\(--file-read\|--file-write\|--file-dest\|--os-cmd\|--os-shell\|--os-pwn\|--sql-shell\|--sql-file\|--config\)\$\//);
     expect(block).toMatch(/nikto:\s*\/\^\(-config\|-mutate-options\)\$\//);
+    expect(block).toMatch(/ffuf:\s*\/\^\(-o\|-of\|-od\|-w\|-config\|-request\|-request-proto\|-input-cmd\)\$\//);
+    expect(block).toMatch(/gobuster:\s*\/\^\(-o\|-p\|-w\|-c\|--config\|-s\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {

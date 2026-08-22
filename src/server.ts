@@ -413,6 +413,8 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     file: /^(-f|--files-from)$/i,
     sqlmap: /^(--file-read|--file-write|--file-dest|--os-cmd|--os-shell|--os-pwn|--sql-shell|--sql-file|--config)$/i,
     nikto: /^(-config|-mutate-options)$/i,
+    ffuf: /^(-o|-of|-od|-w|-config|-request|-request-proto|-input-cmd)$/i,
+    gobuster: /^(-o|-p|-w|-c|--config|-s)$/i,
   };
 
   const pattern = dangerousFlags[bin];
