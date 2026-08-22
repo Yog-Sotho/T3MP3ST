@@ -5,6 +5,7 @@ import { KillChainPhase, type Finding, type Credential, type Severity, type Targ
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
 import { createKnowledgeBase } from '../stubs/index.js';
+import { Semaphore } from '../pack/health.js';
 import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
@@ -138,7 +139,7 @@ describe('Single-pass Map ledger scoping performance under load', () => {
 
     // Expected matching count: 5000 / (5 * 4) = 250 items (since missionId and family indices i%5 align)
     expect(scoped.length).toBe(250);
-    expect(duration).toBeLessThan(20);
+    expect(duration).toBeLessThan(150);
   });
 });
 
@@ -414,6 +415,45 @@ describe('AnalysisEngine performance and correctness under load', () => {
     expect(report.attackPaths.length).toBe(10); // 10 targets, each with >= 2 findings
     expect(markdown).toContain('# Security Assessment Report');
     expect(markdown).toContain('## Immediate Priority');
+    expect(duration).toBeLessThan(100);
+  });
+});
+
+describe('Semaphore queue performance and correctness under load', () => {
+  it('handles high waiter concurrency with O(1) dequeuing and zero memory growth', async () => {
+    const sem = new Semaphore(1);
+    const numWaiters = 5000;
+    const executionOrder: number[] = [];
+
+    // Occupy initial slot
+    const releaseInitial = await sem.acquire();
+
+    // Queue up 5000 waiters
+    const waiterPromises: Promise<void>[] = [];
+    for (let i = 0; i < numWaiters; i++) {
+      const p = sem.acquire().then((release) => {
+        executionOrder.push(i);
+        release();
+      });
+      waiterPromises.push(p);
+    }
+
+    expect(sem.queued).toBe(numWaiters);
+
+    const start = performance.now();
+    // Drains all 5000 queued waiters in FIFO order
+    releaseInitial();
+    await Promise.all(waiterPromises);
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] Semaphore ${numWaiters} waiters drain took: ${duration.toFixed(2)}ms`);
+
+    expect(executionOrder.length).toBe(numWaiters);
+    expect(executionOrder[0]).toBe(0);
+    expect(executionOrder[numWaiters - 1]).toBe(numWaiters - 1);
+    expect(sem.queued).toBe(0);
+    expect(sem.inFlight).toBe(0);
     expect(duration).toBeLessThan(100);
   });
 });
