@@ -3304,6 +3304,12 @@
             transition: all 0.15s;
         }
         #t3mpTourCard .tour-btn:hover { color: #fff; border-color: var(--accent, #2fffd2); }
+        #t3mpTourCard .tour-btn:focus-visible,
+        #t3mpTourCard .tour-skip:focus-visible,
+        #t3mpTourCard .tour-dot:focus-visible {
+            outline: 2px solid var(--accent, #2fffd2);
+            outline-offset: 2px;
+        }
         #t3mpTourCard .tour-btn.primary {
             background: var(--accent, #2fffd2); color: #04120e; border-color: var(--accent, #2fffd2);
         }
@@ -25729,9 +25735,9 @@ Be specific and actionable. Format as structured JSON.`;
     +   '<div class="tour-body"></div>'
     +   '<div class="tour-dots"></div>'
     +   '<div class="tour-controls">'
-    +     '<button class="tour-btn" data-act="back">← Back</button>'
-    +     '<button class="tour-btn primary" data-act="next">Next →</button>'
-    +     '<button class="tour-skip" data-act="skip">Skip tour</button>'
+    +     '<button type="button" class="tour-btn" data-act="back" aria-label="Go to previous step">← Back</button>'
+    +     '<button type="button" class="tour-btn primary" data-act="next" aria-label="Go to next step">Next →</button>'
+    +     '<button type="button" class="tour-skip" data-act="skip" aria-label="Skip guided tour">Skip tour</button>'
     +   '</div>'
     + '</div>';
   document.body.appendChild(layer);
@@ -25786,7 +25792,8 @@ Be specific and actionable. Format as structured JSON.`;
     var html = '';
     for (var i = 0; i < steps.length; i++){
       var cls = 'tour-dot' + (i === idx ? ' current' : (i < idx ? ' done' : ''));
-      html += '<span class="' + cls + '" data-goto="' + i + '"></span>';
+      var label = 'Go to tour step ' + (i + 1) + ' of ' + steps.length;
+      html += '<button type="button" class="' + cls + '" data-goto="' + i + '" aria-label="' + label + '"></button>';
     }
     elDots.innerHTML = html;
   }
