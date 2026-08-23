@@ -4,6 +4,7 @@ import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
+import { searchResources, resourcesForFamily } from '../resources/index.js';
 import { createKnowledgeBase } from '../stubs/index.js';
 import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
@@ -415,6 +416,34 @@ describe('AnalysisEngine performance and correctness under load', () => {
     expect(markdown).toContain('# Security Assessment Report');
     expect(markdown).toContain('## Immediate Priority');
     expect(duration).toBeLessThan(100);
+  });
+});
+
+describe('Resource Pack search performance and correctness under load', () => {
+  it('correctly searches and filters resource packs rapidly with zero string join allocations', () => {
+    const queries = ['owasp', 'cve', 'mitre', 'redteam', 'supply', ''];
+    const families = ['web_api', 'ai_red_team', 'cloud_infra', 'code_supply_chain', ''];
+
+    const start = performance.now();
+    let totalFound = 0;
+
+    for (let i = 0; i < 10000; i++) {
+      const q = queries[i % queries.length];
+      const f = families[i % families.length];
+      const results = searchResources(q, f);
+      totalFound += results.length;
+    }
+
+    const familyPacks = resourcesForFamily('web_api');
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] searchResources 10000 queries took: ${duration.toFixed(2)}ms`);
+
+    expect(totalFound).toBeGreaterThan(0);
+    expect(familyPacks.length).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(50);
   });
 });
 

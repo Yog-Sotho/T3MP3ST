@@ -716,26 +716,51 @@ export const OPERATOR_RUNBOOKS: OperatorRunbook[] = [
   },
 ];
 
+// ⚡ BOLT OPTIMIZATION: Pre-compute lowercased search text and family Sets for RESOURCE_PACKS
+// to eliminate repeated string joins, array allocations, and lowercasing on search queries.
+interface CachedResourcePack {
+  pack: ResourcePack;
+  familiesSet: Set<string>;
+  searchHaystack: string;
+}
+
+const CACHED_RESOURCE_PACKS: CachedResourcePack[] = RESOURCE_PACKS.map(resource => ({
+  pack: resource,
+  familiesSet: new Set(resource.missionFamilies),
+  searchHaystack: [
+    resource.title,
+    resource.authority,
+    resource.useWhen,
+    resource.humanUse,
+    resource.agentUse.join(' '),
+    resource.queryHints.join(' '),
+    resource.missionFamilies.join(' '),
+  ].join(' ').toLowerCase(),
+}));
+
 export function resourcesForFamily(family: string): ResourcePack[] {
-  return RESOURCE_PACKS.filter(resource => resource.missionFamilies.includes(family as MissionFamily));
+  const results: ResourcePack[] = [];
+  for (let i = 0; i < CACHED_RESOURCE_PACKS.length; i++) {
+    const item = CACHED_RESOURCE_PACKS[i];
+    if (item.familiesSet.has(family)) {
+      results.push(item.pack);
+    }
+  }
+  return results;
 }
 
 export function searchResources(query = '', family = ''): ResourcePack[] {
   const normalizedQuery = query.trim().toLowerCase();
-  return RESOURCE_PACKS.filter(resource => {
-    const familyMatches = !family || resource.missionFamilies.includes(family as MissionFamily);
-    if (!normalizedQuery) return familyMatches;
-    const haystack = [
-      resource.title,
-      resource.authority,
-      resource.useWhen,
-      resource.humanUse,
-      resource.agentUse.join(' '),
-      resource.queryHints.join(' '),
-      resource.missionFamilies.join(' '),
-    ].join(' ').toLowerCase();
-    return familyMatches && haystack.includes(normalizedQuery);
-  });
+  const results: ResourcePack[] = [];
+
+  for (let i = 0; i < CACHED_RESOURCE_PACKS.length; i++) {
+    const item = CACHED_RESOURCE_PACKS[i];
+    if (family && !item.familiesSet.has(family)) continue;
+    if (normalizedQuery && !item.searchHaystack.includes(normalizedQuery)) continue;
+    results.push(item.pack);
+  }
+
+  return results;
 }
 
 export function workflowPresetsForFamily(family = ''): WorkflowPreset[] {
