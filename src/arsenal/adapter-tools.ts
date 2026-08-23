@@ -186,6 +186,7 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Private IPv4 and local ranges
   if (/^0\./.test(ip)) return true; // 0.0.0.0/8 (local network/wildcard addresses)
   if (/^10\./.test(ip)) return true; // 10.0.0.0/8
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return true; // 100.64.0.0/10 (CGNAT / Shared Address Space / Alibaba Cloud metadata)
   if (/^192\.168\./.test(ip)) return true; // 192.168.0.0/16
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return true; // 172.16.0.0/12
 

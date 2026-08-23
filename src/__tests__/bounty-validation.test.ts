@@ -203,7 +203,7 @@ describe('isRestrictedInternalIP', () => {
     it('blocks zero-padded loopback ::0001', () => expect(isRestrictedInternalIP('::0001')).toBe(true));
   });
 
-  describe('RFC 1918 private ranges', () => {
+  describe('RFC 1918 private ranges and Carrier-Grade NAT (CGNAT) 100.64.0.0/10', () => {
     it('blocks 10.0.0.1', () => expect(isRestrictedInternalIP('10.0.0.1')).toBe(true));
     it('blocks 10.255.255.255', () => expect(isRestrictedInternalIP('10.255.255.255')).toBe(true));
     it('blocks 192.168.1.1', () => expect(isRestrictedInternalIP('192.168.1.1')).toBe(true));
@@ -211,6 +211,17 @@ describe('isRestrictedInternalIP', () => {
     it('blocks 172.31.255.255', () => expect(isRestrictedInternalIP('172.31.255.255')).toBe(true));
     it('does NOT block 172.15.0.1 (outside range)', () => expect(isRestrictedInternalIP('172.15.0.1')).toBe(false));
     it('does NOT block 172.32.0.1 (outside range)', () => expect(isRestrictedInternalIP('172.32.0.1')).toBe(false));
+    it('blocks Carrier-Grade NAT 100.64.0.1', () => expect(isRestrictedInternalIP('100.64.0.1')).toBe(true));
+    it('blocks Alibaba Cloud metadata endpoint 100.100.100.100', () => expect(isRestrictedInternalIP('100.100.100.100')).toBe(true));
+    it('blocks 100.127.255.254 (end of CGNAT range)', () => expect(isRestrictedInternalIP('100.127.255.254')).toBe(true));
+    it('does NOT block 100.63.255.255 (outside CGNAT range)', () => expect(isRestrictedInternalIP('100.63.255.255')).toBe(false));
+    it('does NOT block 100.128.0.1 (outside CGNAT range)', () => expect(isRestrictedInternalIP('100.128.0.1')).toBe(false));
+    it('blocks Alibaba Cloud metadata with URL/port/userinfo', () => {
+      expect(isRestrictedInternalIP('http://100.100.100.100/latest/meta-data/')).toBe(true);
+      expect(isRestrictedInternalIP('https://user:pass@100.100.100.100:8080/')).toBe(true);
+      expect(isRestrictedInternalIP('[::ffff:100.100.100.100]')).toBe(true);
+      expect(isRestrictedInternalIP('0x64646464')).toBe(true);
+    });
   });
 
   describe('link-local and metadata', () => {

@@ -63,3 +63,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function evaluated target hostnames for restricted internal addresses, but failed to strip trailing dots (e.g. `localhost.`, `127.0.0.1.`, `[::1].`, `0x7f000001.`) or match `.localhost` domain suffixes and `localhost.localdomain`. Because standard DNS resolvers treat trailing dots as valid FQDNs, inputs with trailing dots or subdomain suffixes bypassed exact string equality and regex matches.
 **Learning:** Target host/IP string validation must strip trailing dots (`ip = ip.replace(/\.+$/, '')`) during canonicalization and check domain suffix wildcards (such as `.endsWith('.localhost')`) so FQDN representations cannot evade loopback/private range detection.
 **Prevention:** Always strip trailing dots from hostname/IP strings prior to IPv4 alternative parsing and exact name/regex evaluations.
+
+## 2026-08-09 - SSRF Protection Bypass via Carrier-Grade NAT (CGNAT) Shared Address Space
+**Vulnerability:** The `isRestrictedInternalIP` function evaluated target hostnames/URLs for restricted internal addresses, but failed to block Carrier-Grade NAT / Shared Address Space (`100.64.0.0/10`). As a result, requests targeting Alibaba Cloud metadata endpoints (`100.100.100.100`), Tailscale VPN mesh nodes, or internal Kubernetes CNI overlay networks bypassed SSRF filtering.
+**Learning:** Cloud metadata services and internal mesh networks frequently use reserved CGNAT IP space (`100.64.0.0/10`) outside standard RFC 1918 private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+**Prevention:** Include Carrier-Grade NAT (`100.64.0.0/10`, regex `/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./`) alongside RFC 1918 and link-local ranges when filtering restricted internal targets.
