@@ -55,3 +55,7 @@
 ## 2025-03-16 - [Multi-Pass Filter & Map Allocation Bottlenecks in Analysis Engine]
 **Learning:** In report generation and export pipelines, chaining multiple `.filter()` passes over findings and recommendations (e.g., filtering for critical/high/medium severities or immediate/short/long term priorities) creates unnecessary intermediate array allocations on the V8 heap and runs $O(K \times N)$ array traversals.
 **Action:** Partition collections in a single indexed `for` loop into priority/severity arrays, and use conditional Map entry initialization (`if (!map.get(key)) map.set(key, [])`) to eliminate redundant Map writes during grouping.
+
+## 2025-03-17 - [Redundant Filter Array Allocations in OPSEC Controller Query Paths]
+**Learning:** Calling `.filter()` or `.find()` inside query methods like `getActiveDetections()`, `isAbortRecommended()`, and `getStats()` in `OpsecController` creates temporary intermediate arrays on every query. Specifically, `getStats()` called `getActiveDetections().length` and `isAbortRecommended()`, resulting in multiple array heap allocations per stats request.
+**Action:** Implement single-pass indexed `for` loops with early-exit conditions for abort checks and calculate counts directly without intermediate array allocations.

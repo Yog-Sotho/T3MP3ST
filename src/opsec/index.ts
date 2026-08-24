@@ -159,11 +159,15 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
    * Mark a detection as mitigated
    */
   mitigateDetection(eventId: string): DetectionEvent | undefined {
-    const event = this.detectionEvents.find(e => e.id === eventId);
-    if (event) {
-      event.mitigated = true;
+    // Single-pass indexed loop to avoid closure allocation on find
+    for (let i = 0; i < this.detectionEvents.length; i++) {
+      const event = this.detectionEvents[i];
+      if (event.id === eventId) {
+        event.mitigated = true;
+        return event;
+      }
     }
-    return event;
+    return undefined;
   }
 
   /**
@@ -177,15 +181,33 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
    * Get unmitigated detection events
    */
   getActiveDetections(): DetectionEvent[] {
-    return this.detectionEvents.filter(e => !e.mitigated);
+    // Single-pass indexed loop to avoid closure overhead
+    const active: DetectionEvent[] = [];
+    for (let i = 0; i < this.detectionEvents.length; i++) {
+      const e = this.detectionEvents[i];
+      if (!e.mitigated) {
+        active.push(e);
+      }
+    }
+    return active;
   }
 
   /**
    * Check if abort is recommended
    */
   isAbortRecommended(): boolean {
-    const activeDetections = this.getActiveDetections();
-    return activeDetections.length >= this.config.maxDetectionEvents;
+    // Early exit counting loop without allocating an activeDetections array
+    let activeCount = 0;
+    const max = this.config.maxDetectionEvents;
+    for (let i = 0; i < this.detectionEvents.length; i++) {
+      if (!this.detectionEvents[i].mitigated) {
+        activeCount++;
+        if (activeCount >= max) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -253,11 +275,19 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
     riskLevel: 'low' | 'medium' | 'high' | 'critical';
   } {
     const totalDetections = this.detectionEvents.length;
-    const activeDetections = this.getActiveDetections().length;
+    // Single-pass indexed count without allocating an active array
+    let activeDetections = 0;
+    for (let i = 0; i < totalDetections; i++) {
+      if (!this.detectionEvents[i].mitigated) {
+        activeDetections++;
+      }
+    }
     const mitigatedDetections = totalDetections - activeDetections;
+    const maxEvents = this.config.maxDetectionEvents;
+    const abortRecommended = activeDetections >= maxEvents;
 
     let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
-    const riskRatio = activeDetections / this.config.maxDetectionEvents;
+    const riskRatio = activeDetections / maxEvents;
 
     if (riskRatio >= 1) riskLevel = 'critical';
     else if (riskRatio >= 0.7) riskLevel = 'high';
@@ -270,7 +300,7 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
       mitigatedDetections,
       iocCount: this.iocs.length,
       inCooldown: this.inCooldown,
-      abortRecommended: this.isAbortRecommended(),
+      abortRecommended,
       riskLevel,
     };
   }

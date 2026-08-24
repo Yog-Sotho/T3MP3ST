@@ -9,7 +9,7 @@ import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
-import type { OpsecController } from '../opsec/index.js';
+import { OpsecController } from '../opsec/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -218,6 +218,53 @@ describe('TargetEnvironment performance and correctness under load', () => {
     expect(stats.byType.api).toBe(556);
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
+    expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('OpsecController performance and correctness under load', () => {
+  it('correctly filters active detections and computes stats with zero intermediate array allocations', () => {
+    const opsec = new OpsecController({ maxDetectionEvents: 5000 });
+    const sources = ['nmap', 'ids', 'waf', 'endpoint', 'siem'];
+    const severities: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
+
+    // 1) Record 5,000 detection events
+    for (let i = 0; i < 5000; i++) {
+      const event = opsec.recordDetection({
+        type: 'ids',
+        severity: severities[i % severities.length],
+        source: sources[i % sources.length],
+        description: `Detection event ${i}`,
+        operatorId: `op-${i % 5}`,
+        targetId: `target-${i % 10}`,
+      });
+      // Mitigate 20% of events
+      if (i % 5 === 0) {
+        opsec.mitigateDetection(event.id);
+      }
+    }
+
+    // 2) Measure performance and assert correctness
+    const start = performance.now();
+
+    const activeDetections = opsec.getActiveDetections();
+    const isAbort = opsec.isAbortRecommended();
+    const stats = opsec.getStats();
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] OpsecController 5000-unit stats & lookups took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(opsec.getDetectionEvents().length).toBe(5000);
+    expect(activeDetections.length).toBe(4000); // 5000 - 1000 mitigated
+    expect(stats.totalDetections).toBe(5000);
+    expect(stats.activeDetections).toBe(4000);
+    expect(stats.mitigatedDetections).toBe(1000);
+    expect(isAbort).toBe(false); // maxDetectionEvents is 5000
+
+    // Expect single-pass loop calculations to finish in < 50ms
     expect(duration).toBeLessThan(50);
   });
 });
