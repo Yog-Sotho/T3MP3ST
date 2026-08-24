@@ -17720,6 +17720,7 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                     <div style="color:#00ff88;font-weight:bold;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Global</div>
                     <div style="display:grid;grid-template-columns:100px 1fr;gap:6px;">
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">?</kbd><span style="color:#999;">Show this help</span>
+                        <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Ctrl+K / ⌘K</kbd><span style="color:#999;">Open Quick Actions menu</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">1-9</kbd><span style="color:#999;">Navigate pages (1=War Room, 2=Operatives, ...)</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Ctrl+Enter</kbd><span style="color:#999;">Launch mission (from any page)</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Esc</kbd><span style="color:#999;">Abort mission / close modal</span>
@@ -17741,6 +17742,12 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
             // ── Global shortcuts (work on any page) ──
+            // ⌘K / Ctrl+K = open Quick Actions
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                openQuickActions();
+                return;
+            }
             // ? = keyboard help
             if (e.key === '?' || (e.shiftKey && e.key === '/')) {
                 e.preventDefault();
