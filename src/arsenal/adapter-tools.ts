@@ -192,6 +192,7 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Link-local and metadata ranges
   if (/^169\.254\./.test(ip)) return true; // 169.254.0.0/16 (AWS metadata, APIPA)
   if (/^127\./.test(ip)) return true; // All of 127.0.0.0/8
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return true; // 100.64.0.0/10 (CGNAT / Shared Address Space, incl. Alibaba Cloud metadata 100.100.100.100)
 
   // IPv6 private ranges
   if (/^(fc00|fd00):/i.test(ip)) return true; // Unique local addresses

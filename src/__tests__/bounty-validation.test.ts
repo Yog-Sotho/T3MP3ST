@@ -216,6 +216,11 @@ describe('isRestrictedInternalIP', () => {
   describe('link-local and metadata', () => {
     it('blocks AWS metadata endpoint 169.254.169.254', () => expect(isRestrictedInternalIP('169.254.169.254')).toBe(true));
     it('blocks APIPA 169.254.0.1', () => expect(isRestrictedInternalIP('169.254.0.1')).toBe(true));
+    it('blocks Carrier-Grade NAT / Shared Address Space 100.64.0.1', () => expect(isRestrictedInternalIP('100.64.0.1')).toBe(true));
+    it('blocks Alibaba Cloud metadata endpoint 100.100.100.100', () => expect(isRestrictedInternalIP('100.100.100.100')).toBe(true));
+    it('blocks upper boundary of CGNAT 100.127.255.255', () => expect(isRestrictedInternalIP('100.127.255.255')).toBe(true));
+    it('does NOT block 100.63.255.255 (below CGNAT range)', () => expect(isRestrictedInternalIP('100.63.255.255')).toBe(false));
+    it('does NOT block 100.128.0.1 (above CGNAT range)', () => expect(isRestrictedInternalIP('100.128.0.1')).toBe(false));
   });
 
   describe('IPv6 private ranges', () => {
