@@ -76,6 +76,16 @@ describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF p
     expect(isRestrictedInternalIP('example.com.')).toBe(false);
     expect(isRestrictedInternalIP('google.com.')).toBe(false);
   });
+
+  it('blocks Carrier-Grade NAT (CGNAT) / Shared Address Space (100.64.0.0/10) and Alibaba Cloud metadata', () => {
+    expect(isRestrictedInternalIP('100.64.0.1')).toBe(true);
+    expect(isRestrictedInternalIP('100.100.100.100')).toBe(true);
+    expect(isRestrictedInternalIP('100.127.255.255')).toBe(true);
+    expect(isRestrictedInternalIP('http://100.64.1.1:8080/meta')).toBe(true);
+
+    expect(isRestrictedInternalIP('100.63.255.255')).toBe(false);
+    expect(isRestrictedInternalIP('100.128.0.0')).toBe(false);
+  });
 });
 
 describe('adapterToCustomTool — mint gate', () => {

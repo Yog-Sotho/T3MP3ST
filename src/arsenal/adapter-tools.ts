@@ -189,6 +189,9 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   if (/^192\.168\./.test(ip)) return true; // 192.168.0.0/16
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return true; // 172.16.0.0/12
 
+  // Carrier-Grade NAT / Shared Address Space (RFC 6598) & Alibaba Cloud metadata (100.100.100.100)
+  if (/^100\.(6[4-9]|[7-9]\d|1[0-1]\d|12[0-7])\./.test(ip)) return true; // 100.64.0.0/10
+
   // Link-local and metadata ranges
   if (/^169\.254\./.test(ip)) return true; // 169.254.0.0/16 (AWS metadata, APIPA)
   if (/^127\./.test(ip)) return true; // All of 127.0.0.0/8
