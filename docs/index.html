@@ -6984,12 +6984,33 @@ Correlating findings across agents, identifying patterns, producing actionable i
             if (page === 'selfimprove' && typeof window.renderSelfImprove === 'function') setTimeout(window.renderSelfImprove, 60);
         }
 
-        document.querySelectorAll('.nav-item').forEach(i => {
+        const navItems = Array.from(document.querySelectorAll('.nav-item'));
+        navItems.forEach((i, idx) => {
             i.addEventListener('click', () => navigateTo(i.dataset.page));
             i.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     navigateTo(i.dataset.page);
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const next = navItems[(idx + 1) % navItems.length];
+                    next.focus();
+                    navigateTo(next.dataset.page);
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    const prev = navItems[(idx - 1 + navItems.length) % navItems.length];
+                    prev.focus();
+                    navigateTo(prev.dataset.page);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    const first = navItems[0];
+                    first.focus();
+                    navigateTo(first.dataset.page);
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    const last = navItems[navItems.length - 1];
+                    last.focus();
+                    navigateTo(last.dataset.page);
                 }
             });
         });
