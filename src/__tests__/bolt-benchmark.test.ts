@@ -9,7 +9,7 @@ import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
-import type { OpsecController } from '../opsec/index.js';
+import { OpsecController } from '../opsec/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -218,6 +218,51 @@ describe('TargetEnvironment performance and correctness under load', () => {
     expect(stats.byType.api).toBe(556);
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
+    expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('OpsecController performance and correctness under load', () => {
+  it('correctly tracks detections, mitigation, and statistics with zero intermediate array allocation overhead', () => {
+    const opsec = new OpsecController({ maxDetectionEvents: 10000, avoidDetection: false });
+    const eventIds: string[] = [];
+
+    // 1) Populate 5,000 detection events
+    for (let i = 0; i < 5000; i++) {
+      const event = opsec.recordDetection({
+        type: 'ids',
+        severity: 'high',
+        source: 'IDS',
+        description: `Suspicious traffic event ${i}`,
+      });
+      eventIds.push(event.id);
+    }
+
+    // 2) Mitigate 1,000 detection events
+    for (let i = 0; i < 1000; i++) {
+      opsec.mitigateDetection(eventIds[i]);
+    }
+
+    // 3) Measure performance and assert correctness
+    const start = performance.now();
+
+    const activeDetections = opsec.getActiveDetections();
+    const abortRecommended = opsec.isAbortRecommended();
+    const stats = opsec.getStats();
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] OpsecController 5000-unit stats & lookups took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(activeDetections.length).toBe(4000);
+    expect(abortRecommended).toBe(false);
+    expect(stats.totalDetections).toBe(5000);
+    expect(stats.activeDetections).toBe(4000);
+    expect(stats.mitigatedDetections).toBe(1000);
+
+    // Expect single-pass indexed execution to finish under 50ms
     expect(duration).toBeLessThan(50);
   });
 });
