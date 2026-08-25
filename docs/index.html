@@ -3425,7 +3425,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
-                <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
+                <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" title="Toggle navigation sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
                 <h1 class="header-title" id="pageTitle">War Room</h1>
                 <div class="header-actions">
                     <button class="btn btn-secondary" onclick="if(window.t3mpTour)t3mpTour.start()" title="Take the guided tour" aria-label="Guided tour" style="font-weight:700;">?</button>
@@ -3827,9 +3827,9 @@
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Watch Loop</span><span id="watchLoopStatus">standby</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="runPlinyWatchLoop(false)">pulse</button>
-                                    <button type="button" onclick="runPlinyWatchLoop(true)">nudge</button>
-                                    <button type="button" id="watchLoopArmButton" onclick="togglePlinyWatchLoop()">arm</button>
+                                    <button type="button" onclick="runPlinyWatchLoop(false)" aria-label="Pulse watch loop" title="Pulse watch loop">pulse</button>
+                                    <button type="button" onclick="runPlinyWatchLoop(true)" aria-label="Nudge watch loop" title="Nudge watch loop">nudge</button>
+                                    <button type="button" id="watchLoopArmButton" onclick="togglePlinyWatchLoop()" aria-label="Arm watch loop" title="Arm watch loop">arm</button>
                                 </div>
                                 <div class="ops-status-list" id="watchLoopList"></div>
                             </section>
