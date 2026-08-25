@@ -117,7 +117,8 @@ export class DegradedTracker {
 export class Semaphore {
   private readonly max: number;
   private active = 0;
-  private readonly waiters: Array<() => void> = [];
+  private readonly waiters: Array<(() => void) | undefined> = [];
+  private waitersHead = 0;
 
   constructor(max: number) {
     if (!Number.isFinite(max) || max < 1) {
@@ -133,7 +134,7 @@ export class Semaphore {
 
   /** Number of callers currently blocked in acquire() waiting for a slot. */
   get queued(): number {
-    return this.waiters.length;
+    return this.waiters.length - this.waitersHead;
   }
 
   /**
@@ -149,7 +150,22 @@ export class Semaphore {
           if (released) return; // idempotent: guard against double-release
           released = true;
           this.active -= 1;
-          const next = this.waiters.shift();
+          // ⚡ BOLT OPTIMIZATION: Avoid $O(N)$ Array.prototype.shift() re-indexing on every release.
+          // Use an O(1) read pointer index (`waitersHead`) and clear the array buffer when drained
+          // or periodically pruned.
+          let next: (() => void) | undefined;
+          if (this.waitersHead < this.waiters.length) {
+            next = this.waiters[this.waitersHead];
+            this.waiters[this.waitersHead] = undefined;
+            this.waitersHead++;
+            if (this.waitersHead === this.waiters.length) {
+              this.waiters.length = 0;
+              this.waitersHead = 0;
+            } else if (this.waitersHead > 1024 && this.waitersHead > (this.waiters.length >> 1)) {
+              this.waiters.splice(0, this.waitersHead);
+              this.waitersHead = 0;
+            }
+          }
           if (next) next();
         });
       };
