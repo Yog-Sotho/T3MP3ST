@@ -159,11 +159,14 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
    * Mark a detection as mitigated
    */
   mitigateDetection(eventId: string): DetectionEvent | undefined {
-    const event = this.detectionEvents.find(e => e.id === eventId);
-    if (event) {
-      event.mitigated = true;
+    // ⚡ BOLT OPTIMIZATION: Fast indexed loop to locate detection event by ID
+    for (let i = 0; i < this.detectionEvents.length; i++) {
+      if (this.detectionEvents[i].id === eventId) {
+        this.detectionEvents[i].mitigated = true;
+        return this.detectionEvents[i];
+      }
     }
-    return event;
+    return undefined;
   }
 
   /**
@@ -177,15 +180,31 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
    * Get unmitigated detection events
    */
   getActiveDetections(): DetectionEvent[] {
-    return this.detectionEvents.filter(e => !e.mitigated);
+    // ⚡ BOLT OPTIMIZATION: Fast allocation-free indexed loop instead of array filter
+    const active: DetectionEvent[] = [];
+    for (let i = 0; i < this.detectionEvents.length; i++) {
+      if (!this.detectionEvents[i].mitigated) {
+        active.push(this.detectionEvents[i]);
+      }
+    }
+    return active;
   }
 
   /**
    * Check if abort is recommended
    */
   isAbortRecommended(): boolean {
-    const activeDetections = this.getActiveDetections();
-    return activeDetections.length >= this.config.maxDetectionEvents;
+    // ⚡ BOLT OPTIMIZATION: Early-exit indexed loop avoids allocating active detections array
+    let activeCount = 0;
+    for (let i = 0; i < this.detectionEvents.length; i++) {
+      if (!this.detectionEvents[i].mitigated) {
+        activeCount++;
+        if (activeCount >= this.config.maxDetectionEvents) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -252,8 +271,14 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
     abortRecommended: boolean;
     riskLevel: 'low' | 'medium' | 'high' | 'critical';
   } {
+    // ⚡ BOLT OPTIMIZATION: Single-pass indexed loop avoids intermediate array allocations in getActiveDetections() and isAbortRecommended()
     const totalDetections = this.detectionEvents.length;
-    const activeDetections = this.getActiveDetections().length;
+    let activeDetections = 0;
+    for (let i = 0; i < totalDetections; i++) {
+      if (!this.detectionEvents[i].mitigated) {
+        activeDetections++;
+      }
+    }
     const mitigatedDetections = totalDetections - activeDetections;
 
     let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
@@ -270,7 +295,7 @@ export class OpsecController extends EventEmitter<OpsecEvents> {
       mitigatedDetections,
       iocCount: this.iocs.length,
       inCooldown: this.inCooldown,
-      abortRecommended: this.isAbortRecommended(),
+      abortRecommended: activeDetections >= this.config.maxDetectionEvents,
       riskLevel,
     };
   }
