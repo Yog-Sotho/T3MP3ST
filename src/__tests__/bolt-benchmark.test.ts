@@ -4,6 +4,7 @@ import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
+import { validateAttackGraph } from '../recon/attack-graph.js';
 import { createKnowledgeBase } from '../stubs/index.js';
 import { Semaphore } from '../pack/health.js';
 import { TaskQueue } from '../mission/index.js';
@@ -220,6 +221,61 @@ describe('TargetEnvironment performance and correctness under load', () => {
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('validateAttackGraph performance and correctness under load', () => {
+  it('rapidly validates and normalizes large attack graphs with zero redundant allocations', () => {
+    const rawNodes = [];
+    for (let i = 0; i < 2500; i++) {
+      rawNodes.push({
+        id: `n-${i}`,
+        label: `Node Label ${i}`,
+        phase: 'RECON',
+        kind: i % 2 === 0 ? 'service' : 'invalid_kind',
+        status: i % 3 === 0 ? 'probing' : 'invalid_status',
+        operator: 'GHOST',
+      });
+    }
+
+    const rawEdges = [];
+    for (let i = 0; i < 5000; i++) {
+      rawEdges.push({
+        from: `n-${i % 2500}`,
+        to: `n-${(i + 1) % 2500}`,
+        kind: i % 2 === 0 ? 'hypothesized' : 'invalid_kind',
+      });
+    }
+    // Include invalid dangling edge
+    rawEdges.push({ from: 'n-0', to: 'n-nonexistent', kind: 'hypothesized' });
+
+    const rawGraph = {
+      target: 'http://example.local',
+      family: 'pentest',
+      phases: ['RECON', 'FOOTHOLD', 'PRIVESC', 'LATERAL', 'EXFIL'],
+      nodes: rawNodes,
+      edges: rawEdges,
+      source: 'recon',
+      killcam: { nodeId: 'n-0', chain: ['a', 'b'], evidence: 'ev1', fidelity: 'LIVE' },
+    };
+
+    const start = performance.now();
+    const validated = validateAttackGraph(rawGraph);
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] validateAttackGraph for 2,500 nodes & 5,000 edges took: ${duration.toFixed(2)}ms`);
+
+    expect(validated.nodes.length).toBe(2500);
+    expect(validated.edges.length).toBe(5000); // 5001 - 1 dangling
+    expect(validated.nodes[0].kind).toBe('service');
+    expect(validated.nodes[1].kind).toBe('service'); // normalized
+    expect(validated.nodes[0].status).toBe('probing');
+    expect(validated.nodes[1].status).toBe('probing'); // normalized
+    expect(validated.edges[1].kind).toBe('hypothesized'); // normalized
+    expect(validated.killcam?.nodeId).toBe('n-0');
+    expect(validated.source).toBe('recon');
+    expect(duration).toBeLessThan(100);
   });
 });
 

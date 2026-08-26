@@ -59,3 +59,7 @@
 ## 2025-03-17 - [Eliminating Redundant Intermediate Array Allocations in OPSEC Controller]
 **Learning:** In operational security monitoring modules (`OpsecController`), calling helper functions like `getActiveDetections()` inside `isAbortRecommended()` and `getStats()` creates intermediate `Array.prototype.filter()` array allocations on every call. Under high event throughput or frequent status checks, this creates unnecessary V8 heap churn and GC pauses.
 **Action:** Use single-pass indexed `for` loops with early-exit conditions for abort recommendations and inline counting variables in statistics aggregators to eliminate intermediate array allocations completely.
+
+## 2025-03-18 - [Attack Graph Defensive Validation Array Allocation Bottleneck]
+**Learning:** In recon data payload validation (`validateAttackGraph`), inline array instantiation for `.includes()` checks (e.g., `['target_root', 'service', ...].includes(...)`) recreated array objects on every single node and edge processed. Additionally, constructing an intermediate `have = new Set(nodes.map(...))` array/Set duplicated existing node ID tracking.
+**Action:** Use module-level static `Set` instances for $O(1)$ membership checks, reuse the node `ids` Set directly for edge & killcam validation, and process nodes and edges using single-pass indexed `for` loops to minimize GC heap footprint and maximize throughput.

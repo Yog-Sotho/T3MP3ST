@@ -192,32 +192,76 @@ INTEGRITY RULES:
 Return ONLY a JSON object matching the attack-graph schema (target, family, phases, nodes[], edges[]).`;
 }
 
+// Fast-path module-level Sets for O(1) membership checks during graph validation (avoid array allocations and .includes() scans)
+const VALID_KINDS = new Set<string>(['target_root', 'service', 'finding', 'sink', 'pivot']);
+const VALID_STATUSES = new Set<string>(['verified', 'active', 'probing', 'hypothesized', 'discarded']);
+const VALID_EDGE_KINDS = new Set<string>(['proven', 'hypothesized', 'discarded']);
+
 /** Defensive validation + normalization of an agent- or client-supplied graph. */
 export function validateAttackGraph(g: any): AttackGraph {
   if (!g || typeof g !== 'object') throw new Error('attack graph must be an object');
-  const phases: string[] = Array.isArray(g.phases) && g.phases.length ? g.phases.map(String) : PHASES.default;
+
+  let phases: string[];
+  if (Array.isArray(g.phases) && g.phases.length > 0) {
+    const rawPhases = g.phases;
+    phases = new Array(rawPhases.length);
+    for (let i = 0; i < rawPhases.length; i++) {
+      phases[i] = String(rawPhases[i]);
+    }
+  } else {
+    phases = PHASES.default;
+  }
   const phaseSet = new Set(phases);
+
+  // Single-pass node validation and deduplication in indexed loop
   const rawNodes: any[] = Array.isArray(g.nodes) ? g.nodes : [];
   const ids = new Set<string>();
-  const nodes: AttackGraphNode[] = rawNodes.filter((n) => n && n.id && !ids.has(n.id) && ids.add(n.id)).map((n) => ({
-    id: String(n.id),
-    label: String(n.label || n.id).slice(0, 18),
-    phase: phaseSet.has(n.phase) ? n.phase : phases[0],
-    kind: ['target_root', 'service', 'finding', 'sink', 'pivot'].includes(n.kind) ? n.kind : 'service',
-    status: ['verified', 'active', 'probing', 'hypothesized', 'discarded'].includes(n.status) ? n.status : 'probing',
-    operator: n.operator ? String(n.operator) : undefined,
-    evidence: n.evidence ? String(n.evidence) : undefined,
-    note: n.note ? String(n.note) : undefined,
-  }));
-  const have = new Set(nodes.map((n) => n.id));
-  const edges: AttackGraphEdge[] = (Array.isArray(g.edges) ? g.edges : [])
-    .filter((e: any) => e && have.has(e.from) && have.has(e.to))
-    .map((e: any) => ({ from: String(e.from), to: String(e.to), kind: ['proven', 'hypothesized', 'discarded'].includes(e.kind) ? e.kind : 'hypothesized' }));
+  const nodes: AttackGraphNode[] = [];
+  const defaultPhase = phases[0];
+
+  for (let i = 0; i < rawNodes.length; i++) {
+    const n = rawNodes[i];
+    if (!n || n.id === undefined || n.id === null) continue;
+    const idStr = String(n.id);
+    if (ids.has(idStr)) continue;
+    ids.add(idStr);
+
+    nodes.push({
+      id: idStr,
+      label: String(n.label || n.id).slice(0, 18),
+      phase: phaseSet.has(n.phase) ? n.phase : defaultPhase,
+      kind: VALID_KINDS.has(n.kind) ? n.kind : 'service',
+      status: VALID_STATUSES.has(n.status) ? n.status : 'probing',
+      operator: n.operator ? String(n.operator) : undefined,
+      evidence: n.evidence ? String(n.evidence) : undefined,
+      note: n.note ? String(n.note) : undefined,
+    });
+  }
+
+  // Reuse `ids` Set directly (containing all valid node IDs) for O(1) edge validation in single pass
+  const rawEdges: any[] = Array.isArray(g.edges) ? g.edges : [];
+  const edges: AttackGraphEdge[] = [];
+  for (let i = 0; i < rawEdges.length; i++) {
+    const e = rawEdges[i];
+    if (!e || e.from === undefined || e.to === undefined) continue;
+    const fromStr = String(e.from);
+    const toStr = String(e.to);
+    if (!ids.has(fromStr) || !ids.has(toStr)) continue;
+
+    edges.push({
+      from: fromStr,
+      to: toStr,
+      kind: VALID_EDGE_KINDS.has(e.kind) ? e.kind : 'hypothesized',
+    });
+  }
+
   return {
     target: String(g.target || 'unknown'),
     family: String(g.family || 'default'),
-    phases, nodes, edges,
-    killcam: g.killcam && have.has(g.killcam.nodeId) ? g.killcam : undefined,
+    phases,
+    nodes,
+    edges,
+    killcam: g.killcam && ids.has(String(g.killcam.nodeId)) ? g.killcam : undefined,
     source: g.source === 'recon' ? 'recon' : 'scaffold',
   };
 }
