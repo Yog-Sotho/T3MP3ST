@@ -52,6 +52,7 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/nikto:\s*\/\^\(-config\|-mutate-options\)\$\//);
     expect(block).toMatch(/ffuf:\s*\/\^\(-o\|-of\|-od\|-w\|-config\|-request\|-request-proto\|-input-cmd\)\$\//);
     expect(block).toMatch(/gobuster:\s*\/\^\(-o\|-p\|-w\|-c\|--config\|-s\)\$\//);
+    expect(block).toMatch(/nuclei:\s*\/\^\(-o\|--output\|-t\|--templates\|-tfile\|-config\|--report-config\|-code\|-profile\|-e\|--exclude-templates\|-f\|--file\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {
