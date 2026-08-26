@@ -1,3 +1,5 @@
+
+
 <div align="center">
   <img src="logo.png" alt="T3MP3ST" width="800"/>
 
@@ -11,7 +13,7 @@
 
 **A multi-agent offensive-security framework, built to turn the AI coding agent you already run into a zero-day hunter.**
 
-![scores: re-derivable](https://img.shields.io/badge/scores-re--derivable-brightgreen) &nbsp; ![verify-claims 24/24](https://img.shields.io/badge/verify--claims-24%2F24-brightgreen) &nbsp; ![PRs welcome](https://img.shields.io/badge/PRs-welcome-purple) &nbsp; ![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue)
+![scores: re-derivable](https://img.shields.io/badge/scores-re--derivable-brightgreen) &nbsp; ![verify-claims 24/24](https://img.shields.io/badge/verify--claims-24%2F24-brightgreen) &nbsp; ![PRs welcome](https://img.shields.io/badge/PRs-welcome-purple) &nbsp; ![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue)
 
 </div>
 
@@ -33,7 +35,7 @@ Three things set it apart:
 
 T3MP3ST is an **offensive** security tool, built for **authorized** testing, research, and education. Point it **only** at systems you own or have **explicit, written permission** to test. Unauthorized access to computers, networks, or data is illegal in most jurisdictions — **you alone are responsible** for how you use this software and for staying inside the law and your rules of engagement. Bring the storm to *your* targets, not someone else's.
 
-T3MP3ST is provided **as-is under the AGPL-3.0 license, with no warranty and no liability** for any damage, loss, or misuse. The authors do not endorse, support, or condone unauthorized activity. Get permission. Stay in scope. Don't be a menace. 🫡
+T3MP3ST is provided **as-is under the AGPL-3.0-or-later license, with no warranty and no liability** for any damage, loss, or misuse. The authors do not endorse, support, or condone unauthorized activity. Get permission. Stay in scope. Don't be a menace. 🫡
 
 ## Why it exists
 
@@ -215,7 +217,7 @@ Release process and gates: [RELEASE_CHECKLIST](docs/RELEASE_CHECKLIST.md).
 
 ## License
 
-AGPL-3.0. See [LICENSE](LICENSE).
+AGPL-3.0-or-later. See [LICENSE](LICENSE).
 
 ---
 
