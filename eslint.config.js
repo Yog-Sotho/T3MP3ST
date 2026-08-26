@@ -30,6 +30,14 @@ export default tseslint.config(
     },
   },
   {
+    // Relax type-safety warnings in test files so production warning signal stays clean
+    files: ['src/__tests__/**/*.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', '*.js', '*.mjs'],
   }
 );
