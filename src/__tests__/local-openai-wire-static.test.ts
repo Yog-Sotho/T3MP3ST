@@ -63,4 +63,15 @@ describe('local OpenAI-compatible provider hardening', () => {
     expect(template).toContain('TEMPEST_LOCAL_MODEL');
     expect(template).toContain('TEMPEST_LOCAL_API_KEY');
   });
+
+  it('OpenAIAdapter throws LLMApiError with status code and retryAfterMs on API errors', () => {
+    const adapterCode = block(
+      llmSource,
+      'class OpenAIAdapter implements LLMProviderAdapter {',
+      '// =============================================================================\n// MOCK ADAPTER',
+    );
+
+    expect(adapterCode).toMatch(/throw new LLMApiError\(errorMessage, response\.status, retryAfterMs\)/);
+    expect(adapterCode).toMatch(/const retryAfterHeader = response\.headers\.get\(['"]retry-after['"]\)/);
+  });
 });

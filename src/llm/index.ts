@@ -607,7 +607,23 @@ class OpenAIAdapter implements LLMProviderAdapter {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      let errorMessage = `OpenAI API error: ${response.status}`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error?.message) {
+          errorMessage = errorJson.error.message;
+        }
+      } catch {
+        errorMessage = `OpenAI API error: ${response.status} - ${errorText}`;
+      }
+
+      const retryAfterHeader = response.headers.get('retry-after');
+      const retryAfterMs = retryAfterHeader
+        ? (parseInt(retryAfterHeader, 10) || 1) * 1000
+        : undefined;
+
+      throw new LLMApiError(errorMessage, response.status, retryAfterMs);
     }
 
     const data = await response.json() as OpenRouterResponse;
