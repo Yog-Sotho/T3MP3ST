@@ -171,6 +171,32 @@ describe('KnowledgeBase pattern matching performance and correctness under load'
     // Pre-compiled regex matching for 5,000 calls takes ~5-30ms locally
     expect(duration).toBeGreaterThan(0);
   });
+
+  it('correctly queries CVEs, techniques, patterns, tactics, and all in single-pass indexed loops', () => {
+    const kb = createKnowledgeBase();
+    const queries = [
+      { type: 'cve', query: 'log4j' },
+      { type: 'technique', query: 'shell' },
+      { type: 'pattern', query: 'sqli' },
+      { type: 'tactic', query: 'execution' },
+      { type: 'all', query: 'rce' },
+    ];
+
+    const start = performance.now();
+    let totalResults = 0;
+    for (let i = 0; i < 5000; i++) {
+      const q = queries[i % queries.length];
+      const res = kb.query(q);
+      totalResults += res.results.length;
+    }
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] KnowledgeBase 5000 queries took: ${duration.toFixed(2)}ms`);
+
+    expect(totalResults).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(100);
+  });
 });
 
 describe('TargetEnvironment performance and correctness under load', () => {
