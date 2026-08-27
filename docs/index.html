@@ -3615,9 +3615,9 @@
                         </div>
                         <div class="operator-design-toolbar">
                             <div class="qol-tool-strip">
-                                <button type="button" class="qol-tool-btn" id="qolDensityBtn" onclick="toggleOperatorQolDensity()" title="Toggle compact density for the clarity layer.">Compact</button>
-                                <button type="button" class="qol-tool-btn copy" onclick="copyOperatorQolSnapshot()" title="Copy a plain-English mission snapshot.">Copy Snapshot</button>
-                                <button type="button" class="qol-tool-btn" onclick="jumpToFirstQolBlocker()" title="Jump to the first blocker or priority action.">First Blocker</button>
+                                <button type="button" class="qol-tool-btn" id="qolDensityBtn" onclick="toggleOperatorQolDensity()" aria-label="Toggle compact density for the clarity layer" title="Toggle compact density for the clarity layer.">Compact</button>
+                                <button type="button" class="qol-tool-btn copy" onclick="copyOperatorQolSnapshot()" aria-label="Copy a plain-English mission snapshot" title="Copy a plain-English mission snapshot.">Copy Snapshot</button>
+                                <button type="button" class="qol-tool-btn" onclick="jumpToFirstQolBlocker()" aria-label="Jump to the first blocker or priority action" title="Jump to the first blocker or priority action.">First Blocker</button>
                                 <span class="qol-updated" id="qolUpdatedAt">updated --</span>
                                 <span class="qol-updated" id="qolSnapshotReceipt">snapshot idle</span>
                             </div>
@@ -4412,7 +4412,7 @@
                             </button>
                         </div>
                         <div class="arsenal-search">
-                            <input type="text" class="arsenal-search-input" placeholder="🔎 Search tools..." id="arsenalSearch" oninput="filterArsenal()">
+                            <input type="text" class="arsenal-search-input" placeholder="🔎 Search tools..." id="arsenalSearch" aria-label="Search tools" oninput="filterArsenal()" onkeydown="if (event.key === 'Escape') { this.value = ''; filterArsenal(); }">
                         </div>
                     </div>
 
