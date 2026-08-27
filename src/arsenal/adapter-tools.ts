@@ -160,8 +160,9 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip trailing dot(s) for FQDNs (e.g. localhost., 127.0.0.1., 0x7f000001.)
   ip = ip.replace(/\.+$/, '');
 
-  // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped IPv6)
-  const ipv6PrefixRegex = /^(?:(?:0*:){1,5}|::)(?:ffff:(?:0:)?)?/i;
+  // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped/compatible IPv6)
+  // IPv4-compatible IPv6 addresses can contain up to 6 leading zero-hex groups (e.g. 0:0:0:0:0:0:127.0.0.1)
+  const ipv6PrefixRegex = /^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?/i;
   const hasPrefix = ipv6PrefixRegex.test(ip);
   const potentialIp = hasPrefix ? ip.replace(ipv6PrefixRegex, '') : ip;
   const parsed = parseAlternativeIPv4(potentialIp);
@@ -169,7 +170,7 @@ export function isRestrictedInternalIP(hostname: string): boolean {
     ip = parsed;
   } else {
     // Fallback to legacy mapped/compatible regex
-    ip = ip.replace(/^(?:(?:0*:){1,5}|::)(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
+    ip = ip.replace(/^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i, '$1');
   }
 
   // Loopback and unspecified/wildcard addresses

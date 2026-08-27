@@ -77,6 +77,19 @@ describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF p
     expect(isRestrictedInternalIP('google.com.')).toBe(false);
   });
 
+  it('blocks uncompressed IPv4-compatible IPv6 addresses (6 zero groups + IPv4)', () => {
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:127.0.0.1')).toBe(true);
+    expect(isRestrictedInternalIP('0000:0000:0000:0000:0000:0000:127.0.0.1')).toBe(true);
+    expect(isRestrictedInternalIP('[0:0:0:0:0:0:10.0.0.1]')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:192.168.1.1')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:169.254.169.254')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:0x7f000001')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:2130706433')).toBe(true);
+
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:8.8.8.8')).toBe(false);
+    expect(isRestrictedInternalIP('0000:0000:0000:0000:0000:0000:1.1.1.1')).toBe(false);
+  });
+
   it('blocks Carrier-Grade NAT (CGNAT) / Shared Address Space (100.64.0.0/10) and Alibaba Cloud metadata', () => {
     expect(isRestrictedInternalIP('100.64.0.1')).toBe(true);
     expect(isRestrictedInternalIP('100.100.100.100')).toBe(true);
