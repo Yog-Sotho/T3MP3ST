@@ -52,6 +52,21 @@ function makeDeps(overrides: Partial<AdapterToolDeps> = {}): AdapterToolDeps & {
 const ctx = (parameters: Record<string, unknown>): ToolContext => ({ parameters });
 
 describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF protection', () => {
+  it('blocks port-appended IPv4-mapped and IPv4-compatible IPv6 addresses', () => {
+    const portMappedTargets = [
+      '::ffff:127.0.0.1:8080',
+      'http://::ffff:127.0.0.1:8080',
+      '::127.0.0.1:8080',
+      '[::ffff:127.0.0.1]:8080',
+      '::ffff:10.0.0.1:3333',
+      'http://admin@::ffff:169.254.169.254:80/latest/meta-data/',
+    ];
+
+    for (const target of portMappedTargets) {
+      expect(isRestrictedInternalIP(target), `Target ${target} should be blocked for SSRF`).toBe(true);
+    }
+  });
+
   it('blocks trailing-dot FQDN targets', () => {
     const trailingDotTargets = [
       'localhost.',
