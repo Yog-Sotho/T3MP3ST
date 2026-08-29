@@ -59,3 +59,7 @@
 ## 2025-03-17 - [Eliminating Redundant Intermediate Array Allocations in OPSEC Controller]
 **Learning:** In operational security monitoring modules (`OpsecController`), calling helper functions like `getActiveDetections()` inside `isAbortRecommended()` and `getStats()` creates intermediate `Array.prototype.filter()` array allocations on every call. Under high event throughput or frequent status checks, this creates unnecessary V8 heap churn and GC pauses.
 **Action:** Use single-pass indexed `for` loops with early-exit conditions for abort recommendations and inline counting variables in statistics aggregators to eliminate intermediate array allocations completely.
+
+## 2025-03-18 - [Tool Catalog O(1) Map Lookups and Static Default Summary Pre-computation]
+**Learning:** Tool catalog lookups (`adapterForBinary` and `adaptersForFamily`) and summarization (`summarizeToolCatalog`) were executing linear scans (`.find()` and `.filter()`) and multi-pass `.reduce()`/`.filter()` iterations over static catalog entries on every invocation. Under high API route throughput, this incurred unnecessary CPU overhead and V8 heap allocations.
+**Action:** Build module-level lookup Maps (`ADAPTERS_BY_BINARY_OR_ID` and `ADAPTERS_BY_FAMILY`) and pre-compute the default `DEFAULT_CATALOG_SUMMARY` at module initialization to make catalog lookups $O(1)$ and make default summary responses zero-allocation.

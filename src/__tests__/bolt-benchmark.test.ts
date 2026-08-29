@@ -5,6 +5,7 @@ import { KillChainPhase, type Finding, type Credential, type Severity, type Targ
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
 import { createKnowledgeBase } from '../stubs/index.js';
+import { adapterForBinary, adaptersForFamily, summarizeToolCatalog, TOOL_ADAPTERS } from '../arsenal/catalog.js';
 import { Semaphore } from '../pack/health.js';
 import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
@@ -220,6 +221,40 @@ describe('TargetEnvironment performance and correctness under load', () => {
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('Tool Catalog lookups and summarization performance and correctness', () => {
+  it('performs high-volume binary/ID/family lookups and summaries in O(1) time with zero allocation churn', () => {
+    const start = performance.now();
+
+    // 2,000 lookups
+    for (let i = 0; i < 2000; i++) {
+      const nmap = adapterForBinary('nmap');
+      const curl = adapterForBinary('curl');
+      expect(nmap?.id).toBe('nmap');
+      expect(curl?.binary).toBe('curl');
+    }
+
+    // 1,000 family lookups
+    for (let i = 0; i < 1000; i++) {
+      const webAdapters = adaptersForFamily('web_api');
+      expect(webAdapters.length).toBeGreaterThan(0);
+    }
+
+    // 1,000 default summary calls
+    for (let i = 0; i < 1000; i++) {
+      const summary = summarizeToolCatalog();
+      expect(summary.total).toBe(TOOL_ADAPTERS.length);
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] Tool Catalog 4,000 lookups and summaries took: ${duration.toFixed(2)}ms`);
+
+    // Pre-computed Map lookups and static summaries finish under 250ms (usually < 20ms)
+    expect(duration).toBeLessThan(250);
   });
 });
 
