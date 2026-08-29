@@ -4412,7 +4412,7 @@
                             </button>
                         </div>
                         <div class="arsenal-search">
-                            <input type="text" class="arsenal-search-input" placeholder="🔎 Search tools..." id="arsenalSearch" oninput="filterArsenal()">
+                            <input type="text" class="arsenal-search-input" placeholder="🔎 Search tools..." id="arsenalSearch" aria-label="Search tools" oninput="filterArsenal()" onkeydown="if(event.key==='Escape'){this.value='';filterArsenal();}">
                         </div>
                     </div>
 
