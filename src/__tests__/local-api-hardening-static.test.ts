@@ -52,7 +52,12 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/nikto:\s*\/\^\(-config\|-mutate-options\)\$\//);
     expect(block).toMatch(/ffuf:\s*\/\^\(-o\|-of\|-od\|-w\|-config\|-request\|-request-proto\|-input-cmd\)\$\//);
     expect(block).toMatch(/gobuster:\s*\/\^\(-o\|-p\|-w\|-c\|--config\|-s\)\$\//);
-    expect(block).toMatch(/nuclei:\s*\/\^\(-o\|--output\|-t\|--templates\|-tfile\|-config\|--report-config\|-code\|-profile\|-e\|--exclude-templates\|-f\|--file\)\$\//);
+    expect(block).toMatch(/nuclei:\s*\/\^\(-o\|--output\|-t\|--templates\|-tfile\|-config\|--report-config|-code\|-profile\|-e\|--exclude-templates\|-f\|--file\)\$\//);
+    expect(block).toMatch(/feroxbuster:\s*\/\^\(-o\|--output\|-w\|--wordlist\|-c\|--config\|-D\|--dont-scan\)\$\//);
+    expect(block).toMatch(/httpx:\s*\/\^\(-o\|--output\|-oa\|-oD\|--output-dir\|-c\|--config\|-r\|--resolvers\|-l\|--list\|-sr\|-srd\)\$\//);
+    expect(block).toMatch(/subfinder:\s*\/\^\(-o\|--output\|-oD\|--output-dir\|-dL\|--list\|-c\|--config\|-r\|--resolvers\)\$\//);
+    expect(block).toMatch(/katana:\s*\/\^\(-o\|--output\|-oD\|--output-dir\|-c\|--config\|-r\|--resolvers\|-u\|--list\|-sr\|-srd\)\$\//);
+    expect(block).toMatch(/naabu:\s*\/\^\(-o\|--output\|-oD\|--output-dir\|-c\|--config\|-r\|--resolvers\|-l\|--list\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {

@@ -416,6 +416,11 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     ffuf: /^(-o|-of|-od|-w|-config|-request|-request-proto|-input-cmd)$/i,
     gobuster: /^(-o|-p|-w|-c|--config|-s)$/i,
     nuclei: /^(-o|--output|-t|--templates|-tfile|-config|--report-config|-code|-profile|-e|--exclude-templates|-f|--file)$/i,
+    feroxbuster: /^(-o|--output|-w|--wordlist|-c|--config|-D|--dont-scan)$/i,
+    httpx: /^(-o|--output|-oa|-oD|--output-dir|-c|--config|-r|--resolvers|-l|--list|-sr|-srd)$/i,
+    subfinder: /^(-o|--output|-oD|--output-dir|-dL|--list|-c|--config|-r|--resolvers)$/i,
+    katana: /^(-o|--output|-oD|--output-dir|-c|--config|-r|--resolvers|-u|--list|-sr|-srd)$/i,
+    naabu: /^(-o|--output|-oD|--output-dir|-c|--config|-r|--resolvers|-l|--list)$/i,
   };
 
   const pattern = dangerousFlags[bin];
