@@ -11,6 +11,8 @@ import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
+import { OpGeneral, type OpPlan } from '../general/index.js';
+import type { LLMBackbone } from '../llm/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -220,6 +222,99 @@ describe('TargetEnvironment performance and correctness under load', () => {
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('OpGeneral review and execution performance under load', () => {
+  it('rapidly reviews and executes complex operation plans with zero intermediate allocation overhead', () => {
+    const general = new OpGeneral({} as LLMBackbone);
+
+    const targets = Array.from({ length: 50 }, (_, i) => ({
+      address: `10.0.${Math.floor(i / 255)}.${i % 255}`,
+      expectedType: 'web_application',
+      priority: i + 1,
+      rationale: 'Target for benchmark',
+    }));
+
+    const huntLanes = [
+      { family: 'web_api' as const, target: '10.0.0.1', priority: 1, pressureQuestion: 'q1', strangeRouteHypothesis: 'h1', specialistArchetypes: ['recon' as const, 'scanner' as const], resourcePackIds: [], containment: 'c1' },
+      { family: 'ai_red_team' as const, target: '10.0.0.2', priority: 2, pressureQuestion: 'q2', strangeRouteHypothesis: 'h2', specialistArchetypes: ['ghost' as const, 'analyst' as const], resourcePackIds: [], containment: 'c2' },
+      { family: 'cloud_infra' as const, target: '10.0.0.3', priority: 3, pressureQuestion: 'q3', strangeRouteHypothesis: 'h3', specialistArchetypes: ['recon' as const, 'analyst' as const], resourcePackIds: [], containment: 'c3' },
+    ];
+
+    const workOrders = Array.from({ length: 1500 }, (_, i) => ({
+      id: `wo-${i}`,
+      family: (i % 3 === 0 ? 'web_api' : i % 3 === 1 ? 'ai_red_team' : 'cloud_infra') as any,
+      title: `Work Order ${i}`,
+      hypothesis: `Hypothesis ${i}`,
+      suspectedBoundary: `Boundary ${i}`,
+      target: targets[i % targets.length].address,
+      assignedArchetype: (i % 4 === 0 ? 'recon' : i % 4 === 1 ? 'scanner' : i % 4 === 2 ? 'ghost' : 'analyst') as any,
+      kind: 'prove' as const,
+      safeProbe: 'probe',
+      expectedSignal: 'signal',
+      evidenceArtifact: 'artifact',
+      falsifier: 'falsifier',
+      retest: 'retest',
+      requiresReceipt: true,
+      toolHints: ['nmap'],
+      priority: (i % 5) + 1,
+      status: 'ready' as const,
+    }));
+
+    const authorityReceipts = Array.from({ length: 50 }, (_, i) => ({
+      action: 'mission_execution' as const,
+      target: targets[i].address,
+      reason: 'Approved',
+      requiredBefore: 'execution',
+    }));
+
+    const plan: OpPlan = {
+      id: 'bench-plan',
+      codename: 'OPERATION BOLT',
+      summary: 'Benchmark plan for high throughput OpGeneral tests',
+      targets,
+      objectives: [{ description: 'Obj 1', priority: 1, successCriteria: 'Done', phase: 'recon' }],
+      operators: [
+        { archetype: 'recon', count: 3, deployPhase: 'recon', briefing: 'b1' },
+        { archetype: 'scanner', count: 2, deployPhase: 'scan', briefing: 'b2' },
+        { archetype: 'ghost', count: 1, deployPhase: 'ghost', briefing: 'b3' },
+      ],
+      opsecLevel: 'covert',
+      phaseStrategy: [],
+      roe: { scope: targets.map(t => t.address), exclusions: [], maxDetections: 5, destructiveAllowed: false, requireApproval: [] },
+      contingencies: [],
+      complexity: 'moderate',
+      rationale: 'Benchmark',
+      missionFamily: 'web_api',
+      huntLanes,
+      authorityReceipts,
+      evidenceContract: { requiredArtifacts: ['art'], minimumConfidence: 80, provenanceFloor: 'context', claimRules: [], retestRequired: true },
+      workOrders,
+      toolPlan: [{ family: 'web_api', primaryTools: ['nmap'], fallbackTools: ['manual-review'], readinessNotes: ['ready'] }],
+      critic: { strongestAssumption: 'a', missingCoverage: [], weirdRoute: 'w', proofPressure: 'p', nextQuestion: 'n' },
+      missionGate: { status: 'ready', score: 100, blockers: [], warnings: [], criteria: [] },
+      learning: { memoryCandidates: [], doctrineNotes: [], replaySuites: [] },
+      createdAt: Date.now(),
+    };
+
+    const start = performance.now();
+
+    // Perform 100 plan review and execution passes over 1500 work orders
+    for (let i = 0; i < 100; i++) {
+      const review = general.reviewPlan(plan);
+      expect(review.status).toBe('ready');
+
+      const execConfig = general.executePlan(plan);
+      expect(execConfig.operatorAssignments.length).toBeGreaterThan(0);
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] OpGeneral 100 review & execute cycles for 1500 work orders took: ${duration.toFixed(2)}ms`);
+
+    expect(duration).toBeLessThan(150);
   });
 });
 

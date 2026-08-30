@@ -864,35 +864,47 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
 
   private normalizeAuthorityReceipts(value: unknown, plan: OpPlan): OpPlanAuthorityReceipt[] {
     const validActions = ['route_preview', 'mission_execution', 'network_request', 'command_execution', 'model_call', 'autonomous_execution', 'human_review'];
-    const fromJson = Array.isArray(value) ? value.map((receipt: any): OpPlanAuthorityReceipt => ({
-      action: validActions.includes(String(receipt?.action)) ? receipt.action : 'human_review',
-      target: String(receipt?.target || '*'),
-      reason: String(receipt?.reason || 'Authority boundary must be explicit before action.'),
-      requiredBefore: String(receipt?.requiredBefore || 'execution'),
-    })) : [];
+    const result: OpPlanAuthorityReceipt[] = [];
+    const seen = new Set<string>();
 
-    const defaults: OpPlanAuthorityReceipt[] = [
-      {
-        action: 'route_preview',
-        target: '*',
-        reason: 'Preview the route and scope before operators execute.',
-        requiredBefore: 'plan_review',
-      },
-      ...plan.targets.map(target => ({
+    const pushReceipt = (receipt: OpPlanAuthorityReceipt) => {
+      const key = `${receipt.action}:${receipt.target}:${receipt.requiredBefore}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(receipt);
+      }
+    };
+
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        const receipt = value[i];
+        pushReceipt({
+          action: validActions.includes(String(receipt?.action)) ? receipt.action : 'human_review',
+          target: String(receipt?.target || '*'),
+          reason: String(receipt?.reason || 'Authority boundary must be explicit before action.'),
+          requiredBefore: String(receipt?.requiredBefore || 'execution'),
+        });
+      }
+    }
+
+    pushReceipt({
+      action: 'route_preview',
+      target: '*',
+      reason: 'Preview the route and scope before operators execute.',
+      requiredBefore: 'plan_review',
+    });
+
+    for (let i = 0; i < plan.targets.length; i++) {
+      const target = plan.targets[i];
+      pushReceipt({
         action: 'mission_execution' as const,
         target: target.address,
         reason: `Target-bound execution receipt for ${target.address}.`,
         requiredBefore: 'active_execution',
-      })),
-    ];
+      });
+    }
 
-    const seen = new Set<string>();
-    return [...fromJson, ...defaults].filter(receipt => {
-      const key = `${receipt.action}:${receipt.target}:${receipt.requiredBefore}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    return result;
   }
 
   private normalizeEvidenceContract(value: unknown): OpPlanEvidenceContract {
@@ -1138,15 +1150,24 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       strengths.push(`${p.workOrders.length} work order(s) define probes, evidence, falsifiers, and retests.`);
     }
 
-    const workOrdersWithoutRetests = p.workOrders.filter(order => !order.retest.trim());
-    if (workOrdersWithoutRetests.length) {
-      warnings.push(`${workOrdersWithoutRetests.length} work order(s) are missing retest instructions.`);
+    // Single-pass inspection over workOrders
+    let missingRetestsCount = 0;
+    let missingFalsifiersCount = 0;
+    const workOrderFamilies = new Set<MissionFamily>();
+    for (let i = 0; i < p.workOrders.length; i++) {
+      const order = p.workOrders[i];
+      if (!order.retest.trim()) missingRetestsCount++;
+      if (!order.falsifier.trim()) missingFalsifiersCount++;
+      workOrderFamilies.add(order.family);
+    }
+
+    if (missingRetestsCount > 0) {
+      warnings.push(`${missingRetestsCount} work order(s) are missing retest instructions.`);
       score -= 8;
     }
 
-    const workOrdersWithoutFalsifiers = p.workOrders.filter(order => !order.falsifier.trim());
-    if (workOrdersWithoutFalsifiers.length) {
-      warnings.push(`${workOrdersWithoutFalsifiers.length} work order(s) are missing falsifiers.`);
+    if (missingFalsifiersCount > 0) {
+      warnings.push(`${missingFalsifiersCount} work order(s) are missing falsifiers.`);
       score -= 8;
     }
 
@@ -1167,24 +1188,49 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       score -= 8;
     }
 
-    const requiredReceipts = p.authorityReceipts.filter(receipt =>
-      receipt.action !== 'route_preview' || receipt.target !== '*'
-    );
-    const missionReceipts = p.authorityReceipts.filter(receipt => receipt.action === 'mission_execution');
-    const activeTargets = new Set(p.targets.map(target => target.address).filter(Boolean));
-    const coveredTargets = new Set(missionReceipts.map(receipt => receipt.target));
-    const uncoveredTargets = [...activeTargets].filter(target => !coveredTargets.has(target));
-    if (uncoveredTargets.length) {
+    // Single-pass inspection over authorityReceipts
+    const requiredReceipts: OpPlanAuthorityReceipt[] = [];
+    const coveredTargets = new Set<string>();
+    for (let i = 0; i < p.authorityReceipts.length; i++) {
+      const receipt = p.authorityReceipts[i];
+      if (receipt.action !== 'route_preview' || receipt.target !== '*') {
+        requiredReceipts.push(receipt);
+      }
+      if (receipt.action === 'mission_execution') {
+        coveredTargets.add(receipt.target);
+      }
+    }
+
+    // Collect active targets and find uncovered targets in a single loop
+    const activeTargets = new Set<string>();
+    const uncoveredTargets: string[] = [];
+    for (let i = 0; i < p.targets.length; i++) {
+      const addr = p.targets[i].address;
+      if (addr) {
+        activeTargets.add(addr);
+        if (!coveredTargets.has(addr)) {
+          uncoveredTargets.push(addr);
+        }
+      }
+    }
+
+    if (uncoveredTargets.length > 0) {
       warnings.push(`Missing mission_execution receipt requirement for: ${uncoveredTargets.join(', ')}`);
       score -= 10;
     }
 
     const coverage: Partial<Record<MissionFamily, number>> = {};
-    for (const lane of p.huntLanes) coverage[lane.family] = (coverage[lane.family] || 0) + 1;
-    const workOrderFamilies = new Set(p.workOrders.map(order => order.family));
-    const lanesWithoutWorkOrders = p.huntLanes.filter(lane => !workOrderFamilies.has(lane.family));
-    if (lanesWithoutWorkOrders.length) {
-      warnings.push(`Hunt lane(s) without work orders: ${lanesWithoutWorkOrders.map(lane => lane.family).join(', ')}`);
+    const lanesWithoutWorkOrders: string[] = [];
+    for (let i = 0; i < p.huntLanes.length; i++) {
+      const lane = p.huntLanes[i];
+      coverage[lane.family] = (coverage[lane.family] || 0) + 1;
+      if (!workOrderFamilies.has(lane.family)) {
+        lanesWithoutWorkOrders.push(lane.family);
+      }
+    }
+
+    if (lanesWithoutWorkOrders.length > 0) {
+      warnings.push(`Hunt lane(s) without work orders: ${lanesWithoutWorkOrders.join(', ')}`);
       score -= 12;
     }
 
@@ -1273,13 +1319,51 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
 
     this.emit('general:executing', { plan: p });
 
-    // Build execution config from the plan
-    const targetAddresses = p.targets
-      .sort((a, b) => a.priority - b.priority)
-      .map(t => t.address)
-      .filter(addr => addr.length > 0);
+    // Sort target addresses in-place using clone or fast map to avoid redundant intermediate allocations
+    const targetAddresses: string[] = [];
+    const sortedTargets = p.targets.slice().sort((a, b) => a.priority - b.priority);
+    for (let i = 0; i < sortedTargets.length; i++) {
+      if (sortedTargets[i].address) {
+        targetAddresses.push(sortedTargets[i].address);
+      }
+    }
 
     const review = this.reviewPlan(p);
+
+    // Pre-index work orders by archetype and by family:archetype in a single pass
+    // Bolt Optimization: eliminates repeated O(N * M) .filter().map() scanning during operator assignment
+    const workOrderIdsByArchetype = new Map<OperatorArchetype, string[]>();
+    const workOrderIdsByFamilyArchetype = new Map<string, string[]>();
+
+    for (let i = 0; i < p.workOrders.length; i++) {
+      const order = p.workOrders[i];
+      let byArch = workOrderIdsByArchetype.get(order.assignedArchetype);
+      if (!byArch) {
+        byArch = [];
+        workOrderIdsByArchetype.set(order.assignedArchetype, byArch);
+      }
+      byArch.push(order.id);
+
+      const faKey = `${order.family}:${order.assignedArchetype}`;
+      let byFa = workOrderIdsByFamilyArchetype.get(faKey);
+      if (!byFa) {
+        byFa = [];
+        workOrderIdsByFamilyArchetype.set(faKey, byFa);
+      }
+      byFa.push(order.id);
+    }
+
+    // Pre-index hunt lane family by specialist archetype
+    const laneFamilyByArchetype = new Map<OperatorArchetype, MissionFamily>();
+    for (let i = 0; i < p.huntLanes.length; i++) {
+      const lane = p.huntLanes[i];
+      for (let j = 0; j < lane.specialistArchetypes.length; j++) {
+        const arch = lane.specialistArchetypes[j];
+        if (!laneFamilyByArchetype.has(arch)) {
+          laneFamilyByArchetype.set(arch, lane.family);
+        }
+      }
+    }
 
     // Flatten operator allocation while preserving useful multiplicity.
     const operators: OperatorArchetype[] = [];
@@ -1289,30 +1373,43 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       workOrderIds: string[];
       briefing: string;
     }> = [];
-    for (const op of p.operators) {
-      for (let i = 0; i < Math.min(op.count, 3); i++) {
+
+    for (let i = 0; i < p.operators.length; i++) {
+      const op = p.operators[i];
+      const count = Math.min(op.count, 3);
+      const laneFamily = laneFamilyByArchetype.get(op.archetype);
+      const woIds = workOrderIdsByArchetype.get(op.archetype) || [];
+      for (let j = 0; j < count; j++) {
         operators.push(op.archetype);
         operatorAssignments.push({
           archetype: op.archetype,
-          lane: p.huntLanes.find(lane => lane.specialistArchetypes.includes(op.archetype))?.family,
-          workOrderIds: p.workOrders
-            .filter(order => order.assignedArchetype === op.archetype)
-            .map(order => order.id),
+          lane: laneFamily,
+          workOrderIds: woIds,
           briefing: op.briefing,
         });
       }
     }
 
-    for (const lane of p.huntLanes) {
-      for (const archetype of lane.specialistArchetypes) {
+    for (let i = 0; i < p.huntLanes.length; i++) {
+      const lane = p.huntLanes[i];
+      for (let j = 0; j < lane.specialistArchetypes.length; j++) {
+        const archetype = lane.specialistArchetypes[j];
         if (!operators.includes(archetype)) operators.push(archetype);
-        if (!operatorAssignments.some(assignment => assignment.archetype === archetype && assignment.lane === lane.family)) {
+
+        let alreadyAssigned = false;
+        for (let k = 0; k < operatorAssignments.length; k++) {
+          if (operatorAssignments[k].archetype === archetype && operatorAssignments[k].lane === lane.family) {
+            alreadyAssigned = true;
+            break;
+          }
+        }
+
+        if (!alreadyAssigned) {
+          const woIds = workOrderIdsByFamilyArchetype.get(`${lane.family}:${archetype}`) || [];
           operatorAssignments.push({
             archetype,
             lane: lane.family,
-            workOrderIds: p.workOrders
-              .filter(order => order.family === lane.family && order.assignedArchetype === archetype)
-              .map(order => order.id),
+            workOrderIds: woIds,
             briefing: `${lane.family}: ${lane.pressureQuestion}`,
           });
         }

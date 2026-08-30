@@ -59,3 +59,7 @@
 ## 2025-03-17 - [Eliminating Redundant Intermediate Array Allocations in OPSEC Controller]
 **Learning:** In operational security monitoring modules (`OpsecController`), calling helper functions like `getActiveDetections()` inside `isAbortRecommended()` and `getStats()` creates intermediate `Array.prototype.filter()` array allocations on every call. Under high event throughput or frequent status checks, this creates unnecessary V8 heap churn and GC pauses.
 **Action:** Use single-pass indexed `for` loops with early-exit conditions for abort recommendations and inline counting variables in statistics aggregators to eliminate intermediate array allocations completely.
+
+## 2025-03-18 - [OpGeneral Nested Array Filter & Allocation Bottlenecks in Plan Review and Execution]
+**Learning:** In operational plan review (`reviewPlan`) and execution assignment (`executePlan`), performing repeated array `.filter()`, `.map()`, and `.some()` scans over work orders and hunt lanes for every operator creates $O(N \times M)$ nested iteration overhead and excessive heap array allocations.
+**Action:** Pre-index work orders by archetype and by `family:archetype` into Map lookups in a single $O(N)$ pass before assigning operators, and replace multi-pass filter checks in plan reviews with single-pass indexed `for` loops and `Set` lookups.
