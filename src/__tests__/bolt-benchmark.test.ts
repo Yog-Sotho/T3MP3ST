@@ -11,6 +11,8 @@ import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
+import { Arsenal } from '../arsenal/index.js';
+import type { CustomTool } from '../types/index.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -220,6 +222,49 @@ describe('TargetEnvironment performance and correctness under load', () => {
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('Arsenal getToolDefinitions performance and correctness under load', () => {
+  it('rapidly retrieves tool definitions with zero multi-pass filter or intermediate array allocation overhead', () => {
+    const arsenal = new Arsenal();
+
+    // Populate 200 custom tools across 5 categories
+    const categories = ['recon', 'web', 'vuln', 'auth', 'util'];
+    for (let i = 0; i < 200; i++) {
+      const tool: CustomTool = {
+        name: `custom_tool_${i}`,
+        description: `Custom security tool ${i} description`,
+        category: categories[i % categories.length],
+        parameters: [
+          { name: 'target', type: 'string', description: 'Target parameter', required: true },
+          { name: 'option', type: 'number', description: 'Option parameter', required: false, default: 42 },
+        ],
+        handler: async () => ({ success: true, output: '' }),
+      };
+      arsenal.register(tool);
+    }
+
+    const nameAllowlist = ['custom_tool_0', 'custom_tool_10', 'custom_tool_20', 'custom_tool_30', 'custom_tool_40'];
+
+    const start = performance.now();
+
+    // Perform 1,000 queries using role toolkits (name allowlist) and category filters
+    let totalDefsCount = 0;
+    for (let i = 0; i < 1000; i++) {
+      const nameDefs = arsenal.getToolDefinitions(undefined, nameAllowlist);
+      const catDefs = arsenal.getToolDefinitions(['recon']);
+      const allDefs = arsenal.getToolDefinitions();
+      totalDefsCount += nameDefs.length + catDefs.length + allDefs.length;
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] Arsenal 1000 getToolDefinitions queries took: ${duration.toFixed(2)}ms`);
+
+    expect(totalDefsCount).toBe(1000 * (5 + 40 + 200)); // 5 names + 40 recon tools + 200 total tools per call
+    expect(duration).toBeLessThan(250);
   });
 });
 

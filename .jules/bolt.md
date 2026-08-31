@@ -59,3 +59,7 @@
 ## 2025-03-17 - [Eliminating Redundant Intermediate Array Allocations in OPSEC Controller]
 **Learning:** In operational security monitoring modules (`OpsecController`), calling helper functions like `getActiveDetections()` inside `isAbortRecommended()` and `getStats()` creates intermediate `Array.prototype.filter()` array allocations on every call. Under high event throughput or frequent status checks, this creates unnecessary V8 heap churn and GC pauses.
 **Action:** Use single-pass indexed `for` loops with early-exit conditions for abort recommendations and inline counting variables in statistics aggregators to eliminate intermediate array allocations completely.
+
+## 2025-03-18 - [Arsenal Tool Definitions Map-Iteration & Set-Filter Bottleneck]
+**Learning:** Calling `getToolDefinitions()` during agent ReAct iterations or role-toolkit filtering previously triggered `this.getAllTools()` (`Array.from(this.tools.values())`) to construct full intermediate array copies, followed by $O(N \times M)$ linear scans (`names.includes(t.name)`) inside multi-pass `.filter().map()` chains. Under frequent tool lookups across multiple agent steps, this created unnecessary V8 heap allocations and quadratic linear scans.
+**Action:** Iterate directly over `this.tools.values()` in a single pass and utilize `Set` instances for $O(1)$ set membership checks when filtering by `names` or `categories`, eliminating intermediate array allocations and quadratic array scans.

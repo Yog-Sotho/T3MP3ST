@@ -346,19 +346,42 @@ export class Arsenal extends EventEmitter<ArsenalEvents> {
    * Convert registered tools to LLM tool definitions for function calling
    */
   getToolDefinitions(categories?: string[], names?: string[]): LLMToolDefinition[] {
-    let tools = this.getAllTools();
+    const definitions: LLMToolDefinition[] = [];
+
     // A per-operator NAME allowlist (the archetype's role toolkit) is the precise gate and
     // takes precedence over the coarse category filter; fall back to categories, then to all.
+    // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values and O(1) Set membership
+    // checks instead of allocating intermediate arrays with getAllTools() and multi-pass filter/map.
     if (names?.length) {
-      tools = tools.filter(t => names.includes(t.name));
+      const namesSet = new Set(names);
+      for (const tool of this.tools.values()) {
+        if (namesSet.has(tool.name)) {
+          definitions.push(this.formatToolDefinition(tool));
+        }
+      }
     } else if (categories?.length) {
-      tools = tools.filter(t => categories.includes(t.category));
+      const categoriesSet = new Set(categories);
+      for (const tool of this.tools.values()) {
+        if (categoriesSet.has(tool.category)) {
+          definitions.push(this.formatToolDefinition(tool));
+        }
+      }
+    } else {
+      for (const tool of this.tools.values()) {
+        definitions.push(this.formatToolDefinition(tool));
+      }
     }
-    return tools.map(tool => {
-      const properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }> = {};
-      const required: string[] = [];
 
-      for (const param of tool.parameters || []) {
+    return definitions;
+  }
+
+  private formatToolDefinition(tool: CustomTool): LLMToolDefinition {
+    const properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }> = {};
+    const required: string[] = [];
+
+    if (tool.parameters) {
+      for (let i = 0; i < tool.parameters.length; i++) {
+        const param = tool.parameters[i];
         properties[param.name] = {
           type: param.type,
           description: param.description,
@@ -370,17 +393,17 @@ export class Arsenal extends EventEmitter<ArsenalEvents> {
           required.push(param.name);
         }
       }
+    }
 
-      return {
-        name: tool.name,
-        description: tool.description,
-        parameters: {
-          type: 'object' as const,
-          properties,
-          required: required.length > 0 ? required : undefined,
-        },
-      };
-    });
+    return {
+      name: tool.name,
+      description: tool.description,
+      parameters: {
+        type: 'object' as const,
+        properties,
+        required: required.length > 0 ? required : undefined,
+      },
+    };
   }
 
   /**
