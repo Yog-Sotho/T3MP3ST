@@ -416,6 +416,8 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     ffuf: /^(-o|-of|-od|-w|-config|-request|-request-proto|-input-cmd)$/i,
     gobuster: /^(-o|-p|-w|-c|--config|-s)$/i,
     nuclei: /^(-o|--output|-t|--templates|-tfile|-config|--report-config|-code|-profile|-e|--exclude-templates|-f|--file)$/i,
+    feroxbuster: /^(-o|--output|-w|--wordlist|-c|--config|--debug-log)$/i,
+    dalfox: /^(-o|--output|-w|--wordlist|-c|--config|--found-action|--grep)$/i,
   };
 
   const pattern = dangerousFlags[bin];
