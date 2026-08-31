@@ -15,3 +15,7 @@
 ## 2025-03-01 - [High-Contrast Theme-Aligned Styling for Interactive Dashboard Cues]
 **Learning:** Interactive controls positioned on dark/black backgrounds suffer from severe visibility issues when using static low-contrast colors (like gray `#555`). Utilizing theme-aligned variables (`var(--text-secondary)`, `var(--accent)`) and interactive states (`hover`, `.active`, `:focus-visible`) resolves contrast ratios, ensures seamless keyboard navigation, and provides visual delight and clear affordances.
 **Action:** When styling toggle or control buttons in the dashboard toolbar, define clear hover, active state variations using theme variables, and include focus ring styling for focus-visible elements.
+
+## 2025-03-02 - [Input-Aware Global Keyboard Shortcut Guards]
+**Learning:** Adding global single-key shortcuts (like `/` for search) without checking `document.activeElement` or `e.target` tag names (`INPUT`, `TEXTAREA`, `SELECT`) and `isContentEditable` properties causes keypresses inside form inputs to be intercepted, breaking basic text entry for strings containing `/` (such as GitHub repos, URLs, and scoped npm packages). Checking active element focus states ensures seamless shortcut activation without breaking input typing.
+**Action:** When adding single-key global keyboard shortcuts, always guard the event handler by verifying that neither `e.target` nor `document.activeElement` is an input field or content-editable region.
