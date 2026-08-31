@@ -59,3 +59,7 @@
 ## 2025-03-17 - [Eliminating Redundant Intermediate Array Allocations in OPSEC Controller]
 **Learning:** In operational security monitoring modules (`OpsecController`), calling helper functions like `getActiveDetections()` inside `isAbortRecommended()` and `getStats()` creates intermediate `Array.prototype.filter()` array allocations on every call. Under high event throughput or frequent status checks, this creates unnecessary V8 heap churn and GC pauses.
 **Action:** Use single-pass indexed `for` loops with early-exit conditions for abort recommendations and inline counting variables in statistics aggregators to eliminate intermediate array allocations completely.
+
+## 2025-03-18 - [KnowledgeBase Multi-Pass Filter and Spread Allocation Bottlenecks]
+**Learning:** In knowledge query routines (`KnowledgeBase.prototype.query`), using multi-pass `.filter()` chains and spreading filter results (`[...cves.filter(...), ...techniques.filter(...)]`) allocates multiple intermediate arrays on the V8 heap per query execution.
+**Action:** Replace `.filter()` and array spreads with single-pass indexed `for` loops that push matching entries directly into a single result array.
