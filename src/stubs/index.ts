@@ -705,68 +705,100 @@ export class KnowledgeBase extends EventEmitter<KnowledgeEvents> {
   private techniques: MITRETechnique[] = [...MITRE_TECHNIQUES];
   private patterns: VulnerabilityPattern[] = [...VULNERABILITY_PATTERNS];
 
+  // ⚡ BOLT OPTIMIZATION: Single-pass indexed loops push matched elements directly into results array,
+  // bypassing closure allocations per element and eliminating intermediate `.filter()` array footprint & array spreads.
   query(q: KnowledgeQuery): KnowledgeResult {
     const queryLower = q.query.toLowerCase();
+    const results: unknown[] = [];
 
     switch (q.type) {
-      case 'cve':
-        return {
-          results: this.cves.filter(
-            (c) =>
-              c.id.toLowerCase().includes(queryLower) ||
-              c.description.toLowerCase().includes(queryLower)
-          ),
-        };
-      case 'technique':
-        return {
-          results: this.techniques.filter(
-            (t) =>
-              t.id.toLowerCase().includes(queryLower) ||
-              t.name.toLowerCase().includes(queryLower) ||
-              t.tactic.toLowerCase().includes(queryLower)
-          ),
-        };
-      case 'pattern':
-        return {
-          results: this.patterns.filter((p) => p.type.toLowerCase().includes(queryLower)),
-        };
-      case 'tactic':
-        return {
-          results: this.techniques.filter((t) => t.tactic.toLowerCase().includes(queryLower)),
-        };
-      default:
-        // Search all
-        return {
-          results: [
-            ...this.cves.filter(
-              (c) =>
-                c.id.toLowerCase().includes(queryLower) ||
-                c.description.toLowerCase().includes(queryLower)
-            ),
-            ...this.techniques.filter(
-              (t) =>
-                t.id.toLowerCase().includes(queryLower) ||
-                t.name.toLowerCase().includes(queryLower)
-            ),
-          ],
-        };
+      case 'cve': {
+        for (let i = 0; i < this.cves.length; i++) {
+          const c = this.cves[i];
+          if (c.id.toLowerCase().includes(queryLower) || c.description.toLowerCase().includes(queryLower)) {
+            results.push(c);
+          }
+        }
+        return { results };
+      }
+      case 'technique': {
+        for (let i = 0; i < this.techniques.length; i++) {
+          const t = this.techniques[i];
+          if (
+            t.id.toLowerCase().includes(queryLower) ||
+            t.name.toLowerCase().includes(queryLower) ||
+            t.tactic.toLowerCase().includes(queryLower)
+          ) {
+            results.push(t);
+          }
+        }
+        return { results };
+      }
+      case 'pattern': {
+        for (let i = 0; i < this.patterns.length; i++) {
+          const p = this.patterns[i];
+          if (p.type.toLowerCase().includes(queryLower)) {
+            results.push(p);
+          }
+        }
+        return { results };
+      }
+      case 'tactic': {
+        for (let i = 0; i < this.techniques.length; i++) {
+          const t = this.techniques[i];
+          if (t.tactic.toLowerCase().includes(queryLower)) {
+            results.push(t);
+          }
+        }
+        return { results };
+      }
+      default: {
+        // Search all (CVEs and Techniques) in single pass per array
+        for (let i = 0; i < this.cves.length; i++) {
+          const c = this.cves[i];
+          if (c.id.toLowerCase().includes(queryLower) || c.description.toLowerCase().includes(queryLower)) {
+            results.push(c);
+          }
+        }
+        for (let i = 0; i < this.techniques.length; i++) {
+          const t = this.techniques[i];
+          if (t.id.toLowerCase().includes(queryLower) || t.name.toLowerCase().includes(queryLower)) {
+            results.push(t);
+          }
+        }
+        return { results };
+      }
     }
   }
 
   getCVE(id: string): CVEEntry | undefined {
-    return this.cves.find((c) => c.id === id);
+    for (let i = 0; i < this.cves.length; i++) {
+      if (this.cves[i].id === id) return this.cves[i];
+    }
+    return undefined;
   }
 
   getTechnique(id: string): MITRETechnique | undefined {
-    return this.techniques.find((t) => t.id === id);
+    for (let i = 0; i < this.techniques.length; i++) {
+      if (this.techniques[i].id === id) return this.techniques[i];
+    }
+    return undefined;
   }
 
   getTechniquesByTactic(tactic: string): MITRETechnique[] {
-    return this.techniques.filter((t) => t.tactic === tactic);
+    const res: MITRETechnique[] = [];
+    for (let i = 0; i < this.techniques.length; i++) {
+      if (this.techniques[i].tactic === tactic) res.push(this.techniques[i]);
+    }
+    return res;
   }
 
   getCriticalCVEs(minCvss: number = 9.0): CVEEntry[] {
-    return this.cves.filter((c) => c.cvss >= minCvss);
+    const res: CVEEntry[] = [];
+    for (let i = 0; i < this.cves.length; i++) {
+      if (this.cves[i].cvss >= minCvss) res.push(this.cves[i]);
+    }
+    return res;
   }
 
   matchPatterns(content: string): VulnerabilityPattern[] {
