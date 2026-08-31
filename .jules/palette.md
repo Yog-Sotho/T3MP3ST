@@ -15,3 +15,7 @@
 ## 2025-03-01 - [High-Contrast Theme-Aligned Styling for Interactive Dashboard Cues]
 **Learning:** Interactive controls positioned on dark/black backgrounds suffer from severe visibility issues when using static low-contrast colors (like gray `#555`). Utilizing theme-aligned variables (`var(--text-secondary)`, `var(--accent)`) and interactive states (`hover`, `.active`, `:focus-visible`) resolves contrast ratios, ensures seamless keyboard navigation, and provides visual delight and clear affordances.
 **Action:** When styling toggle or control buttons in the dashboard toolbar, define clear hover, active state variations using theme variables, and include focus ring styling for focus-visible elements.
+
+## 2026-08-27 - [Keyboard Search Dismissal and ARIA Screen Reader Labels]
+**Learning:** In custom tool search inputs, search fields often lack standard `aria-label` attributes and keyboard shortcuts for resetting filters. Adding an explicit `aria-label` and listening for `Escape` keypress events to clear search queries and re-trigger filter handlers allows keyboard users to instantly clear search queries without manual backspacing.
+**Action:** Always complement search inputs with appropriate ARIA accessibility labels and an `Escape` keydown handler to clear text and update filtered listings seamlessly.
