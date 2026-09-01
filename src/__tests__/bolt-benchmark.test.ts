@@ -11,6 +11,7 @@ import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
+import { PackBoard } from '../pack/board.js';
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
@@ -246,6 +247,47 @@ describe('TargetEnvironment performance and correctness under load', () => {
 
     // Expect the optimized lookup to finish extremely quickly, well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('PackBoard performance and correctness under load', () => {
+  it('correctly generates situation report and queries open leads and live agents with zero redundant allocations', () => {
+    const board = new PackBoard();
+    const agents = ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5'];
+
+    // 1) Populate 5,000 leads
+    for (let i = 0; i < 5000; i++) {
+      board.postLead(agents[i % agents.length], {
+        kind: 'lead',
+        title: `Vulnerability lead ${i}`,
+        where: { file: `src/module_${i}.js`, line: 10 + (i % 500) },
+        vulnClass: 'injection',
+        confidence: 'high',
+        provenance: 'tool',
+        cwe: `CWE-${i % 100}`,
+      });
+    }
+
+    // 2) Record 100 agent heartbeats
+    for (let i = 0; i < 100; i++) {
+      board.heartbeat(`agent-live-${i}`, 'hunting', `Active status ${i}`);
+    }
+
+    const start = performance.now();
+
+    const report = board.situationReport('agent-1', { maxLeads: 10 });
+    const openLeads = board.getOpenLeads();
+    const liveAgents = board.getLiveAgents();
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] PackBoard 5000-lead situationReport & queries took: ${duration.toFixed(2)}ms`);
+
+    expect(openLeads.length).toBe(5000);
+    expect(liveAgents.length).toBe(100);
+    expect(report).toContain('PACK BOARD — situation for agent-1 (5000 lead(s) total)');
+    expect(duration).toBeLessThan(250);
   });
 });
 

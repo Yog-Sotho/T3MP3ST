@@ -422,31 +422,43 @@ export class PackBoard extends EventEmitter<PackBoardEvents> {
     const cap = this.cfg.reportCharCap;
     const maxLeads = Math.max(0, opts.maxLeads ?? this.cfg.defaultMaxLeads);
     const now = this.now();
-    const all = Array.from(this.leads.values());
 
-    // ── top-K UNCLAIMED open leads, ranked by smoke (chase-the-smoke), then recency ──
-    const unclaimed = all
-      .filter((l) => l.status === 'open' && !(l.claim && l.claim.leaseUntil > now))
-      .sort((a, b) => b.smoke - a.smoke || b.updatedAt - a.updatedAt)
-      .slice(0, maxLeads);
+    // ⚡ BOLT OPTIMIZATION: Single-pass partition directly over Map values without allocating full intermediate arrays or sorting unneeded elements.
+    let totalLeads = 0;
+    const unclaimed: Lead[] = [];
+    const mine: Lead[] = [];
+    const refuted: Lead[] = [];
 
-    // ── the leads THIS agent currently holds a live lease on ──
-    const mine = all.filter((l) => l.claim && l.claim.by === forAgentId && l.claim.leaseUntil > now);
+    for (const l of this.leads.values()) {
+      totalLeads++;
+      if (l.status === 'open' && !(l.claim && l.claim.leaseUntil > now)) {
+        unclaimed.push(l);
+      }
+      if (l.claim && l.claim.by === forAgentId && l.claim.leaseUntil > now) {
+        mine.push(l);
+      }
+      if (l.status === 'refuted') {
+        refuted.push(l);
+      }
+    }
 
-    // ── refuted-guard keys to steer clear of (leads the quorum killed) ──
-    const refuted = all.filter((l) => l.status === 'refuted');
+    unclaimed.sort((a, b) => b.smoke - a.smoke || b.updatedAt - a.updatedAt);
+    const topUnclaimed = unclaimed.slice(0, maxLeads);
 
-    // ── live agents (fresh heartbeat within the liveness window) ──
-    const live = Array.from(this.agents.values())
-      .filter((a) => a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs)
-      .sort((a, b) => b.lastSeen - a.lastSeen);
+    const live: AgentStatus[] = [];
+    for (const a of this.agents.values()) {
+      if (a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs) {
+        live.push(a);
+      }
+    }
+    live.sort((a, b) => b.lastSeen - a.lastSeen);
 
     const lines: string[] = [];
-    lines.push(`PACK BOARD — situation for ${forAgentId} (${all.length} lead(s) total)`);
+    lines.push(`PACK BOARD — situation for ${forAgentId} (${totalLeads} lead(s) total)`);
 
-    if (unclaimed.length) {
+    if (topUnclaimed.length) {
       lines.push('OPEN LEADS — unclaimed, hottest first (claim before you dig; don\'t re-tread):');
-      for (const l of unclaimed) {
+      for (const l of topUnclaimed) {
         lines.push(`  ? [smoke ${l.smoke}/${l.confidence}/${l.vulnClass}] ${this.coords(l)} — ${clip(l.title, 90)} (v${l.version})`);
       }
     }
@@ -500,16 +512,35 @@ export class PackBoard extends EventEmitter<PackBoardEvents> {
 
   /** Open, currently-unclaimed leads (what a fresh agent can pick up). */
   getOpenLeads(now: number = this.now()): Lead[] {
-    return this.getAllLeads().filter((l) => l.status === 'open' && !(l.claim && l.claim.leaseUntil > now));
+    // ⚡ BOLT OPTIMIZATION: Iterate directly over Map values and clone only matched leads, bypassing intermediate array allocations and redundant deep clones.
+    const res: Lead[] = [];
+    for (const l of this.leads.values()) {
+      if (l.status === 'open' && !(l.claim && l.claim.leaseUntil > now)) {
+        res.push(this.snapshotLead(l));
+      }
+    }
+    return res;
   }
 
   getAgents(): AgentStatus[] {
-    return Array.from(this.agents.values(), (a) => ({ ...a }));
+    // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over values() to avoid Array.from allocations.
+    const res: AgentStatus[] = [];
+    for (const a of this.agents.values()) {
+      res.push({ ...a });
+    }
+    return res;
   }
 
   /** Agents whose last heartbeat is within the liveness window. */
   getLiveAgents(now: number = this.now()): AgentStatus[] {
-    return this.getAgents().filter((a) => a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs);
+    // ⚡ BOLT OPTIMIZATION: Iterate directly over Map values, avoiding multi-pass .filter() intermediate array allocations.
+    const res: AgentStatus[] = [];
+    for (const a of this.agents.values()) {
+      if (a.activity !== 'gone' && now - a.lastSeen <= this.cfg.livenessWindowMs) {
+        res.push({ ...a });
+      }
+    }
+    return res;
   }
 }
 
