@@ -266,6 +266,14 @@ describe('isRestrictedInternalIP', () => {
       it('blocks link-local IPv6 with port numbers', () => expect(isRestrictedInternalIP('[fe80::1]:8080')).toBe(true));
       it('blocks cloud metadata endpoint with port numbers', () => expect(isRestrictedInternalIP('169.254.169.254:80')).toBe(true));
       it('blocks mapped IPv6 with port numbers', () => expect(isRestrictedInternalIP('[::ffff:10.0.0.1]:8080')).toBe(true));
+      it('blocks unbracketed mapped/compatible IPv6 addresses with port numbers', () => {
+        expect(isRestrictedInternalIP('::ffff:10.0.0.1:8080')).toBe(true);
+        expect(isRestrictedInternalIP('::ffff:169.254.169.254:80')).toBe(true);
+        expect(isRestrictedInternalIP('0:0:0:0:0:ffff:127.0.0.1:80')).toBe(true);
+        expect(isRestrictedInternalIP('::10.0.0.1:8080')).toBe(true);
+        expect(isRestrictedInternalIP('0:0:0:0:0:0:192.168.1.1:3333')).toBe(true);
+        expect(isRestrictedInternalIP('::ffff:2130706433:8080')).toBe(true);
+      });
       it('blocks scheme and path prefixed internal addresses', () => {
         expect(isRestrictedInternalIP('http://localhost:8080/latest/meta-data/')).toBe(true);
         expect(isRestrictedInternalIP('https://[::1]:8443/api/v1')).toBe(true);

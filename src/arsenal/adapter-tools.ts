@@ -142,14 +142,22 @@ export function isRestrictedInternalIP(hostname: string): boolean {
       ip = ip.slice(1);
     }
   } else {
-    // Strip port suffix for IPv4 / hostname / single-colon target if present
+    // Strip port suffix for IPv4 / hostname / unbracketed embedded IPv4 in IPv6 target if present
     const firstColon = ip.indexOf(':');
     const lastColon = ip.lastIndexOf(':');
-    if (firstColon !== -1 && firstColon === lastColon) {
+    if (firstColon !== -1) {
       const possiblePort = ip.slice(lastColon + 1);
       const portNum = Number(possiblePort);
       if (/^\d{1,5}$/.test(possiblePort) && Number.isInteger(portNum) && portNum >= 0 && portNum <= 65535) {
-        ip = ip.slice(0, lastColon);
+        const targetHost = ip.slice(0, lastColon);
+        const unmapped = targetHost.replace(/^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?/i, '');
+        if (
+          firstColon === lastColon ||
+          targetHost.includes('.') ||
+          parseAlternativeIPv4(unmapped) !== null
+        ) {
+          ip = targetHost;
+        }
       }
     }
   }

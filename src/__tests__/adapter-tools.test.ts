@@ -90,6 +90,15 @@ describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF p
     expect(isRestrictedInternalIP('0000:0000:0000:0000:0000:0000:1.1.1.1')).toBe(false);
   });
 
+  it('blocks unbracketed mapped/compatible IPv6 addresses with port numbers', () => {
+    expect(isRestrictedInternalIP('::ffff:10.0.0.1:8080')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:169.254.169.254:80')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:ffff:127.0.0.1:80')).toBe(true);
+    expect(isRestrictedInternalIP('::10.0.0.1:8080')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:192.168.1.1:3333')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:2130706433:8080')).toBe(true);
+  });
+
   it('blocks Carrier-Grade NAT (CGNAT) / Shared Address Space (100.64.0.0/10) and Alibaba Cloud metadata', () => {
     expect(isRestrictedInternalIP('100.64.0.1')).toBe(true);
     expect(isRestrictedInternalIP('100.100.100.100')).toBe(true);

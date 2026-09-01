@@ -78,3 +78,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function stripped IPv6 prefix patterns using `^(?:(?:0*:){1,5}|::)`, which matched IPv4-mapped IPv6 addresses (`0:0:0:0:0:ffff:127.0.0.1`), but failed to match uncompressed IPv4-compatible IPv6 addresses (`0:0:0:0:0:0:127.0.0.1` or `0000:0000:0000:0000:0000:0000:10.0.0.1`) which have 6 zero-hex groups (96 zero bits). As a result, uncompressed IPv4-compatible targets bypassed extraction and evaded SSRF filters.
 **Learning:** Uncompressed IPv4-compatible IPv6 notation contains 6 zero-hex groups before the embedded IPv4 address, unlike IPv4-mapped notation which contains 5 zero-hex groups followed by `ffff`.
 **Prevention:** Match up to 6 leading zero-hex groups (`^(?:(?:0*:){1,6}|::)`) when stripping IPv6 prefixes to normalize both IPv4-mapped and IPv4-compatible addresses into standard IPv4 representations.
+
+## 2026-08-12 - SSRF Bypass via Unbracketed IPv4-Mapped and Compatible IPv6 Addresses with Port Suffixes
+**Vulnerability:** The `isRestrictedInternalIP` function stripped port numbers from host inputs, but required `firstColon === lastColon`. For unbracketed IPv4-mapped (`::ffff:10.0.0.1:8080`) or IPv4-compatible (`::127.0.0.1:8080`) targets, multiple colons were present, so the trailing port was not stripped prior to IP representation parsing, allowing SSRF protection to be bypassed.
+**Learning:** Checking `firstColon === lastColon` to strip ports fails for unbracketed IPv6 addresses containing embedded dot-decimal or alternative IPv4 representations.
+**Prevention:** When a port suffix is detected at `lastColon`, strip the port if the target host prior to `lastColon` contains dots, single colons, or an unmapped alternative IPv4 representation.
