@@ -78,3 +78,8 @@
 **Vulnerability:** The `isRestrictedInternalIP` function stripped IPv6 prefix patterns using `^(?:(?:0*:){1,5}|::)`, which matched IPv4-mapped IPv6 addresses (`0:0:0:0:0:ffff:127.0.0.1`), but failed to match uncompressed IPv4-compatible IPv6 addresses (`0:0:0:0:0:0:127.0.0.1` or `0000:0000:0000:0000:0000:0000:10.0.0.1`) which have 6 zero-hex groups (96 zero bits). As a result, uncompressed IPv4-compatible targets bypassed extraction and evaded SSRF filters.
 **Learning:** Uncompressed IPv4-compatible IPv6 notation contains 6 zero-hex groups before the embedded IPv4 address, unlike IPv4-mapped notation which contains 5 zero-hex groups followed by `ffff`.
 **Prevention:** Match up to 6 leading zero-hex groups (`^(?:(?:0*:){1,6}|::)`) when stripping IPv6 prefixes to normalize both IPv4-mapped and IPv4-compatible addresses into standard IPv4 representations.
+
+## 2026-08-12 - Whitelisted Binary Flag Injection via Katana and Naabu Options
+**Vulnerability:** The whitelisted binaries `katana` and `naabu` lacked entries in `dangerousFlags` in `parseCommand`, allowing attackers to pass file output (`-o`/`-output`), file input (`-f`/`-file`/`-dL`/`-iL`), or config options (`-config`) during direct execution via `/api/tools/execute`.
+**Learning:** Adding tools to `SAFE_COMMANDS` without defining flag-injection filters allows file read/write and arbitrary configuration loading through direct tool flags.
+**Prevention:** Whenever a new binary is registered in `SAFE_COMMANDS`, verify and add explicit `dangerousFlags` regex rules in `parseCommand` covering all output, input file list, request file, and config flags.
