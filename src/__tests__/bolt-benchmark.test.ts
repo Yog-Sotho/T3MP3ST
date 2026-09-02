@@ -11,6 +11,56 @@ import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
+import { validateAttackGraph } from '../recon/attack-graph.js';
+
+describe('validateAttackGraph performance and correctness under load', () => {
+  it('rapidly validates large attack graphs with zero multi-pass array allocation overhead', () => {
+    const rawNodes = [];
+    const rawEdges = [];
+
+    // Construct a large graph with 2,500 nodes and 2,500 edges
+    for (let i = 0; i < 2500; i++) {
+      rawNodes.push({
+        id: `node-${i}`,
+        label: `Label for node ${i}`,
+        phase: 'RECON',
+        kind: i % 2 === 0 ? 'service' : 'sink',
+        status: i % 3 === 0 ? 'verified' : 'probing',
+      });
+
+      if (i > 0) {
+        rawEdges.push({
+          from: `node-${i - 1}`,
+          to: `node-${i}`,
+          kind: i % 2 === 0 ? 'proven' : 'hypothesized',
+        });
+      }
+    }
+
+    const unvalidatedGraph = {
+      target: 'http://target.local',
+      family: 'pentest',
+      phases: ['RECON', 'FOOTHOLD', 'PRIVESC', 'LATERAL', 'EXFIL'],
+      nodes: rawNodes,
+      edges: rawEdges,
+      source: 'recon',
+    };
+
+    const start = performance.now();
+    const validated = validateAttackGraph(unvalidatedGraph);
+    const end = performance.now();
+
+    const duration = end - start;
+    console.log(`[Bolt Benchmark] validateAttackGraph for 2,500 nodes & 2,499 edges took: ${duration.toFixed(2)}ms`);
+
+    expect(validated.nodes.length).toBe(2500);
+    expect(validated.edges.length).toBe(2499);
+    expect(validated.nodes[0].kind).toBe('service');
+    expect(validated.nodes[0].status).toBe('verified');
+    expect(validated.edges[0].kind).toBe('hypothesized');
+    expect(duration).toBeLessThan(50);
+  });
+});
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
