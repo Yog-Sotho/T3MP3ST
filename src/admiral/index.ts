@@ -142,19 +142,33 @@ const FORBIDDEN_TELLS: Array<[RegExp, string]> = [
   [/\b9(14[0-9]|15[0-9])\b.{0,30}\b9(14[0-9]|15[0-9])\b/, 'a specific port pair from a challenge'],
   [/content-dir|backup-backup|synacktiv generator/i, 'a specific challenge artifact'],
 ];
+
+// ⚡ BOLT OPTIMIZATION: Hoist static RegExp objects and use indexed loop iterations
+// to bypass continuous RegExp compilation and array destructuring overhead on anti-fitting checks.
+const FLAG_SHAPED_RE = /\b[A-Za-z][A-Za-z0-9_]{1,19}\{[^}\n]{3,}\}/;
+const CANARY_SELF_FIT_RE = /CANARY_SELF_FIT_[0-9a-fA-F]{4,}/;
+const BENCH_ID_RE = /\bXBEN[-_ ]?\d{2,}\b/i;
+const CYB_ID_RE = /\bcyb(?:svc|sec|los)?_[a-z][a-z0-9_]{6,}\b/i;
+const ANSWER_STMT_RE = /\b(?:the )?(?:flag|password|secret|admin[\s-]?password)\s*(?:is|was|=|:)\s*[`'"\w/${]/i;
+const PAYLOAD_STMT_RE = /\bpayload\s*(?:is|was|=|:)\s*[`'"]/i;
+const SOLUTION_STMT_RE = /\bsolution\s*(?:is|was|=|:)\s*[`'"]/i;
+
 function isAnswerLeak(text: string): { leak: boolean; why?: string } {
   const s = String(text || '');
-  if (/\b[A-Za-z][A-Za-z0-9_]{1,19}\{[^}\n]{3,}\}/.test(s)) return { leak: true, why: 'contains a flag-shaped secret (wrapped {…}) — an answer, not a technique' };
-  if (/CANARY_SELF_FIT_[0-9a-fA-F]{4,}/.test(s)) return { leak: true, why: 'contains a self-fitting answer canary' };
-  const benchId = /\bXBEN[-_ ]?\d{2,}\b/i.test(s) || /\bcyb(?:svc|sec|los)?_[a-z][a-z0-9_]{6,}\b/i.test(s);
-  const answerStmt = /\b(?:the )?(?:flag|password|secret|admin[\s-]?password)\s*(?:is|was|=|:)\s*[`'"\w/${]/i.test(s) || /\bpayload\s*(?:is|was|=|:)\s*[`'"]/i.test(s) || /\bsolution\s*(?:is|was|=|:)\s*[`'"]/i.test(s);
+  if (FLAG_SHAPED_RE.test(s)) return { leak: true, why: 'contains a flag-shaped secret (wrapped {…}) — an answer, not a technique' };
+  if (CANARY_SELF_FIT_RE.test(s)) return { leak: true, why: 'contains a self-fitting answer canary' };
+  const benchId = BENCH_ID_RE.test(s) || CYB_ID_RE.test(s);
+  const answerStmt = ANSWER_STMT_RE.test(s) || PAYLOAD_STMT_RE.test(s) || SOLUTION_STMT_RE.test(s);
   if (benchId && answerStmt) return { leak: true, why: 'pairs a challenge id with a concrete answer — a memorized per-challenge solution (fitting)' };
   return { leak: false };
 }
 export function isFittingTell(text: string): { tell: boolean; why?: string } {
   const leak = isAnswerLeak(text);
   if (leak.leak) return { tell: true, why: leak.why };
-  for (const [rx, why] of FORBIDDEN_TELLS) if (rx.test(String(text || ''))) return { tell: true, why };
+  for (let i = 0; i < FORBIDDEN_TELLS.length; i++) {
+    const item = FORBIDDEN_TELLS[i];
+    if (item[0].test(String(text || ''))) return { tell: true, why: item[1] };
+  }
   return { tell: false };
 }
 

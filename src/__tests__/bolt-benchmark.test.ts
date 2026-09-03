@@ -11,6 +11,46 @@ import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
 import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
+import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redteam-playbook.js';
+import { isFittingTell } from '../admiral/index.js';
+
+describe('AI RedTeam playbook lookup performance and correctness under load', () => {
+  it('correctly resolves techniques in O(1) time and runs anti-fitting checks rapidly', () => {
+    // 1) Test redTeamTechnique O(1) Map lookups
+    const startLookup = performance.now();
+    for (let i = 0; i < 5000; i++) {
+      const id = AI_REDTEAM_TECHNIQUE_IDS[i % AI_REDTEAM_TECHNIQUE_IDS.length];
+      const technique = redTeamTechnique(id);
+      expect(technique).toBeDefined();
+      expect(technique?.id).toBe(id);
+    }
+    const durationLookup = performance.now() - startLookup;
+    console.log(`[Bolt Benchmark] redTeamTechnique 5,000 lookups took: ${durationLookup.toFixed(2)}ms`);
+    expect(durationLookup).toBeLessThan(250);
+
+    // 2) Test isFittingTell anti-fitting checks
+    const samplePrompts = [
+      'sweep the whole vuln family before refuting it and verify real output',
+      'CVE-2023-12345 in haproxy 2.0',
+      'contains flag{secret_value_here}',
+      'CANARY_SELF_FIT_abcd12345',
+      'XBEN_01 and the flag issecret123',
+    ];
+
+    const startFitting = performance.now();
+    let tellsCount = 0;
+    for (let i = 0; i < 5000; i++) {
+      const prompt = samplePrompts[i % samplePrompts.length];
+      const res = isFittingTell(prompt);
+      if (res.tell) tellsCount++;
+    }
+    const durationFitting = performance.now() - startFitting;
+    console.log(`[Bolt Benchmark] isFittingTell 5,000 checks took: ${durationFitting.toFixed(2)}ms`);
+
+    expect(tellsCount).toBe(4000); // 4 out of 5 prompts are tells (4/5 * 5000 = 4000)
+    expect(durationFitting).toBeLessThan(250);
+  });
+});
 
 describe('EvidenceVault performance and correctness under load', () => {
   it('correctly retrieves and aggregates large datasets with zero redundant allocations', () => {
