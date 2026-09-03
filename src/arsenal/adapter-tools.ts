@@ -160,6 +160,9 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip trailing dot(s) for FQDNs (e.g. localhost., 127.0.0.1., 0x7f000001.)
   ip = ip.replace(/\.+$/, '');
 
+  // Strip trailing port suffix if present after an IPv4-mapped/compatible IPv6 string (e.g. ::ffff:127.0.0.1:8080 or 0:0:0:0:0:0:127.0.0.1:8080)
+  ip = ip.replace(/^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?([^:]+)(?::\d{1,5})$/i, (_match, _addr) => ip.slice(0, ip.lastIndexOf(':')));
+
   // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped/compatible IPv6)
   // IPv4-compatible IPv6 addresses can contain up to 6 leading zero-hex groups (e.g. 0:0:0:0:0:0:127.0.0.1)
   const ipv6PrefixRegex = /^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?/i;
