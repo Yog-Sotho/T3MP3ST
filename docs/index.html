@@ -4479,8 +4479,8 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; margin-top: 12px;">
-                            <input type="text" class="form-input" id="terminalInput" placeholder="Enter command..." onkeypress="if(event.key==='Enter')executeCommand()">
-                            <button class="btn btn-primary" onclick="executeCommand()">Run</button>
+                            <input type="text" class="form-input" id="terminalInput" placeholder="Enter command..." aria-label="Terminal command" onkeypress="if(event.key==='Enter')executeCommand()" onkeydown="if(event.key==='Escape'){this.value='';}">
+                            <button class="btn btn-primary" onclick="executeCommand()" aria-label="Execute command" title="Execute command">Run</button>
                         </div>
                     </div>
                 </div>
