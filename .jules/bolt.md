@@ -63,3 +63,7 @@
 ## 2025-03-18 - [KnowledgeBase Multi-Pass Filter and Spread Allocation Bottlenecks]
 **Learning:** In knowledge query routines (`KnowledgeBase.prototype.query`), using multi-pass `.filter()` chains and spreading filter results (`[...cves.filter(...), ...techniques.filter(...)]`) allocates multiple intermediate arrays on the V8 heap per query execution.
 **Action:** Replace `.filter()` and array spreads with single-pass indexed `for` loops that push matching entries directly into a single result array.
+
+## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
+**Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
+**Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.

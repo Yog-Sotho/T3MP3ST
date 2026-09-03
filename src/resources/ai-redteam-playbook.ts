@@ -149,6 +149,12 @@ export const AI_REDTEAM_PLAYBOOK: RedTeamTechnique[] = [
 
 export const AI_REDTEAM_TECHNIQUE_IDS: string[] = AI_REDTEAM_PLAYBOOK.map(t => t.id);
 
+// ⚡ BOLT OPTIMIZATION: Module-level pre-indexed Map for O(1) technique lookups,
+// completely eliminating linear array scans during redteam playbook resolution.
+const REDTEAM_TECHNIQUES_BY_ID = new Map<string, RedTeamTechnique>(
+  AI_REDTEAM_PLAYBOOK.map(t => [t.id, t])
+);
+
 /** Compact briefing (category + principle) for injecting into ai_red_team operator/mission context. */
 export function aiRedTeamBriefing(limit: number = AI_REDTEAM_PLAYBOOK.length): string {
   return AI_REDTEAM_PLAYBOOK.slice(0, limit).map(t => `• ${t.category}: ${t.principle}`).join('\n');
@@ -156,5 +162,5 @@ export function aiRedTeamBriefing(limit: number = AI_REDTEAM_PLAYBOOK.length): s
 
 /** Lookup a single technique by id (own-property safe). */
 export function redTeamTechnique(id: string): RedTeamTechnique | undefined {
-  return AI_REDTEAM_PLAYBOOK.find(t => t.id === id);
+  return REDTEAM_TECHNIQUES_BY_ID.get(id);
 }
