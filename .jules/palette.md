@@ -19,3 +19,7 @@
 ## 2026-08-27 - [Keyboard Search Dismissal and ARIA Screen Reader Labels]
 **Learning:** In custom tool search inputs, search fields often lack standard `aria-label` attributes and keyboard shortcuts for resetting filters. Adding an explicit `aria-label` and listening for `Escape` keypress events to clear search queries and re-trigger filter handlers allows keyboard users to instantly clear search queries without manual backspacing.
 **Action:** Always complement search inputs with appropriate ARIA accessibility labels and an `Escape` keydown handler to clear text and update filtered listings seamlessly.
+
+## 2026-09-04 - [In-Place Visual Feedback for Copy-to-Clipboard Actions]
+**Learning:** Toast notifications provide helpful global feedback when a command or snippet is copied to clipboard, but users look directly at the button they just clicked. Updating the triggering button's text temporarily to `✓ Copied!` provides immediate, localized visual confirmation before resetting back to the original label after a short timeout (~1.5s).
+**Action:** When implementing or updating copy-to-clipboard buttons, pass the button element to the copy handler and apply a temporary `✓ Copied!` text state alongside global toasts.
