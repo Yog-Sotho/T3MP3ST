@@ -110,6 +110,31 @@ describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF p
     expect(isRestrictedInternalIP('100.63.255.255')).toBe(false);
     expect(isRestrictedInternalIP('100.128.0.0')).toBe(false);
   });
+
+  it('blocks IPv6 Unique Local Addresses (fc00::/7), Link-Local (fe80::/10), Multicast (ff00::/8), and IPv4 Multicast/Reserved', () => {
+    // IPv6 ULA (fc00::/7 -> fc00:: - fdff::)
+    expect(isRestrictedInternalIP('fc00::1')).toBe(true);
+    expect(isRestrictedInternalIP('fd00::1')).toBe(true);
+    expect(isRestrictedInternalIP('fd12:3456:789a:1::1')).toBe(true);
+
+    // IPv6 Link-Local / Site-Local (fe80::/10 -> fe80:: - febf::, fec0::)
+    expect(isRestrictedInternalIP('fe80::1')).toBe(true);
+    expect(isRestrictedInternalIP('fe90::1')).toBe(true);
+    expect(isRestrictedInternalIP('febf::ffff')).toBe(true);
+    expect(isRestrictedInternalIP('fec0::1')).toBe(true);
+
+    // IPv6 Multicast (ff00::/8 -> ff00:: - ffff::)
+    expect(isRestrictedInternalIP('ff02::1')).toBe(true);
+    expect(isRestrictedInternalIP('ff05::2')).toBe(true);
+
+    // IPv4 Multicast (224.0.0.0/4 -> 224.0.0.0 - 239.255.255.255)
+    expect(isRestrictedInternalIP('224.0.0.1')).toBe(true);
+    expect(isRestrictedInternalIP('239.255.255.250')).toBe(true);
+
+    // IPv4 Reserved / Broadcast (240.0.0.0/4 -> 240.0.0.0 - 255.255.255.255)
+    expect(isRestrictedInternalIP('240.0.0.1')).toBe(true);
+    expect(isRestrictedInternalIP('255.255.255.255')).toBe(true);
+  });
 });
 
 describe('adapterToCustomTool — mint gate', () => {
