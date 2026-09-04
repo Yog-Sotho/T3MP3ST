@@ -4046,8 +4046,8 @@
                                     <span class="tag tag-info" id="targetCount" style="font-size: 9px; padding: 1px 6px;">0</span>
                                 </div>
                                 <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-                                    <input type="text" class="form-input" id="targetHost" placeholder="target.com or 10.0.0.0/24" style="flex: 1; font-size: 11px; padding: 6px 8px;">
-                                    <select class="form-select" id="targetScope" style="width: 70px; font-size: 10px; padding: 6px;">
+                                    <input type="text" class="form-input" id="targetHost" placeholder="target.com or 10.0.0.0/24" aria-label="Target host or network IP" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+                                    <select class="form-select" id="targetScope" aria-label="Target scope type" style="width: 70px; font-size: 10px; padding: 6px;">
                                         <option value="host">Host</option>
                                         <option value="network">Net</option>
                                         <option value="webapp">Web</option>
@@ -4055,7 +4055,7 @@
                                     </select>
                                     <button class="btn btn-primary" onclick="addTarget()" style="white-space: nowrap; font-size: 10px; padding: 6px 10px;" aria-label="Add target" title="Add target">+</button>
                                 </div>
-                                <input type="text" class="form-input" id="targetPorts" placeholder="Ports: 80,443,8080" style="width: 100%; font-size: 10px; padding: 5px 8px; margin-bottom: 6px; box-sizing: border-box;">
+                                <input type="text" class="form-input" id="targetPorts" placeholder="Ports: 80,443,8080" aria-label="Target port list" style="width: 100%; font-size: 10px; padding: 5px 8px; margin-bottom: 6px; box-sizing: border-box;">
                                 <div style="display: flex; gap: 4px; margin-bottom: 6px;">
                                     <button onclick="bulkImportTargets()" title="Paste or import a list of targets" style="flex: 1; padding: 4px; background: rgba(255,68,68,0.08); border: 1px solid rgba(255,68,68,0.2); border-radius: 3px; color: #ff4444; cursor: pointer; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Bulk Import</button>
                                     <button onclick="document.getElementById('targetFileInput').click()" title="Import from file" style="flex: 1; padding: 4px; background: rgba(0,136,255,0.08); border: 1px solid rgba(0,136,255,0.2); border-radius: 3px; color: #0088ff; cursor: pointer; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px;">From File</button>
@@ -4105,7 +4105,7 @@
                                         <option value="stealth">Stealth Recon</option>
                                     </select>
                                 </div>
-                                <input type="text" class="form-input" id="missionName" placeholder="Op Codename" style="width: 100%; font-size: 11px; padding: 6px 8px; margin-bottom: 6px; box-sizing: border-box;">
+                                <input type="text" class="form-input" id="missionName" placeholder="Op Codename" aria-label="Operation codename" style="width: 100%; font-size: 11px; padding: 6px 8px; margin-bottom: 6px; box-sizing: border-box;">
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;">
                                     <select class="form-select" id="opsecLevel" style="padding: 5px; font-size: 10px;" title="OPSEC Level: Controls how aggressive operators are. Stealth = slow & quiet, Aggressive = fast & noisy.">
                                         <option value="quiet" title="Minimize detection risk — slower, quieter scans">Stealth</option>
@@ -5067,7 +5067,7 @@
                             <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <span style="font-size: 11px; color: #888;">📋 Manual Commands (run in terminal)</span>
-                                    <button class="btn btn-sm" onclick="copyCtfCommands()" style="font-size: 10px; padding: 2px 8px;">Copy All</button>
+                                    <button class="btn btn-sm" onclick="copyCtfCommands(this)" aria-label="Copy manual CTF setup commands to clipboard" title="Copy manual CTF setup commands to clipboard" style="font-size: 10px; padding: 2px 8px;">Copy All</button>
                                 </div>
                                 <pre style="font-size: 10px; color: #00ff88; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; overflow-x: auto; margin: 0;">cd ctf && docker-compose build && docker-compose up -d</pre>
                             </div>
@@ -5173,7 +5173,7 @@
                             <!-- Max Attempts -->
                             <div>
                                 <label style="font-size: 11px; color: #888; display: block; margin-bottom: 4px;">Max Attempts</label>
-                                <input type="number" id="ctfMaxAttempts" value="3" min="1" max="10" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: #fff;">
+                                <input type="number" id="ctfMaxAttempts" value="3" min="1" max="10" aria-label="Maximum CTF attempts allowed" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: #fff;">
                             </div>
                         </div>
                         <!-- Execution Progress -->
@@ -5265,14 +5265,14 @@
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px;">Scope Hints (Optional)</label>
-                                    <input id="generalScope" type="text" placeholder="e.g. web apps only, 10.0.0.0/24" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #fff; padding: 6px 8px; font-size: 12px; box-sizing: border-box;" />
+                                    <input id="generalScope" type="text" placeholder="e.g. web apps only, 10.0.0.0/24" aria-label="Operation scope description" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #fff; padding: 6px 8px; font-size: 12px; box-sizing: border-box;" />
                                 </div>
                             </div>
 
                             <!-- Constraints (Optional) -->
                             <div style="margin-bottom: 14px;">
                                 <label style="display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px;">Constraints (Optional)</label>
-                                <input id="generalConstraints" type="text" placeholder="e.g. No exploitation, recon only, avoid port 443" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #fff; padding: 6px 8px; font-size: 12px; box-sizing: border-box;" />
+                                <input id="generalConstraints" type="text" placeholder="e.g. No exploitation, recon only, avoid port 443" aria-label="Operation constraint rules" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #fff; padding: 6px 8px; font-size: 12px; box-sizing: border-box;" />
                             </div>
 
                             <!-- Action Buttons -->
@@ -5505,6 +5505,7 @@
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <input type="text" id="fallbackModelInput"
                                     placeholder="e.g. nousresearch/hermes-3-llama-3.1-405b"
+                                    aria-label="Fallback LLM model identifier"
                                     style="flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
                                 <button class="btn btn-sm" onclick="saveFallbackModel()" style="background: #ff8800;">Save</button>
                             </div>
@@ -5523,7 +5524,7 @@
                         <div class="card">
                             <div class="form-group">
                                 <div style="display: flex; gap: 8px;">
-                                    <input type="text" class="form-input" id="apiServerUrl" placeholder="http://localhost:3333" style="flex: 1;">
+                                    <input type="text" class="form-input" id="apiServerUrl" placeholder="http://localhost:3333" aria-label="API server base URL" style="flex: 1;">
                                     <button class="btn btn-primary btn-sm" onclick="saveApiServerUrl()">Save</button>
                                     <button class="btn btn-secondary btn-sm" onclick="testApiConnection()">Test</button>
                                 </div>
@@ -20295,9 +20296,14 @@ ${entries}
         }
 
         // Copy CTF commands to clipboard
-        function copyCtfCommands() {
+        function copyCtfCommands(btn) {
             const commands = 'cd ctf && docker-compose build && docker-compose up -d';
             navigator.clipboard.writeText(commands).then(() => {
+                if (btn) {
+                    const orig = btn.textContent;
+                    btn.textContent = '✓ Copied!';
+                    setTimeout(() => { btn.textContent = orig; }, 1500);
+                }
                 toast('📋 Commands copied to clipboard', 'success');
             });
         }
@@ -25639,7 +25645,7 @@ Be specific and actionable. Format as structured JSON.`;
       +'<div style="font-size:9px;color:#667;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Assembled command (rollback + ablation forced on)</div>'
       +'<div style="display:flex;gap:6px;align-items:flex-start;">'
       +'<code id="siObsCmd" style="flex:1;min-width:0;background:#05090f;border:1px solid rgba(0,255,136,0.2);border-radius:6px;color:#9fd;font-size:10.5px;padding:8px 10px;font-family:\'JetBrains Mono\',monospace;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;">'+esc(obsidivmCommand(CFG))+'</code>'
-      +'<button onclick="siCopyCmd()" style="font-size:11px;font-weight:700;background:rgba(0,136,255,0.14);border:1px solid rgba(0,136,255,0.4);border-radius:7px;color:#5bb8ff;cursor:pointer;padding:8px 12px;white-space:nowrap;flex-shrink:0;">⧉ Copy</button></div>'
+      +'<button onclick="siCopyCmd(this)" aria-label="Copy assembled OBSIDIVM command" title="Copy assembled OBSIDIVM command" style="font-size:11px;font-weight:700;background:rgba(0,136,255,0.14);border:1px solid rgba(0,136,255,0.4);border-radius:7px;color:#5bb8ff;cursor:pointer;padding:8px 12px;white-space:nowrap;flex-shrink:0;">⧉ Copy</button></div>'
       +'<div style="display:flex;gap:8px;margin-top:10px;">'
       +'<button '+(fz?'disabled':'')+' onclick="siRunObsidivm()" style="flex:1;font-size:12px;font-weight:700;background:'+(fz?'rgba(255,255,255,0.05)':'linear-gradient(135deg,#00ff88,#00aa66)')+';border:none;border-radius:8px;color:'+(fz?'#556':'#001a0e')+';cursor:'+(fz?'not-allowed':'pointer')+';padding:9px;">▶ Run a pass now</button>'
       +'<button onclick="siResetLineage()" style="font-size:11px;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);border-radius:8px;color:#ff6b6b;cursor:pointer;padding:9px 14px;">↺ Reset</button></div>'
@@ -25737,7 +25743,7 @@ Be specific and actionable. Format as structured JSON.`;
   window.siSet=function(k,v){ CFG[k]=v; saveCfg(CFG); renderSelfImprove(); };
   window.siToggleFreeze=function(){ CFG.frozen=!CFG.frozen; saveCfg(CFG); renderSelfImprove(); if(window.toast) toast(CFG.frozen?'❄ Self-improvement frozen':'Self-improvement unfrozen',CFG.frozen?'warning':'info'); };
   window.siSetObs=function(k,v){ CFG.obsidivm[k]=v; saveCfg(CFG); const c=document.getElementById('siObsCmd'); if(c) c.textContent=obsidivmCommand(CFG); };
-  window.siCopyCmd=function(){ const cmd=obsidivmCommand(CFG); try{ navigator.clipboard&&navigator.clipboard.writeText(cmd); }catch(e){} if(window.toast) toast('Command copied — run it in your terminal','success'); };
+  window.siCopyCmd=function(btn){ const cmd=obsidivmCommand(CFG); try{ navigator.clipboard&&navigator.clipboard.writeText(cmd); }catch(e){} if(btn){ const orig=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>{ btn.textContent=orig; }, 1500); } if(window.toast) toast('Command copied — run it in your terminal','success'); };
   window.siRunObsidivm=function(){ if(CFG.frozen){ if(window.toast) toast('Unfreeze self-improvement first','warning'); return; } window.siCopyCmd(); };
   window.siResetLineage=function(){ if(!confirm('Reset the OBSIDIVM lineage? Wipes accumulated tactics + generations. (Copies the reset command.)')) return; try{ navigator.clipboard&&navigator.clipboard.writeText('npm run obsidivm:evolve:reset'); }catch(e){} if(window.toast) toast('Reset command copied','info'); };
   window.siRunReview=async function(){ try{ await fetch(base()+'/api/learning/run-review',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); if(window.toast) toast('Review pass triggered','success'); setTimeout(loadMemory,600); }catch(e){ if(window.toast) toast('Review failed: '+e.message,'error'); } };
