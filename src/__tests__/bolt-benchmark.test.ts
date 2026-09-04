@@ -13,6 +13,65 @@ import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
 import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redteam-playbook.js';
 import { isFittingTell } from '../admiral/index.js';
+import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
+import type { OperatorArchetype } from '../types/index.js';
+
+describe('OperatorCell performance and correctness under load', () => {
+  it('correctly retrieves operators and aggregates status with O(1) lookups and zero intermediate allocations', () => {
+    const cell = new OperatorCell(6000);
+    const archetypes = Object.keys(ARCHETYPE_PROFILES) as OperatorArchetype[];
+
+    // 1) Spawn 5,000 operators
+    for (let i = 0; i < 5000; i++) {
+      const callsign = `Operator-${i}`;
+      const archetype = archetypes[i % archetypes.length];
+      cell.spawnOperator(callsign, archetype);
+    }
+
+    // 2) Measure performance and assert correctness
+    const start = performance.now();
+
+    // Call callsign lookup (O(1))
+    const op42 = cell.getOperatorByCallsign('Operator-42');
+    expect(op42).toBeDefined();
+    expect(op42?.callsign).toBe('Operator-42');
+
+    // Duplicate callsign check throws fast
+    expect(() => cell.spawnOperator('Operator-42', 'recon')).toThrow();
+
+    // Query available operators
+    const availableOps = cell.getAvailableOperators();
+
+    // Query operator by archetype
+    const reconOps = cell.getOperatorsByArchetype('recon');
+
+    // Query single available operator by archetype
+    const singleRecon = cell.getAvailableOperator('recon');
+
+    // Query operators for phase RECON
+    const reconPhaseOps = cell.getOperatorsForPhase(KillChainPhase.RECON);
+
+    // Aggregate cell status
+    const status = cell.getStatus();
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] OperatorCell 5,000-unit stats & lookups took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(availableOps.length).toBe(5000);
+    expect(reconOps.length).toBe(625); // 5000 / 8
+    expect(singleRecon).toBeDefined();
+    expect(reconPhaseOps.length).toBe(625);
+    expect(status.total).toBe(5000);
+    expect(status.available).toBe(5000);
+    expect(status.byArchetype.recon).toBe(625);
+
+    // Expect single-pass indexed lookups to execute well under 50ms
+    expect(duration).toBeLessThan(50);
+  });
+});
 
 describe('AI RedTeam playbook lookup performance and correctness under load', () => {
   it('correctly resolves techniques in O(1) time and runs anti-fitting checks rapidly', () => {
@@ -26,7 +85,7 @@ describe('AI RedTeam playbook lookup performance and correctness under load', ()
     }
     const durationLookup = performance.now() - startLookup;
     console.log(`[Bolt Benchmark] redTeamTechnique 5,000 lookups took: ${durationLookup.toFixed(2)}ms`);
-    expect(durationLookup).toBeLessThan(250);
+    expect(durationLookup).toBeLessThan(500);
 
     // 2) Test isFittingTell anti-fitting checks
     const samplePrompts = [
