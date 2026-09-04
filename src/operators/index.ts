@@ -782,6 +782,8 @@ Respond in a structured format.`;
 
 export class OperatorCell extends EventEmitter<CellEvents> {
   private operators: Map<string, OperatorAgent> = new Map();
+  /** Secondary index mapping callsign -> OperatorAgent for O(1) callsign lookups and duplicate checks */
+  private operatorsByCallsign: Map<string, OperatorAgent> = new Map();
   private maxOperators: number;
   private llm?: LLMBackbone;
 
@@ -817,11 +819,9 @@ export class OperatorCell extends EventEmitter<CellEvents> {
       throw new Error(`Operator cell at capacity (${this.maxOperators})`);
     }
 
-    // Check for duplicate callsign
-    for (const op of this.operators.values()) {
-      if (op.callsign === callsign) {
-        throw new Error(`Operator with callsign "${callsign}" already exists`);
-      }
+    // O(1) check for duplicate callsign using index Map
+    if (this.operatorsByCallsign.has(callsign)) {
+      throw new Error(`Operator with callsign "${callsign}" already exists`);
     }
 
     const operator = new OperatorAgent(callsign, archetype, config, this.llm);
@@ -836,6 +836,7 @@ export class OperatorCell extends EventEmitter<CellEvents> {
     });
 
     this.operators.set(operator.id, operator);
+    this.operatorsByCallsign.set(callsign, operator);
     this.emit('operator:spawned', operator);
 
     return operator;
@@ -849,15 +850,10 @@ export class OperatorCell extends EventEmitter<CellEvents> {
   }
 
   /**
-   * Get an operator by callsign
+   * Get an operator by callsign in O(1) time
    */
   getOperatorByCallsign(callsign: string): OperatorAgent | undefined {
-    for (const operator of this.operators.values()) {
-      if (operator.callsign === callsign) {
-        return operator;
-      }
-    }
-    return undefined;
+    return this.operatorsByCallsign.get(callsign);
   }
 
   /**
@@ -868,32 +864,56 @@ export class OperatorCell extends EventEmitter<CellEvents> {
   }
 
   /**
-   * Get available operators
+   * Get available operators using single-pass direct Map iteration
    */
   getAvailableOperators(): OperatorAgent[] {
-    return this.getAllOperators().filter(op => op.isAvailable());
+    const available: OperatorAgent[] = [];
+    for (const op of this.operators.values()) {
+      if (op.isAvailable()) {
+        available.push(op);
+      }
+    }
+    return available;
   }
 
   /**
    * Get a single available operator matching an archetype (for task dispatch)
+   * Single-pass with early exit to avoid intermediate allocations.
    */
   getAvailableOperator(archetype: OperatorArchetype): OperatorAgent | undefined {
-    return this.getAllOperators().find(op => op.archetype === archetype && op.isAvailable());
+    for (const op of this.operators.values()) {
+      if (op.archetype === archetype && op.isAvailable()) {
+        return op;
+      }
+    }
+    return undefined;
   }
 
   /**
-   * Get operators by archetype
+   * Get operators by archetype using single-pass direct Map iteration
    */
   getOperatorsByArchetype(archetype: OperatorArchetype): OperatorAgent[] {
-    return this.getAllOperators().filter(op => op.archetype === archetype);
+    const matched: OperatorAgent[] = [];
+    for (const op of this.operators.values()) {
+      if (op.archetype === archetype) {
+        matched.push(op);
+      }
+    }
+    return matched;
   }
 
   /**
-   * Get operators by phase
+   * Get operators by phase using single-pass direct Map iteration
    */
   getOperatorsForPhase(phase: KillChainPhase): OperatorAgent[] {
     const archetypes = PHASE_ARCHETYPES[phase];
-    return this.getAllOperators().filter(op => archetypes.includes(op.archetype));
+    const matched: OperatorAgent[] = [];
+    for (const op of this.operators.values()) {
+      if (archetypes.includes(op.archetype)) {
+        matched.push(op);
+      }
+    }
+    return matched;
   }
 
   /**
@@ -904,6 +924,7 @@ export class OperatorCell extends EventEmitter<CellEvents> {
     if (operator) {
       operator.removeAllListeners();
       this.operators.delete(id);
+      this.operatorsByCallsign.delete(operator.callsign);
       return true;
     }
     return false;
@@ -918,6 +939,7 @@ export class OperatorCell extends EventEmitter<CellEvents> {
       if (operator.isBurned()) {
         operator.removeAllListeners();
         this.operators.delete(id);
+        this.operatorsByCallsign.delete(operator.callsign);
         count++;
       }
     }
@@ -925,7 +947,7 @@ export class OperatorCell extends EventEmitter<CellEvents> {
   }
 
   /**
-   * Get cell status
+   * Get cell status using single-pass direct Map value iteration with zero array allocations
    */
   getStatus(): {
     total: number;
@@ -935,8 +957,6 @@ export class OperatorCell extends EventEmitter<CellEvents> {
     burned: number;
     byArchetype: Record<OperatorArchetype, number>;
   } {
-    const operators = this.getAllOperators();
-
     const byArchetype: Partial<Record<OperatorArchetype, number>> = {};
     for (const archetype of Object.keys(ARCHETYPE_PROFILES) as OperatorArchetype[]) {
       byArchetype[archetype] = 0;
@@ -946,8 +966,10 @@ export class OperatorCell extends EventEmitter<CellEvents> {
     let busy = 0;
     let cooldown = 0;
     let burned = 0;
+    let total = 0;
 
-    for (const op of operators) {
+    for (const op of this.operators.values()) {
+      total++;
       byArchetype[op.archetype] = (byArchetype[op.archetype] || 0) + 1;
 
       switch (op.status) {
@@ -968,7 +990,7 @@ export class OperatorCell extends EventEmitter<CellEvents> {
     }
 
     return {
-      total: operators.length,
+      total,
       available,
       busy,
       cooldown,
