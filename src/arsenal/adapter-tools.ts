@@ -200,9 +200,14 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   if (/^169\.254\./.test(ip)) return true; // 169.254.0.0/16 (AWS metadata, APIPA)
   if (/^127\./.test(ip)) return true; // All of 127.0.0.0/8
 
-  // IPv6 private ranges
-  if (/^(fc00|fd00):/i.test(ip)) return true; // Unique local addresses
-  if (/^fe80:/i.test(ip)) return true; // Link-local addresses
+  // Multicast and reserved IPv4 ranges
+  if (/^(22[4-9]|23\d)\./.test(ip)) return true; // 224.0.0.0/4 (multicast)
+  if (/^(24\d|25[0-5])\./.test(ip)) return true; // 240.0.0.0/4 (reserved / broadcast)
+
+  // IPv6 private, link-local, and multicast ranges
+  if (/^f[cd][0-9a-f]{2}:/i.test(ip)) return true; // Unique local addresses (fc00::/7)
+  if (/^fe[8-f][0-9a-f]:/i.test(ip)) return true; // Link-local (fe80::/10) & site-local (fec0::/10)
+  if (/^ff[0-9a-f]{2}:/i.test(ip)) return true; // Multicast addresses (ff00::/8)
 
   return false;
 }
