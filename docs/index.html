@@ -3616,7 +3616,7 @@
                         <div class="operator-design-toolbar">
                             <div class="qol-tool-strip">
                                 <button type="button" class="qol-tool-btn" id="qolDensityBtn" onclick="toggleOperatorQolDensity()" aria-label="Toggle compact density for the clarity layer" title="Toggle compact density for the clarity layer.">Compact</button>
-                                <button type="button" class="qol-tool-btn copy" onclick="copyOperatorQolSnapshot()" aria-label="Copy a plain-English mission snapshot" title="Copy a plain-English mission snapshot.">Copy Snapshot</button>
+                                <button type="button" class="qol-tool-btn copy" onclick="copyOperatorQolSnapshot(this)" aria-label="Copy a plain-English mission snapshot" title="Copy a plain-English mission snapshot.">Copy Snapshot</button>
                                 <button type="button" class="qol-tool-btn" onclick="jumpToFirstQolBlocker()" aria-label="Jump to the first blocker or priority action" title="Jump to the first blocker or priority action.">First Blocker</button>
                                 <span class="qol-updated" id="qolUpdatedAt">updated --</span>
                                 <span class="qol-updated" id="qolSnapshotReceipt">snapshot idle</span>
@@ -22070,7 +22070,7 @@ Be specific and actionable. Format as structured JSON.`;
             return lines.join('\n');
         }
 
-        async function copyOperatorQolSnapshot() {
+        async function copyOperatorQolSnapshot(btn) {
             const text = buildOperatorQolShareText();
             window.__lastCopiedSnapshot = text;
             const lab = document.getElementById('operatorDesignLab');
@@ -22080,8 +22080,24 @@ Be specific and actionable. Format as structured JSON.`;
                 receipt.textContent = 'snapshot copied';
                 receipt.title = text;
             }
+            const updateBtn = (b) => {
+                if (b) {
+                    if (!b.dataset.origText) {
+                        b.dataset.origText = b.textContent;
+                    }
+                    const orig = b.dataset.origText;
+                    b.textContent = '✓ Copied!';
+                    if (b._copyTimeout) clearTimeout(b._copyTimeout);
+                    b._copyTimeout = setTimeout(() => {
+                        b.textContent = orig;
+                        delete b.dataset.origText;
+                        delete b._copyTimeout;
+                    }, 1500);
+                }
+            };
             try {
                 await navigator.clipboard.writeText(text);
+                updateBtn(btn);
                 toast('Operator snapshot copied', 'success');
             } catch (e) {
                 const area = document.createElement('textarea');
@@ -22092,6 +22108,7 @@ Be specific and actionable. Format as structured JSON.`;
                 area.select();
                 document.execCommand('copy');
                 area.remove();
+                updateBtn(btn);
                 try { toast('Operator snapshot copied', 'success'); } catch (err) {}
             }
         }
