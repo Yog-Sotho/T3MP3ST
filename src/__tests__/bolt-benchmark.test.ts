@@ -15,6 +15,55 @@ import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redt
 import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
+import { AgentLoop } from '../agent/index.js';
+import type { LLMBackbone } from '../llm/index.js';
+import type { Arsenal } from '../arsenal/index.js';
+
+describe('AgentLoop parseFinalFindings performance and correctness under load', () => {
+  it('correctly parses structured debrief blocks rapidly with zero redundant regex/Set allocation overhead', () => {
+    const loop = new AgentLoop({} as LLMBackbone, {} as Arsenal);
+    const mockContent = `
+Here is my assessment summary of the target.
+We found several vulnerabilities during the run.
+
+\`\`\`json
+{
+  "findings": [
+    {
+      "title": "SQL Injection in Login Endpoint",
+      "severity": "CRITICAL",
+      "details": "Unsanitized user input passed directly to DB query",
+      "cvss": 9.8,
+      "cve": ["CVE-2023-9999"],
+      "remediation": "Use parameterized queries"
+    },
+    {
+      "title": "Reflected Cross-Site Scripting",
+      "severity": "high",
+      "details": "q parameter reflected without escaping",
+      "cvss": 7.5
+    }
+  ],
+  "abstained": false
+}
+\`\`\`
+    `;
+
+    const start = performance.now();
+    let totalFindings = 0;
+    for (let i = 0; i < 5000; i++) {
+      const findings = (loop as any).parseFinalFindings(mockContent);
+      totalFindings += findings.length;
+    }
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] AgentLoop parseFinalFindings 5,000 parses took: ${duration.toFixed(2)}ms`);
+
+    expect(totalFindings).toBe(10000); // 5000 * 2
+    expect(duration).toBeLessThan(100);
+  });
+});
 
 describe('OperatorCell performance and correctness under load', () => {
   it('correctly retrieves operators and aggregates status with O(1) lookups and zero intermediate allocations', () => {

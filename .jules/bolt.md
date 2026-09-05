@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [Agent Debrief Block Parsing MatchAll and Multi-Pass Filter Bottleneck]
+**Learning:** Parsing model debrief blocks (`parseFinalFindings`) on every ReAct completion or limit summary instantiated a new `Set` instance for severity validation and used `[...content.matchAll(...)]` array spreads, generating intermediate array allocations. Furthermore, mapping and filtering findings with `.filter().map()` added unnecessary intermediate array allocations on V8 heap.
+**Action:** Hoist RegExp literals (`JSON_BLOCK_RE`) and validation sets (`SEV_SET`) to module scope, use a single-pass `RegExp.prototype.exec()` loop to extract code blocks lazily, and process parsed findings in a single indexed `for` loop pushing directly to the final result array.
