@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [Single-Pass Iteration and Set Lookups in Arsenal Tool Definition Formatting]
+**Learning:** In LLM tool definition resolution (`getToolDefinitions`), converting Map values to an array with `getAllTools()` (`Array.from(this.tools.values())`), followed by `Array.prototype.filter` with linear array scans (`names.includes(t.name)` or `categories.includes(t.category)`), created $O(N \times M)$ time complexity and multiple intermediate array allocations on every agent tool-calling turn.
+**Action:** Iterate directly over `this.tools.values()`, convert filter/allowlist arrays to `Set` objects for $O(1)$ membership checks, and format tool definitions using an allocation-free helper function.

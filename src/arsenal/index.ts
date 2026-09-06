@@ -81,6 +81,43 @@ export interface ToolExecution {
   error?: string;
 }
 
+/**
+ * Format a single CustomTool object into an LLMToolDefinition.
+ */
+function formatToolDefinition(tool: CustomTool): LLMToolDefinition {
+  const properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }> = {};
+  let required: string[] | undefined = undefined;
+
+  const params = tool.parameters;
+  if (params && params.length > 0) {
+    for (let i = 0; i < params.length; i++) {
+      const param = params[i];
+      const prop: { type: string; description?: string; enum?: string[]; default?: unknown } = {
+        type: param.type,
+        description: param.description,
+      };
+      if (param.default !== undefined) {
+        prop.default = param.default;
+      }
+      properties[param.name] = prop;
+      if (param.required) {
+        if (!required) required = [];
+        required.push(param.name);
+      }
+    }
+  }
+
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: {
+      type: 'object',
+      properties,
+      required,
+    },
+  };
+}
+
 // =============================================================================
 // ARSENAL
 // =============================================================================
@@ -346,41 +383,27 @@ export class Arsenal extends EventEmitter<ArsenalEvents> {
    * Convert registered tools to LLM tool definitions for function calling
    */
   getToolDefinitions(categories?: string[], names?: string[]): LLMToolDefinition[] {
-    let tools = this.getAllTools();
-    // A per-operator NAME allowlist (the archetype's role toolkit) is the precise gate and
-    // takes precedence over the coarse category filter; fall back to categories, then to all.
-    if (names?.length) {
-      tools = tools.filter(t => names.includes(t.name));
-    } else if (categories?.length) {
-      tools = tools.filter(t => categories.includes(t.category));
-    }
-    return tools.map(tool => {
-      const properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }> = {};
-      const required: string[] = [];
+    const hasNames = names && names.length > 0;
+    const hasCategories = categories && categories.length > 0;
 
-      for (const param of tool.parameters || []) {
-        properties[param.name] = {
-          type: param.type,
-          description: param.description,
-        };
-        if (param.default !== undefined) {
-          properties[param.name].default = param.default;
-        }
-        if (param.required) {
-          required.push(param.name);
-        }
+    // Use Set lookups for O(1) membership checks
+    const namesSet = hasNames ? new Set(names) : null;
+    const categoriesSet = (!hasNames && hasCategories) ? new Set(categories) : null;
+
+    const result: LLMToolDefinition[] = [];
+
+    // Iterate directly over Map values, avoiding intermediate array allocation
+    for (const tool of this.tools.values()) {
+      if (namesSet) {
+        if (!namesSet.has(tool.name)) continue;
+      } else if (categoriesSet) {
+        if (!categoriesSet.has(tool.category)) continue;
       }
 
-      return {
-        name: tool.name,
-        description: tool.description,
-        parameters: {
-          type: 'object' as const,
-          properties,
-          required: required.length > 0 ? required : undefined,
-        },
-      };
-    });
+      result.push(formatToolDefinition(tool));
+    }
+
+    return result;
   }
 
   /**

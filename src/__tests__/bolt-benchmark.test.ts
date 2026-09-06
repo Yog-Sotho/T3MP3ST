@@ -14,7 +14,66 @@ import { OpsecController } from '../opsec/index.js';
 import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redteam-playbook.js';
 import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
-import type { OperatorArchetype } from '../types/index.js';
+import type { OperatorArchetype, CustomTool } from '../types/index.js';
+import { Arsenal } from '../arsenal/index.js';
+
+describe('Arsenal getToolDefinitions performance and correctness under load', () => {
+  it('correctly retrieves and formats tool definitions with O(1) Set lookups and zero array allocation overhead', () => {
+    const arsenal = new Arsenal();
+    const categories = ['recon', 'web', 'vuln', 'auth', 'util'];
+
+    // 1) Register 1,000 tools
+    for (let i = 0; i < 1000; i++) {
+      const tool: CustomTool = {
+        name: `tool_${i}`,
+        description: `Description for tool ${i}`,
+        category: categories[i % categories.length],
+        parameters: [
+          { name: 'param1', type: 'string', description: 'desc1', required: true },
+          { name: 'param2', type: 'number', description: 'desc2', required: false, default: 42 },
+        ],
+        handler: async () => ({ success: true }),
+      };
+      arsenal.register(tool);
+    }
+
+    const namesAllowlist = Array.from({ length: 50 }, (_, i) => `tool_${i * 20}`);
+    const categoriesFilter = ['recon', 'web'];
+
+    // 2) Measure performance under 5,000 queries
+    const start = performance.now();
+    let allowlistResultCount = 0;
+    let categoryResultCount = 0;
+
+    for (let i = 0; i < 2500; i++) {
+      const defs = arsenal.getToolDefinitions(undefined, namesAllowlist);
+      allowlistResultCount += defs.length;
+    }
+
+    for (let i = 0; i < 2500; i++) {
+      const defs = arsenal.getToolDefinitions(categoriesFilter);
+      categoryResultCount += defs.length;
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] Arsenal 5,000 getToolDefinitions queries took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(allowlistResultCount).toBe(2500 * 50); // 50 items per call
+    expect(categoryResultCount).toBe(2500 * 400); // 400 items per call (2/5 of 1,000)
+
+    const sample = arsenal.getToolDefinitions(undefined, ['tool_0'])[0];
+    expect(sample.name).toBe('tool_0');
+    expect(sample.parameters.properties.param1.type).toBe('string');
+    expect(sample.parameters.properties.param2.default).toBe(42);
+    expect(sample.parameters.required).toEqual(['param1']);
+
+    // 5,000 queries over 1,000 tools should reliably complete under 750ms in virtualized test environments
+    expect(duration).toBeLessThan(750);
+  });
+});
 
 describe('OperatorCell performance and correctness under load', () => {
   it('correctly retrieves operators and aggregates status with O(1) lookups and zero intermediate allocations', () => {
