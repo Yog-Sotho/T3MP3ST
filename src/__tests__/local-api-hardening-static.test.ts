@@ -57,6 +57,9 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/dalfox:\s*\/\^\(-o\|--output\|-w\|--wordlist\|-c\|--config\|--found-action\|--grep\)\$\//);
     expect(block).toMatch(/subfinder:\s*\/\^\(-o\|-output\|-dL\|-list\|-config\|-provider-config\|-r\|-rL\|-active\)\$\//);
     expect(block).toMatch(/httpx:\s*\/\^\(-o\|-output\|-sr\|-srd\|-r\|-request\|-filter-regex\|-match-regex\|-config\|-dL\|-list\)\$\//);
+    expect(block).toMatch(/naabu:\s*\/\^\(-o\|-output\|-dL\|-list\|-config\)\$\//);
+    expect(block).toMatch(/exiftool:\s*\/\^\(-config\|-o\)\$\//);
+    expect(block).toMatch(/checkov:\s*\/\^\(--external-checks-dir\|--external-checks-git\|-f\|--file\|--config-file\|-o\|--output-file-path\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {

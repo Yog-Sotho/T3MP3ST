@@ -420,6 +420,9 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     dalfox: /^(-o|--output|-w|--wordlist|-c|--config|--found-action|--grep)$/i,
     subfinder: /^(-o|-output|-dL|-list|-config|-provider-config|-r|-rL|-active)$/i,
     httpx: /^(-o|-output|-sr|-srd|-r|-request|-filter-regex|-match-regex|-config|-dL|-list)$/i,
+    naabu: /^(-o|-output|-dL|-list|-config)$/i,
+    exiftool: /^(-config|-o)$/i,
+    checkov: /^(--external-checks-dir|--external-checks-git|-f|--file|--config-file|-o|--output-file-path)$/i,
   };
 
   const pattern = dangerousFlags[bin];
