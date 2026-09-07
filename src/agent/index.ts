@@ -78,6 +78,10 @@ export interface AgentEvents {
   'agent:error': { error: Error; step: number };
 }
 
+// Module-level static allocations for parseFinalFindings optimization
+const VALID_SEVERITIES = new Set(['critical', 'high', 'medium', 'low', 'info']);
+const FENCED_JSON_RE = /```(?:json)?\s*([\s\S]*?)```/g;
+
 // =============================================================================
 // AGENT LOOP
 // =============================================================================
@@ -473,26 +477,45 @@ export class AgentLoop extends EventEmitter<AgentEvents> {
    */
   private parseFinalFindings(content: string): ToolFinding[] {
     if (!content) return [];
-    const SEV = new Set(['critical', 'high', 'medium', 'low', 'info']);
-    const blocks = [...content.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)].map((m) => m[1]);
+
+    // Extract code blocks with a single-pass RegExp exec loop to avoid matchAll array spread
+    const blocks: string[] = [];
+    FENCED_JSON_RE.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = FENCED_JSON_RE.exec(content)) !== null) {
+      blocks.push(match[1]);
+    }
+
     const candidates = blocks.length ? blocks.reverse() : [content];
-    for (const c of candidates) {
+    for (let i = 0; i < candidates.length; i++) {
+      const c = candidates[i];
       const start = c.indexOf('{');
       const end = c.lastIndexOf('}');
       if (start === -1 || end <= start) continue;
       try {
         const obj = JSON.parse(c.slice(start, end + 1));
         if (!obj || !Array.isArray(obj.findings)) continue;
-        return obj.findings.filter((f: any) => f && f.title).map((f: any) => ({
-          title: String(f.title).slice(0, 200),
-          severity: (SEV.has(String(f.severity).toLowerCase()) ? String(f.severity).toLowerCase() : 'info') as Severity,
-          details: String(f.details ?? f.evidence ?? f.evidence_ref ?? '').slice(0, 4000),
-          cvss: typeof f.cvss === 'number' ? f.cvss : undefined,
-          cve: Array.isArray(f.cve) ? f.cve.map(String) : undefined,
-          remediation: f.remediation ? String(f.remediation) : undefined,
-          // Model-asserted in the debrief — NO tool provenance. The gate downgrades these.
-          provenance: 'model' as const,
-        }));
+
+        // Single-pass indexed loop to construct findings without intermediate filter/map allocations
+        const rawFindings = obj.findings;
+        const result: ToolFinding[] = [];
+        for (let j = 0; j < rawFindings.length; j++) {
+          const f = rawFindings[j];
+          if (!f || !f.title) continue;
+
+          const sevStr = String(f.severity).toLowerCase();
+          result.push({
+            title: String(f.title).slice(0, 200),
+            severity: (VALID_SEVERITIES.has(sevStr) ? sevStr : 'info') as Severity,
+            details: String(f.details ?? f.evidence ?? f.evidence_ref ?? '').slice(0, 4000),
+            cvss: typeof f.cvss === 'number' ? f.cvss : undefined,
+            cve: Array.isArray(f.cve) ? f.cve.map(String) : undefined,
+            remediation: f.remediation ? String(f.remediation) : undefined,
+            // Model-asserted in the debrief — NO tool provenance. The gate downgrades these.
+            provenance: 'model' as const,
+          });
+        }
+        return result;
       } catch { /* try the next candidate block */ }
     }
     return [];
