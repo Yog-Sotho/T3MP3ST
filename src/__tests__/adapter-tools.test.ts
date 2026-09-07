@@ -77,6 +77,18 @@ describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF p
     expect(isRestrictedInternalIP('google.com.')).toBe(false);
   });
 
+  it('blocks hex-word IPv4-mapped and IPv4-compatible IPv6 addresses', () => {
+    expect(isRestrictedInternalIP('::ffff:7f00:1')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:7f00:0001')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:ffff:7f00:1')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:a00:1')).toBe(true); // 10.0.0.1
+    expect(isRestrictedInternalIP('::ffff:c0a8:101')).toBe(true); // 192.168.1.1
+    expect(isRestrictedInternalIP('::ffff:a9fe:a9fe')).toBe(true); // 169.254.169.254
+
+    expect(isRestrictedInternalIP('::ffff:808:808')).toBe(false); // 8.8.8.8
+    expect(isRestrictedInternalIP('::ffff:101:101')).toBe(false); // 1.1.1.1
+  });
+
   it('blocks uncompressed IPv4-compatible IPv6 addresses (6 zero groups + IPv4)', () => {
     expect(isRestrictedInternalIP('0:0:0:0:0:0:127.0.0.1')).toBe(true);
     expect(isRestrictedInternalIP('0000:0000:0000:0000:0000:0000:127.0.0.1')).toBe(true);

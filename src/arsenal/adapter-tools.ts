@@ -67,6 +67,13 @@ export interface AdapterToolDeps {
  * to its standard dot-decimal format. Returns null if invalid or not an alternative IP.
  */
 function parseAlternativeIPv4(hostname: string): string | null {
+  if (/^[0-9a-f]{1,4}:[0-9a-f]{1,4}$/i.test(hostname)) {
+    const parts = hostname.split(':');
+    const h1 = parseInt(parts[0], 16);
+    const h2 = parseInt(parts[1], 16);
+    return `${(h1 >> 8) & 255}.${h1 & 255}.${(h2 >> 8) & 255}.${h2 & 255}`;
+  }
+
   const parts = hostname.split('.');
   if (parts.length > 4 || parts.length === 0) return null;
 
@@ -161,7 +168,7 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   ip = ip.replace(/\.+$/, '');
 
   // Strip trailing port suffix if present after an IPv4-mapped/compatible IPv6 string (e.g. ::ffff:127.0.0.1:8080 or 0:0:0:0:0:0:127.0.0.1:8080)
-  ip = ip.replace(/^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?([^:]+)(?::\d{1,5})$/i, (_match, _addr) => ip.slice(0, ip.lastIndexOf(':')));
+  ip = ip.replace(/^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d{1,5})$/i, '$1');
 
   // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped/compatible IPv6)
   // IPv4-compatible IPv6 addresses can contain up to 6 leading zero-hex groups (e.g. 0:0:0:0:0:0:127.0.0.1)
