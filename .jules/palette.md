@@ -23,3 +23,7 @@
 ## 2026-09-04 - [In-Place Visual Feedback for Copy-to-Clipboard Actions]
 **Learning:** Toast notifications provide helpful global feedback when a command or snippet is copied to clipboard, but users look directly at the button they just clicked. Updating the triggering button's text temporarily to `✓ Copied!` provides immediate, localized visual confirmation before resetting back to the original label after a short timeout (~1.5s).
 **Action:** When implementing or updating copy-to-clipboard buttons, pass the button element to the copy handler and apply a temporary `✓ Copied!` text state alongside global toasts.
+
+## 2026-09-08 - [Connecting Global Shortcut Legends to Real Event Handlers]
+**Learning:** Documenting keyboard shortcuts in UI legends and modal help screens builds expectation. When a shortcut (such as `/` for focusing search/hunt inputs) is advertised in legends but missing from the keydown event listener, keyboard-driven users experience friction. Validating keydown targets against both `e.target` and `document.activeElement` (`INPUT`, `TEXTAREA`, `SELECT`, `isContentEditable`) prevents accidental capture during typing while ensuring advertised global shortcuts function reliably.
+**Action:** Always verify that keyboard shortcut legends in the UI correspond to active keydown event handlers and safeguard typing states across form elements and editable regions.

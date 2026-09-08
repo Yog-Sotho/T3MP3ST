@@ -17766,7 +17766,7 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">Enter</kbd><span style="color:#999;">Launch mission</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">D</kbd><span style="color:#999;">Deploy all operators</span>
                         <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">K</kbd><span style="color:#999;">Clear console</span>
-                        <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">/</kbd><span style="color:#999;">Search console</span>
+                        <kbd style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:3px;font-size:10px;color:#ccc;text-align:center;border:1px solid rgba(255,255,255,0.15);">/</kbd><span style="color:#999;">Focus hunt / search input</span>
                     </div>
                     <div style="color:#888;font-size:10px;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">Double-click any console entry to copy it to clipboard.</div>
                 </div>
@@ -17774,10 +17774,24 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
         }
 
         document.addEventListener('keydown', function(e) {
-            // Ignore when typing in inputs
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            // Ignore when typing in inputs or contentEditable elements
+            const isTyping = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+            if (isTyping(e.target) || isTyping(document.activeElement)) return;
 
             // ── Global shortcuts (work on any page) ──
+            // / = focus hunt / search input
+            if (e.key === '/' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                e.preventDefault();
+                const arsenal = document.getElementById('page-arsenal');
+                if (arsenal && arsenal.classList.contains('active')) {
+                    const search = document.getElementById('arsenalSearch');
+                    if (search) { search.focus(); search.select(); }
+                } else {
+                    const target = document.getElementById('heroHuntTarget');
+                    if (target) { target.focus(); target.select(); }
+                }
+                return;
+            }
             // ⌘K / Ctrl+K = open Quick Actions
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
                 e.preventDefault();
