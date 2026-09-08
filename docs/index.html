@@ -3650,10 +3650,10 @@
                                 <div class="mission-cockpit-subtitle">Recorder, proof, tasks, target intake, and training range folded into one operator surface.</div>
                             </div>
                             <div class="mission-mini-actions">
-                                <button type="button" id="missionSpineToggle" onclick="var g=document.getElementById('missionSpineGrid'); if(g){var show=g.style.display==='none'; g.style.display=show?'':'none'; this.textContent=show?'▾ Collapse':'▸ Expand';}">▸ Expand</button>
-                                <button type="button" onclick="renderMissionCockpit()">Refresh</button>
-                                <button type="button" onclick="exportPlinyMissionBundle()">Bundle</button>
-                                <button type="button" onclick="runPlinyFieldDrill()">Field Drill</button>
+                                <button type="button" id="missionSpineToggle" aria-expanded="false" aria-controls="missionSpineGrid" aria-label="Expand Mission Spine panel" title="Expand Mission Spine panel" onclick="var g=document.getElementById('missionSpineGrid'); if(g){var show=g.style.display==='none'; g.style.display=show?'':'none'; this.textContent=show?'▾ Collapse':'▸ Expand'; this.setAttribute('aria-expanded', show?'true':'false'); this.setAttribute('aria-label', show?'Collapse Mission Spine panel':'Expand Mission Spine panel'); this.setAttribute('title', show?'Collapse Mission Spine panel':'Expand Mission Spine panel');}">▸ Expand</button>
+                                <button type="button" onclick="renderMissionCockpit()" aria-label="Refresh Mission Spine data" title="Refresh Mission Spine data">Refresh</button>
+                                <button type="button" onclick="exportPlinyMissionBundle()" aria-label="Export mission bundle" title="Export mission bundle">Bundle</button>
+                                <button type="button" onclick="runPlinyFieldDrill()" aria-label="Run Pliny field drill" title="Run Pliny field drill">Field Drill</button>
                             </div>
                         </div>
                         <div class="mission-spine-grid" id="missionSpineGrid" style="display:none;">
@@ -3673,18 +3673,18 @@
                                 <div class="mission-spine-title"><span>Target Intake</span><span id="targetIntakeState">scope</span></div>
                                 <div class="mission-spine-list" id="targetIntakeList"></div>
                                 <div class="mission-mini-actions">
-                                    <button type="button" onclick="focusQolTarget()">Target</button>
-                                    <button type="button" onclick="stagePlinyMissionContract()">Stage</button>
-                                    <button type="button" onclick="requestPlinyApproval()">Receipt</button>
+                                    <button type="button" onclick="focusQolTarget()" aria-label="Focus target input" title="Focus target input">Target</button>
+                                    <button type="button" onclick="stagePlinyMissionContract()" aria-label="Stage mission contract" title="Stage mission contract">Stage</button>
+                                    <button type="button" onclick="requestPlinyApproval()" aria-label="Request approval receipt" title="Request approval receipt">Receipt</button>
                                 </div>
                             </section>
                             <section class="mission-spine-card">
                                 <div class="mission-spine-title"><span>Training Range</span><span id="trainingRangeState">local safe</span></div>
                                 <div class="mission-spine-list" id="trainingRangeList"></div>
                                 <div class="mission-mini-actions">
-                                    <button type="button" onclick="armLocalTrainingRange()">Arm Local</button>
-                                    <button type="button" onclick="runPlinyFieldDrill()">Drill</button>
-                                    <button type="button" onclick="navigateTo('ctf-range')">Range</button>
+                                    <button type="button" onclick="armLocalTrainingRange()" aria-label="Arm local training range" title="Arm local training range">Arm Local</button>
+                                    <button type="button" onclick="runPlinyFieldDrill()" aria-label="Run field drill" title="Run field drill">Drill</button>
+                                    <button type="button" onclick="navigateTo('ctf-range')" aria-label="Navigate to CTF range" title="Navigate to CTF range">Range</button>
                                 </div>
                             </section>
                         </div>
