@@ -181,6 +181,14 @@ describe('isRestrictedInternalIP', () => {
     it('blocks ::ffff:127.0.0.1%eth0', () => expect(isRestrictedInternalIP('::ffff:127.0.0.1%eth0')).toBe(true));
     it('blocks [::ffff:127.0.0.1%25eth0]', () => expect(isRestrictedInternalIP('[::ffff:127.0.0.1%25eth0]')).toBe(true));
     it('blocks ::ffff:10.0.0.1%eth0', () => expect(isRestrictedInternalIP('::ffff:10.0.0.1%eth0')).toBe(true));
+    it('blocks hex-word IPv4-mapped loopback ::ffff:7f00:1', () => expect(isRestrictedInternalIP('::ffff:7f00:1')).toBe(true));
+    it('blocks hex-word IPv4-mapped metadata ::ffff:a9fe:a9fe', () => expect(isRestrictedInternalIP('::ffff:a9fe:a9fe')).toBe(true));
+    it('blocks uncompressed hex-word IPv4-mapped loopback 0:0:0:0:0:ffff:7f00:1', () => expect(isRestrictedInternalIP('0:0:0:0:0:ffff:7f00:1')).toBe(true));
+    it('blocks hex-word IPv4-compatible loopback ::7f00:1', () => expect(isRestrictedInternalIP('::7f00:1')).toBe(true));
+    it('blocks uncompressed hex-word IPv4-compatible loopback 0:0:0:0:0:0:7f00:1', () => expect(isRestrictedInternalIP('0:0:0:0:0:0:7f00:1')).toBe(true));
+    it('blocks bracketed hex-word IPv4-mapped loopback with port [::ffff:7f00:1]:8080', () => expect(isRestrictedInternalIP('[::ffff:7f00:1]:8080')).toBe(true));
+    it('blocks scheme/userinfo-prefixed hex-word IPv4-mapped metadata http://user:pass@::ffff:a9fe:a9fe/latest/meta-data', () => expect(isRestrictedInternalIP('http://user:pass@::ffff:a9fe:a9fe/latest/meta-data')).toBe(true));
+    it('allows non-restricted hex-word IPv4-mapped address ::ffff:808:808', () => expect(isRestrictedInternalIP('::ffff:808:808')).toBe(false));
   });
 
   describe('unspecified and wildcard addresses (0.0.0.0/8 and ::)', () => {
