@@ -5424,48 +5424,48 @@
                             <label for="openrouterKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">OpenRouter API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
-                                    <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-...">
+                                    <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-..." aria-label="OpenRouter API key">
                                     <button class="api-key-toggle" onclick="toggleApiKey('openrouterKey')" aria-label="Show OpenRouter API key">Show</button>
                                 </div>
                                 <div class="form-hint">Get key from <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--accent);">openrouter.ai/keys</a></div>
                             </div>
-                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('openrouter')">Save</button>
+                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('openrouter', this)" aria-label="Save OpenRouter API key" title="Save OpenRouter API key">Save</button>
                         </div>
 
                         <div class="card">
                             <label for="veniceKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">Venice API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
-                                    <input type="password" class="form-input" id="veniceKey" placeholder="venice key…">
+                                    <input type="password" class="form-input" id="veniceKey" placeholder="venice key…" aria-label="Venice API key">
                                     <button class="api-key-toggle" onclick="toggleApiKey('veniceKey')" aria-label="Show Venice API key">Show</button>
                                 </div>
                                 <div class="form-hint">OpenAI-compatible, privacy-focused. Get key from <a href="https://venice.ai/settings/api" target="_blank" style="color: var(--accent);">venice.ai/settings/api</a></div>
                             </div>
-                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('venice')">Save</button>
+                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('venice', this)" aria-label="Save Venice API key" title="Save Venice API key">Save</button>
                         </div>
 
                         <div class="card">
                             <label for="anthropicKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">Anthropic API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
-                                    <input type="password" class="form-input" id="anthropicKey" placeholder="sk-ant-...">
+                                    <input type="password" class="form-input" id="anthropicKey" placeholder="sk-ant-..." aria-label="Anthropic API key">
                                     <button class="api-key-toggle" onclick="toggleApiKey('anthropicKey')" aria-label="Show Anthropic API key">Show</button>
                                 </div>
                             </div>
                             <div style="font-size: 10px; color: #888; margin-bottom: 8px;">Stored, but direct-LLM currently routes via <b>OpenRouter</b> or a connected agent — not wired to this key yet.</div>
-                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('anthropic')">Save</button>
+                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('anthropic', this)" aria-label="Save Anthropic API key" title="Save Anthropic API key">Save</button>
                         </div>
 
                         <div class="card">
                             <label for="openaiKey" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">OpenAI API Key</label>
                             <div class="form-group">
                                 <div class="api-key-input">
-                                    <input type="password" class="form-input" id="openaiKey" placeholder="sk-...">
+                                    <input type="password" class="form-input" id="openaiKey" placeholder="sk-..." aria-label="OpenAI API key">
                                     <button class="api-key-toggle" onclick="toggleApiKey('openaiKey')" aria-label="Show OpenAI API key">Show</button>
                                 </div>
                             </div>
                             <div style="font-size: 10px; color: #888; margin-bottom: 8px;">Stored, but direct-LLM currently routes via <b>OpenRouter</b> or a connected agent — not wired to this key yet.</div>
-                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('openai')">Save</button>
+                            <button class="btn btn-primary btn-sm" onclick="saveApiKey('openai', this)" aria-label="Save OpenAI API key" title="Save OpenAI API key">Save</button>
                         </div>
                     </div>
 
@@ -8392,7 +8392,7 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             b.setAttribute('aria-label', `${i.type === 'password' ? 'Show' : 'Hide'} ${name} API key`);
         }
 
-        function saveApiKey(provider) {
+        function saveApiKey(provider, btn) {
             const key = document.getElementById(`${provider}Key`).value;
             if (!key) { toast('Enter a key', 'error'); return; }
             state.settings[`${provider}Key`] = key;
@@ -8400,6 +8400,14 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             updatePreflightChecklist();
             addActivity('success', `${provider} key saved`, 'Settings');
             toast(`${provider} key saved`, 'success');
+            if (btn) {
+                if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+                if (btn._saveTimeout) clearTimeout(btn._saveTimeout);
+                btn.textContent = '✓ Saved!';
+                btn._saveTimeout = setTimeout(() => {
+                    btn.textContent = btn.dataset.origText;
+                }, 1500);
+            }
         }
 
         function renderModels() {
