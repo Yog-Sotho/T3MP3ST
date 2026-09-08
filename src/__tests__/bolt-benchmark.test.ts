@@ -15,17 +15,11 @@ import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redt
 import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
-import { OpGeneral, type OpPlan, type Directive } from '../general/index.js';
+import { OpGeneral, type OpPlan } from '../general/index.js';
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
     const general = new OpGeneral({} as any);
-
-    const directive: Directive = {
-      objective: 'Comprehensive multi-lane security operation',
-      constraints: 'Authorized testing only',
-      scopeHints: '10.0.0.1 - 10.0.0.250',
-    };
 
     // Construct a large OpPlan with 2,500 work orders, 500 hunt lanes, 500 targets, and 1,000 authority receipts
     const plan: OpPlan = {
