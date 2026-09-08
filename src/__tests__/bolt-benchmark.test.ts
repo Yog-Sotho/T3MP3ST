@@ -15,6 +15,128 @@ import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redt
 import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
+import { OpGeneral, type OpPlan, type Directive } from '../general/index.js';
+
+describe('OpGeneral performance and correctness under load', () => {
+  it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
+    const general = new OpGeneral({} as any);
+
+    const directive: Directive = {
+      objective: 'Comprehensive multi-lane security operation',
+      constraints: 'Authorized testing only',
+      scopeHints: '10.0.0.1 - 10.0.0.250',
+    };
+
+    // Construct a large OpPlan with 2,500 work orders, 500 hunt lanes, 500 targets, and 1,000 authority receipts
+    const plan: OpPlan = {
+      id: 'plan-bench-1',
+      codename: 'OPERATION BOLT GENERAL',
+      summary: 'High-throughput OpGeneral benchmark plan',
+      targets: Array.from({ length: 500 }, (_, i) => ({
+        address: `10.0.0.${(i % 250) + 1}`,
+        expectedType: 'web_application',
+        priority: (i % 5) + 1,
+        rationale: 'Target specification',
+      })),
+      objectives: [
+        { description: 'Objective 1', priority: 1, successCriteria: 'Criteria 1', phase: 'reconnaissance' },
+      ],
+      operators: [
+        { archetype: 'recon', count: 2, deployPhase: 'reconnaissance', briefing: 'Recon briefing' },
+        { archetype: 'scanner', count: 2, deployPhase: 'weaponization', briefing: 'Scanner briefing' },
+        { archetype: 'analyst', count: 2, deployPhase: 'actions_on_objectives', briefing: 'Analyst briefing' },
+      ],
+      opsecLevel: 'covert',
+      phaseStrategy: [],
+      roe: {
+        scope: Array.from({ length: 500 }, (_, i) => `10.0.0.${(i % 250) + 1}`),
+        exclusions: [],
+        maxDetections: 5,
+        destructiveAllowed: false,
+        requireApproval: [],
+      },
+      contingencies: [],
+      complexity: 'high',
+      rationale: 'Strategic rationale',
+      missionFamily: 'web_api',
+      huntLanes: Array.from({ length: 500 }, (_, i) => ({
+        family: (['web_api', 'ai_red_team', 'cloud_infra', 'smart_contract', 'code_supply_chain'] as const)[i % 5],
+        target: `10.0.0.${(i % 250) + 1}`,
+        priority: (i % 5) + 1,
+        pressureQuestion: 'Boundary pressure question?',
+        strangeRouteHypothesis: 'Strange route hypothesis',
+        specialistArchetypes: ['recon', 'scanner', 'analyst'] as OperatorArchetype[],
+        resourcePackIds: ['res-1'],
+        containment: 'Safe containment',
+      })),
+      authorityReceipts: Array.from({ length: 500 }, (_, i) => ({
+        action: 'mission_execution',
+        target: `10.0.0.${(i % 250) + 1}`,
+        reason: 'Required authority receipt',
+        requiredBefore: 'execution',
+      })),
+      evidenceContract: {
+        requiredArtifacts: ['artifact-1'],
+        minimumConfidence: 80,
+        provenanceFloor: 'tool',
+        claimRules: ['Rule 1'],
+        retestRequired: true,
+      },
+      workOrders: Array.from({ length: 2500 }, (_, i) => ({
+        id: `wo-${i}`,
+        family: (['web_api', 'ai_red_team', 'cloud_infra', 'smart_contract', 'code_supply_chain'] as const)[i % 5],
+        title: `Work order ${i}`,
+        hypothesis: `Hypothesis ${i}`,
+        suspectedBoundary: 'Boundary',
+        target: `10.0.0.${(i % 250) + 1}`,
+        assignedArchetype: (['recon', 'scanner', 'analyst', 'exploiter'] as OperatorArchetype[])[i % 4],
+        kind: 'prove',
+        safeProbe: 'Safe probe',
+        expectedSignal: 'Expected signal',
+        evidenceArtifact: 'Artifact',
+        falsifier: 'Falsifier condition',
+        retest: 'Retest criteria',
+        requiresReceipt: false,
+        toolHints: ['nmap', 'curl'],
+        priority: (i % 5) + 1,
+        status: 'ready',
+      })),
+      toolPlan: [
+        { family: 'web_api', primaryTools: ['curl'], fallbackTools: ['manual-review'], readinessNotes: ['Ready'] },
+      ],
+      critic: {
+        strongestAssumption: 'Scope is valid',
+        missingCoverage: [],
+        weirdRoute: 'Component composition collapse',
+        proofPressure: 'High proof pressure',
+        nextQuestion: 'Next question',
+      },
+      missionGate: { status: 'ready', score: 100, blockers: [], warnings: [], criteria: [] },
+      learning: { memoryCandidates: [], doctrineNotes: [], replaySuites: [] },
+      createdAt: Date.now(),
+    };
+
+    const start = performance.now();
+
+    // Perform reviewPlan and executePlan 50 times over this large plan
+    let reviewStatus = '';
+    let numAssignments = 0;
+    for (let i = 0; i < 50; i++) {
+      const review = general.reviewPlan(plan);
+      reviewStatus = review.status;
+      const exec = general.executePlan(plan);
+      numAssignments = exec.operatorAssignments.length;
+    }
+
+    const duration = performance.now() - start;
+
+    console.log(`[Bolt Benchmark] OpGeneral reviewPlan & executePlan (50 iterations on 2,500 work orders / 500 lanes) took: ${duration.toFixed(2)}ms`);
+
+    expect(reviewStatus).toBe('ready');
+    expect(numAssignments).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(250);
+  });
+});
 
 describe('OperatorCell performance and correctness under load', () => {
   it('correctly retrieves operators and aggregates status with O(1) lookups and zero intermediate allocations', () => {

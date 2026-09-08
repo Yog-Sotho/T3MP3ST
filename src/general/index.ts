@@ -862,37 +862,55 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
     return map[family];
   }
 
+  /**
+   * ⚡ BOLT OPTIMIZATION: Populate receipts and deduplicate in a single pass with a Set,
+   * avoiding intermediate array allocations, spreads, and multi-pass filtering.
+   */
   private normalizeAuthorityReceipts(value: unknown, plan: OpPlan): OpPlanAuthorityReceipt[] {
-    const validActions = ['route_preview', 'mission_execution', 'network_request', 'command_execution', 'model_call', 'autonomous_execution', 'human_review'];
-    const fromJson = Array.isArray(value) ? value.map((receipt: any): OpPlanAuthorityReceipt => ({
-      action: validActions.includes(String(receipt?.action)) ? receipt.action : 'human_review',
-      target: String(receipt?.target || '*'),
-      reason: String(receipt?.reason || 'Authority boundary must be explicit before action.'),
-      requiredBefore: String(receipt?.requiredBefore || 'execution'),
-    })) : [];
+    const result: OpPlanAuthorityReceipt[] = [];
+    const seen = new Set<string>();
 
-    const defaults: OpPlanAuthorityReceipt[] = [
-      {
-        action: 'route_preview',
-        target: '*',
-        reason: 'Preview the route and scope before operators execute.',
-        requiredBefore: 'plan_review',
-      },
-      ...plan.targets.map(target => ({
-        action: 'mission_execution' as const,
+    const addReceipt = (receipt: OpPlanAuthorityReceipt) => {
+      const key = `${receipt.action}:${receipt.target}:${receipt.requiredBefore}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(receipt);
+      }
+    };
+
+    if (Array.isArray(value)) {
+      const validActions = new Set(['route_preview', 'mission_execution', 'network_request', 'command_execution', 'model_call', 'autonomous_execution', 'human_review']);
+      for (let i = 0; i < value.length; i++) {
+        const receipt = value[i];
+        const actionStr = String(receipt?.action || '');
+        const action = validActions.has(actionStr) ? (actionStr as OpPlanAuthorityReceipt['action']) : 'human_review';
+        addReceipt({
+          action,
+          target: String(receipt?.target || '*'),
+          reason: String(receipt?.reason || 'Authority boundary must be explicit before action.'),
+          requiredBefore: String(receipt?.requiredBefore || 'execution'),
+        });
+      }
+    }
+
+    addReceipt({
+      action: 'route_preview',
+      target: '*',
+      reason: 'Preview the route and scope before operators execute.',
+      requiredBefore: 'plan_review',
+    });
+
+    for (let i = 0; i < plan.targets.length; i++) {
+      const target = plan.targets[i];
+      addReceipt({
+        action: 'mission_execution',
         target: target.address,
         reason: `Target-bound execution receipt for ${target.address}.`,
         requiredBefore: 'active_execution',
-      })),
-    ];
+      });
+    }
 
-    const seen = new Set<string>();
-    return [...fromJson, ...defaults].filter(receipt => {
-      const key = `${receipt.action}:${receipt.target}:${receipt.requiredBefore}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    return result;
   }
 
   private normalizeEvidenceContract(value: unknown): OpPlanEvidenceContract {
@@ -1094,6 +1112,14 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
    * General's non-LLM gate: scope, receipts, evidence, lane coverage, and retest
    * obligations must be visible before the plan can be treated as ready.
    */
+  /**
+   * Deterministically review the current plan before execution. This is the
+   * General's non-LLM gate: scope, receipts, evidence, lane coverage, and retest
+   * obligations must be visible before the plan can be treated as ready.
+   *
+   * ⚡ BOLT OPTIMIZATION: Single-pass indexed loops replace multi-pass .filter() chains
+   * and redundant array allocations on hot plan validation paths.
+   */
   reviewPlan(plan?: OpPlan): GeneralPlanReview {
     const p = plan || this.currentPlan;
     if (!p) {
@@ -1138,15 +1164,23 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       strengths.push(`${p.workOrders.length} work order(s) define probes, evidence, falsifiers, and retests.`);
     }
 
-    const workOrdersWithoutRetests = p.workOrders.filter(order => !order.retest.trim());
-    if (workOrdersWithoutRetests.length) {
-      warnings.push(`${workOrdersWithoutRetests.length} work order(s) are missing retest instructions.`);
+    let workOrdersWithoutRetestsCount = 0;
+    let workOrdersWithoutFalsifiersCount = 0;
+    const workOrderFamilies = new Set<MissionFamily>();
+    for (let i = 0; i < p.workOrders.length; i++) {
+      const order = p.workOrders[i];
+      if (!order.retest.trim()) workOrdersWithoutRetestsCount++;
+      if (!order.falsifier.trim()) workOrdersWithoutFalsifiersCount++;
+      workOrderFamilies.add(order.family);
+    }
+
+    if (workOrdersWithoutRetestsCount > 0) {
+      warnings.push(`${workOrdersWithoutRetestsCount} work order(s) are missing retest instructions.`);
       score -= 8;
     }
 
-    const workOrdersWithoutFalsifiers = p.workOrders.filter(order => !order.falsifier.trim());
-    if (workOrdersWithoutFalsifiers.length) {
-      warnings.push(`${workOrdersWithoutFalsifiers.length} work order(s) are missing falsifiers.`);
+    if (workOrdersWithoutFalsifiersCount > 0) {
+      warnings.push(`${workOrdersWithoutFalsifiersCount} work order(s) are missing falsifiers.`);
       score -= 8;
     }
 
@@ -1167,24 +1201,43 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       score -= 8;
     }
 
-    const requiredReceipts = p.authorityReceipts.filter(receipt =>
-      receipt.action !== 'route_preview' || receipt.target !== '*'
-    );
-    const missionReceipts = p.authorityReceipts.filter(receipt => receipt.action === 'mission_execution');
-    const activeTargets = new Set(p.targets.map(target => target.address).filter(Boolean));
-    const coveredTargets = new Set(missionReceipts.map(receipt => receipt.target));
-    const uncoveredTargets = [...activeTargets].filter(target => !coveredTargets.has(target));
+    const requiredReceipts: OpPlanAuthorityReceipt[] = [];
+    const coveredTargets = new Set<string>();
+    for (let i = 0; i < p.authorityReceipts.length; i++) {
+      const receipt = p.authorityReceipts[i];
+      if (receipt.action !== 'route_preview' || receipt.target !== '*') {
+        requiredReceipts.push(receipt);
+      }
+      if (receipt.action === 'mission_execution') {
+        coveredTargets.add(receipt.target);
+      }
+    }
+
+    const uncoveredTargets: string[] = [];
+    for (let i = 0; i < p.targets.length; i++) {
+      const addr = p.targets[i].address;
+      if (addr && !coveredTargets.has(addr)) {
+        uncoveredTargets.push(addr);
+      }
+    }
+
     if (uncoveredTargets.length) {
       warnings.push(`Missing mission_execution receipt requirement for: ${uncoveredTargets.join(', ')}`);
       score -= 10;
     }
 
     const coverage: Partial<Record<MissionFamily, number>> = {};
-    for (const lane of p.huntLanes) coverage[lane.family] = (coverage[lane.family] || 0) + 1;
-    const workOrderFamilies = new Set(p.workOrders.map(order => order.family));
-    const lanesWithoutWorkOrders = p.huntLanes.filter(lane => !workOrderFamilies.has(lane.family));
-    if (lanesWithoutWorkOrders.length) {
-      warnings.push(`Hunt lane(s) without work orders: ${lanesWithoutWorkOrders.map(lane => lane.family).join(', ')}`);
+    const lanesWithoutWorkOrdersFamilies: MissionFamily[] = [];
+    for (let i = 0; i < p.huntLanes.length; i++) {
+      const lane = p.huntLanes[i];
+      coverage[lane.family] = (coverage[lane.family] || 0) + 1;
+      if (!workOrderFamilies.has(lane.family)) {
+        lanesWithoutWorkOrdersFamilies.push(lane.family);
+      }
+    }
+
+    if (lanesWithoutWorkOrdersFamilies.length) {
+      warnings.push(`Hunt lane(s) without work orders: ${lanesWithoutWorkOrdersFamilies.join(', ')}`);
       score -= 12;
     }
 
@@ -1282,37 +1335,85 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
     const review = this.reviewPlan(p);
 
     // Flatten operator allocation while preserving useful multiplicity.
+    // ⚡ BOLT OPTIMIZATION: Pre-index work orders by archetype and family+archetype,
+    // and pre-index hunt lanes by specialist archetype to eliminate O(N * M) filtering/finding loops.
+    const workOrderIdsByArchetype = new Map<string, string[]>();
+    const workOrderIdsByFamilyAndArchetype = new Map<string, string[]>();
+    for (let i = 0; i < p.workOrders.length; i++) {
+      const order = p.workOrders[i];
+      let byArch = workOrderIdsByArchetype.get(order.assignedArchetype);
+      if (!byArch) {
+        byArch = [];
+        workOrderIdsByArchetype.set(order.assignedArchetype, byArch);
+      }
+      byArch.push(order.id);
+
+      const famArchKey = `${order.family}:${order.assignedArchetype}`;
+      let byFamArch = workOrderIdsByFamilyAndArchetype.get(famArchKey);
+      if (!byFamArch) {
+        byFamArch = [];
+        workOrderIdsByFamilyAndArchetype.set(famArchKey, byFamArch);
+      }
+      byFamArch.push(order.id);
+    }
+
+    const huntLaneByArchetype = new Map<OperatorArchetype, OpPlanHuntLane>();
+    for (let i = 0; i < p.huntLanes.length; i++) {
+      const lane = p.huntLanes[i];
+      for (let j = 0; j < lane.specialistArchetypes.length; j++) {
+        const arch = lane.specialistArchetypes[j];
+        if (!huntLaneByArchetype.has(arch)) {
+          huntLaneByArchetype.set(arch, lane);
+        }
+      }
+    }
+
     const operators: OperatorArchetype[] = [];
+    const operatorsSet = new Set<OperatorArchetype>();
     const operatorAssignments: Array<{
       archetype: OperatorArchetype;
       lane?: MissionFamily;
       workOrderIds: string[];
       briefing: string;
     }> = [];
-    for (const op of p.operators) {
-      for (let i = 0; i < Math.min(op.count, 3); i++) {
+    const assignmentKeysSet = new Set<string>();
+
+    for (let i = 0; i < p.operators.length; i++) {
+      const op = p.operators[i];
+      const count = Math.min(op.count, 3);
+      const lane = huntLaneByArchetype.get(op.archetype)?.family;
+      const workOrderIds = workOrderIdsByArchetype.get(op.archetype) || [];
+      for (let c = 0; c < count; c++) {
         operators.push(op.archetype);
+        operatorsSet.add(op.archetype);
         operatorAssignments.push({
           archetype: op.archetype,
-          lane: p.huntLanes.find(lane => lane.specialistArchetypes.includes(op.archetype))?.family,
-          workOrderIds: p.workOrders
-            .filter(order => order.assignedArchetype === op.archetype)
-            .map(order => order.id),
+          lane,
+          workOrderIds,
           briefing: op.briefing,
         });
+        if (lane) {
+          assignmentKeysSet.add(`${lane}:${op.archetype}`);
+        }
       }
     }
 
-    for (const lane of p.huntLanes) {
-      for (const archetype of lane.specialistArchetypes) {
-        if (!operators.includes(archetype)) operators.push(archetype);
-        if (!operatorAssignments.some(assignment => assignment.archetype === archetype && assignment.lane === lane.family)) {
+    for (let i = 0; i < p.huntLanes.length; i++) {
+      const lane = p.huntLanes[i];
+      for (let j = 0; j < lane.specialistArchetypes.length; j++) {
+        const archetype = lane.specialistArchetypes[j];
+        if (!operatorsSet.has(archetype)) {
+          operators.push(archetype);
+          operatorsSet.add(archetype);
+        }
+        const assignKey = `${lane.family}:${archetype}`;
+        if (!assignmentKeysSet.has(assignKey)) {
+          assignmentKeysSet.add(assignKey);
+          const workOrderIds = workOrderIdsByFamilyAndArchetype.get(assignKey) || [];
           operatorAssignments.push({
             archetype,
             lane: lane.family,
-            workOrderIds: p.workOrders
-              .filter(order => order.family === lane.family && order.assignedArchetype === archetype)
-              .map(order => order.id),
+            workOrderIds,
             briefing: `${lane.family}: ${lane.pressureQuestion}`,
           });
         }
