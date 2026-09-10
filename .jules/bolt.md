@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [Pre-computing Search Haystacks and Pre-Indexing Static Resource Packs]
+**Learning:** In resource query and search helpers (`searchResources`, `resourcesForFamily`, `workflowPresetsForFamily`, etc.), building joined strings and calling `.toLowerCase()` dynamically during iteration allocated temporary strings and arrays on every query. Additionally, scanning static collections with `.filter()` on every lookup caused $O(N)$ overhead.
+**Action:** Pre-compute lowercased search haystacks and family `Set` objects (`ENRICHED_RESOURCE_PACKS`) as well as pre-indexing family lookup Maps (`WORKFLOW_PRESETS_BY_FAMILY`, `PROMPT_PACKS_BY_FAMILY`, etc.) at module load time to eliminate runtime heap allocations and achieve $O(1)$ family lookups.

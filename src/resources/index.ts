@@ -716,40 +716,112 @@ export const OPERATOR_RUNBOOKS: OperatorRunbook[] = [
   },
 ];
 
+// ⚡ BOLT OPTIMIZATION: Pre-compute search haystacks and family Sets for O(1) membership lookups
+// and zero-allocation string searches during runtime resource queries.
+interface EnrichedResourcePack {
+  pack: ResourcePack;
+  familiesSet: Set<MissionFamily>;
+  searchHaystack: string;
+}
+
+const ENRICHED_RESOURCE_PACKS: EnrichedResourcePack[] = RESOURCE_PACKS.map(resource => ({
+  pack: resource,
+  familiesSet: new Set(resource.missionFamilies),
+  searchHaystack: [
+    resource.title,
+    resource.authority,
+    resource.useWhen,
+    resource.humanUse,
+    resource.agentUse.join(' '),
+    resource.queryHints.join(' '),
+    resource.missionFamilies.join(' '),
+  ].join(' ').toLowerCase(),
+}));
+
+const WORKFLOW_PRESETS_BY_FAMILY = new Map<string, WorkflowPreset[]>();
+for (let i = 0; i < WORKFLOW_PRESETS.length; i++) {
+  const preset = WORKFLOW_PRESETS[i];
+  let list = WORKFLOW_PRESETS_BY_FAMILY.get(preset.family);
+  if (!list) {
+    list = [];
+    WORKFLOW_PRESETS_BY_FAMILY.set(preset.family, list);
+  }
+  list.push(preset);
+}
+
+const PROMPT_PACKS_BY_FAMILY = new Map<string, AgentPromptPack[]>();
+for (let i = 0; i < AGENT_PROMPT_PACKS.length; i++) {
+  const pack = AGENT_PROMPT_PACKS[i];
+  let list = PROMPT_PACKS_BY_FAMILY.get(pack.family);
+  if (!list) {
+    list = [];
+    PROMPT_PACKS_BY_FAMILY.set(pack.family, list);
+  }
+  list.push(pack);
+}
+
+const RUNBOOKS_BY_FAMILY = new Map<string, OperatorRunbook>();
+for (let i = 0; i < OPERATOR_RUNBOOKS.length; i++) {
+  const runbook = OPERATOR_RUNBOOKS[i];
+  RUNBOOKS_BY_FAMILY.set(runbook.family, runbook);
+}
+
+const FOREFRONT_PRESSURE_BY_FAMILY = new Map<string, ForefrontPressureLane[]>();
+for (let i = 0; i < FOREFRONT_PRESSURE_LANES.length; i++) {
+  const lane = FOREFRONT_PRESSURE_LANES[i];
+  let list = FOREFRONT_PRESSURE_BY_FAMILY.get(lane.family);
+  if (!list) {
+    list = [];
+    FOREFRONT_PRESSURE_BY_FAMILY.set(lane.family, list);
+  }
+  list.push(lane);
+}
+
 export function resourcesForFamily(family: string): ResourcePack[] {
-  return RESOURCE_PACKS.filter(resource => resource.missionFamilies.includes(family as MissionFamily));
+  if (!family) return [];
+  const targetFamily = family as MissionFamily;
+  const result: ResourcePack[] = [];
+  for (let i = 0; i < ENRICHED_RESOURCE_PACKS.length; i++) {
+    const item = ENRICHED_RESOURCE_PACKS[i];
+    if (item.familiesSet.has(targetFamily)) {
+      result.push(item.pack);
+    }
+  }
+  return result;
 }
 
 export function searchResources(query = '', family = ''): ResourcePack[] {
   const normalizedQuery = query.trim().toLowerCase();
-  return RESOURCE_PACKS.filter(resource => {
-    const familyMatches = !family || resource.missionFamilies.includes(family as MissionFamily);
-    if (!normalizedQuery) return familyMatches;
-    const haystack = [
-      resource.title,
-      resource.authority,
-      resource.useWhen,
-      resource.humanUse,
-      resource.agentUse.join(' '),
-      resource.queryHints.join(' '),
-      resource.missionFamilies.join(' '),
-    ].join(' ').toLowerCase();
-    return familyMatches && haystack.includes(normalizedQuery);
-  });
+  const targetFamily = family ? (family as MissionFamily) : null;
+  const result: ResourcePack[] = [];
+
+  for (let i = 0; i < ENRICHED_RESOURCE_PACKS.length; i++) {
+    const item = ENRICHED_RESOURCE_PACKS[i];
+    if (targetFamily && !item.familiesSet.has(targetFamily)) continue;
+    if (!normalizedQuery || item.searchHaystack.includes(normalizedQuery)) {
+      result.push(item.pack);
+    }
+  }
+
+  return result;
 }
 
 export function workflowPresetsForFamily(family = ''): WorkflowPreset[] {
-  return family ? WORKFLOW_PRESETS.filter(preset => preset.family === family) : WORKFLOW_PRESETS;
+  if (!family) return WORKFLOW_PRESETS;
+  return WORKFLOW_PRESETS_BY_FAMILY.get(family) || [];
 }
 
 export function promptPacksForFamily(family = ''): AgentPromptPack[] {
-  return family ? AGENT_PROMPT_PACKS.filter(pack => pack.family === family) : AGENT_PROMPT_PACKS;
+  if (!family) return AGENT_PROMPT_PACKS;
+  return PROMPT_PACKS_BY_FAMILY.get(family) || [];
 }
 
 export function runbookForFamily(family = ''): OperatorRunbook | undefined {
-  return OPERATOR_RUNBOOKS.find(runbook => runbook.family === family);
+  if (!family) return undefined;
+  return RUNBOOKS_BY_FAMILY.get(family);
 }
 
 export function forefrontPressureForFamily(family = ''): ForefrontPressureLane[] {
-  return family ? FOREFRONT_PRESSURE_LANES.filter(lane => lane.family === family) : FOREFRONT_PRESSURE_LANES;
+  if (!family) return FOREFRONT_PRESSURE_LANES;
+  return FOREFRONT_PRESSURE_BY_FAMILY.get(family) || [];
 }
