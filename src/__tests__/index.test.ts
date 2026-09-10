@@ -273,6 +273,13 @@ describe('Tool Adapter Catalog', () => {
     expect(TOOL_ADAPTERS.length).toBeLessThanOrEqual(FRONTIER_ARSENAL_MILESTONE);
     expect(SAFE_COMMANDS).toContain('nuclei');
     expect(SAFE_COMMANDS).toContain('semgrep');
+    expect(SAFE_COMMANDS).toContain('exiftool');
+    expect(SAFE_COMMANDS).toContain('checkov');
+    expect(SAFE_COMMANDS).toContain('gitleaks');
+    expect(SAFE_COMMANDS).toContain('trivy');
+    expect(SAFE_COMMANDS).toContain('openssl');
+    expect(SAFE_COMMANDS).toContain('binwalk');
+    expect(SAFE_COMMANDS).toContain('yara');
     expect(SAFE_COMMANDS).not.toContain('msfconsole');
   });
 
