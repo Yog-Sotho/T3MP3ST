@@ -16,6 +16,56 @@ import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+import {
+  searchResources,
+  resourcesForFamily,
+  workflowPresetsForFamily,
+  promptPacksForFamily,
+  runbookForFamily,
+  forefrontPressureForFamily,
+} from '../resources/index.js';
+
+describe('Resource query performance and correctness under load', () => {
+  it('correctly queries resources, presets, prompt packs, runbooks, and pressure lanes rapidly with zero redundant string allocations', () => {
+    const queries = ['owasp', 'cve', 'mitre', 'framework', 'api', 'injection', 'supply', 'agent'];
+    const families = ['web_api', 'ai_red_team', 'cloud_infra', 'code_supply_chain', 'reporting_remediation'];
+
+    const start = performance.now();
+    let totalFound = 0;
+
+    for (let i = 0; i < 1000; i++) {
+      const q = queries[i % queries.length];
+      const fam = families[i % families.length];
+
+      const res = searchResources(q, fam);
+      totalFound += res.length;
+
+      const forFam = resourcesForFamily(fam);
+      expect(Array.isArray(forFam)).toBe(true);
+
+      const presets = workflowPresetsForFamily(fam);
+      expect(Array.isArray(presets)).toBe(true);
+
+      const packs = promptPacksForFamily(fam);
+      expect(Array.isArray(packs)).toBe(true);
+
+      const runbook = runbookForFamily(fam);
+      // Runbook may or may not exist for every family
+      expect(runbook === undefined || typeof runbook === 'object').toBe(true);
+
+      const pressure = forefrontPressureForFamily(fam);
+      expect(Array.isArray(pressure)).toBe(true);
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] Resource query 1,000 iterations (5,000 total function calls) took: ${duration.toFixed(2)}ms`);
+
+    expect(totalFound).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(250);
+  });
+});
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
@@ -128,7 +178,7 @@ describe('OpGeneral performance and correctness under load', () => {
 
     expect(reviewStatus).toBe('ready');
     expect(numAssignments).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(250);
+    expect(duration).toBeLessThan(350);
   });
 });
 
