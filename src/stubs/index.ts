@@ -1334,16 +1334,27 @@ export class WorkflowOrchestrator extends EventEmitter<WorkflowEvents> {
     const results: NodeResult[] = [];
     const completed = new Set<string>();
 
-    // Build adjacency list and in-degree map
+    // ⚡ BOLT OPTIMIZATION: Pre-index nodes, incoming edges, and results to avoid
+    // O(N * (N + M)) linear array searches inside the Kahn's algorithm traversal loop.
+    // Also replace array .shift() with a read pointer index (`head`) for O(1) dequeuing.
     const inDegree = new Map<string, number>();
     const adj = new Map<string, string[]>();
-    for (const node of workflow.nodes) {
+    const nodesById = new Map<string, WorkflowNode>();
+    const incomingEdgesByNode = new Map<string, WorkflowEdge[]>();
+
+    for (let i = 0; i < workflow.nodes.length; i++) {
+      const node = workflow.nodes[i];
+      nodesById.set(node.id, node);
       inDegree.set(node.id, 0);
       adj.set(node.id, []);
+      incomingEdgesByNode.set(node.id, []);
     }
-    for (const edge of workflow.edges) {
+
+    for (let i = 0; i < workflow.edges.length; i++) {
+      const edge = workflow.edges[i];
       adj.get(edge.from)?.push(edge.to);
       inDegree.set(edge.to, (inDegree.get(edge.to) || 0) + 1);
+      incomingEdgesByNode.get(edge.to)?.push(edge);
     }
 
     // Topological sort (Kahn's algorithm) + execution
@@ -1352,42 +1363,58 @@ export class WorkflowOrchestrator extends EventEmitter<WorkflowEvents> {
       if (deg === 0) queue.push(id);
     }
 
-    while (queue.length > 0) {
-      const nodeId = queue.shift() as string;
-      const node = workflow.nodes.find(n => n.id === nodeId);
+    const resultsByNode = new Map<string, NodeResult>();
+    let head = 0;
+
+    while (head < queue.length) {
+      const nodeId = queue[head++];
+      const node = nodesById.get(nodeId);
       if (!node) continue;
 
-      // Check edge conditions
-      const incomingEdges = workflow.edges.filter(e => e.to === nodeId);
-      const conditionsMet = incomingEdges.every(edge => {
-        if (!edge.condition) return true;
-        // Condition format: "nodeId:success" or "nodeId:fail"
-        const prevResult = results.find(r => r.nodeId === edge.from);
-        if (edge.condition === 'success') return prevResult?.success === true;
-        if (edge.condition === 'fail') return prevResult?.success === false;
-        return true;
-      });
+      // Check edge conditions using pre-indexed Map lookups in O(1) time
+      const incomingEdges = incomingEdgesByNode.get(nodeId) || [];
+      let conditionsMet = true;
+      for (let i = 0; i < incomingEdges.length; i++) {
+        const edge = incomingEdges[i];
+        if (!edge.condition) continue;
+        const prevResult = resultsByNode.get(edge.from);
+        if (edge.condition === 'success' && prevResult?.success !== true) {
+          conditionsMet = false;
+          break;
+        }
+        if (edge.condition === 'fail' && prevResult?.success !== false) {
+          conditionsMet = false;
+          break;
+        }
+      }
 
+      let res: NodeResult;
       if (!conditionsMet) {
-        results.push({ nodeId, success: false, notExecuted: true, output: 'Skipped: conditions not met' });
+        res = { nodeId, success: false, notExecuted: true, output: 'Skipped: conditions not met' };
       } else {
         // Stub: the topological traversal is real, but no node action is actually run.
         // Mark the node as not-executed rather than fabricating an "Executed ..." success.
-        results.push({
+        res = {
           nodeId,
           success: false,
           notExecuted: true,
           output: `Not executed — workflow orchestrator not implemented (stub); would run ${node.type}`,
-        });
+        };
       }
 
+      results.push(res);
+      resultsByNode.set(nodeId, res);
       completed.add(nodeId);
 
       // Enqueue dependents
-      for (const next of adj.get(nodeId) || []) {
-        const newDeg = (inDegree.get(next) || 1) - 1;
-        inDegree.set(next, newDeg);
-        if (newDeg === 0) queue.push(next);
+      const dependents = adj.get(nodeId);
+      if (dependents) {
+        for (let i = 0; i < dependents.length; i++) {
+          const next = dependents[i];
+          const newDeg = (inDegree.get(next) || 1) - 1;
+          inDegree.set(next, newDeg);
+          if (newDeg === 0) queue.push(next);
+        }
       }
     }
 
