@@ -27,3 +27,7 @@
 ## 2026-09-08 - [Connecting Global Shortcut Legends to Real Event Handlers]
 **Learning:** Documenting keyboard shortcuts in UI legends and modal help screens builds expectation. When a shortcut (such as `/` for focusing search/hunt inputs) is advertised in legends but missing from the keydown event listener, keyboard-driven users experience friction. Validating keydown targets against both `e.target` and `document.activeElement` (`INPUT`, `TEXTAREA`, `SELECT`, `isContentEditable`) prevents accidental capture during typing while ensuring advertised global shortcuts function reliably.
 **Action:** Always verify that keyboard shortcut legends in the UI correspond to active keydown event handlers and safeguard typing states across form elements and editable regions.
+
+## 2026-09-12 - [ARIA Pressed States and Container Roles for Dynamic Toolbar Filter Bars]
+**Learning:** Category filter bars in tool catalogs and toolbars often use visual `.active` classes to indicate selection without exposing state changes to assistive technologies. Wrapping category buttons in a container with `role="group"` and an explicit `aria-label`, adding `aria-pressed="true|false"` to each filter button, and updating `aria-pressed` dynamically in event handlers ensures screen reader users receive immediate auditory confirmation of active filter selections.
+**Action:** When implementing or updating category filter toolbars, enclose the buttons in a grouped container with an ARIA label and dynamically sync `aria-pressed` state alongside visual active classes.

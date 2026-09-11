@@ -1240,6 +1240,10 @@
             color: #001014;
             border-color: var(--accent);
         }
+        .arsenal-cat-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
         .arsenal-cat-btn .cat-icon { font-size: 12px; }
         .arsenal-search { flex: 0 0 250px; }
         .arsenal-search-input {
@@ -4367,47 +4371,47 @@
 
                     <!-- Category Filter Bar -->
                     <div class="arsenal-filter-bar">
-                        <div class="arsenal-categories">
-                            <button class="arsenal-cat-btn active" data-cat="all" onclick="filterArsenalByCat('all')">
+                        <div class="arsenal-categories" role="group" aria-label="Filter tools by category">
+                            <button class="arsenal-cat-btn active" data-cat="all" onclick="filterArsenalByCat('all')" aria-label="Filter tools by All categories" title="Filter tools by All categories" aria-pressed="true">
                                 <span class="cat-icon">🎯</span> ALL
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="OSINT" onclick="filterArsenalByCat('OSINT')">
+                            <button class="arsenal-cat-btn" data-cat="OSINT" onclick="filterArsenalByCat('OSINT')" aria-label="Filter tools by OSINT category" title="Filter tools by OSINT category" aria-pressed="false">
                                 <span class="cat-icon">🕵️</span> OSINT
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Scanning" onclick="filterArsenalByCat('Scanning')">
+                            <button class="arsenal-cat-btn" data-cat="Scanning" onclick="filterArsenalByCat('Scanning')" aria-label="Filter tools by Scanning category" title="Filter tools by Scanning category" aria-pressed="false">
                                 <span class="cat-icon">🔍</span> SCAN
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Web" onclick="filterArsenalByCat('Web')">
+                            <button class="arsenal-cat-btn" data-cat="Web" onclick="filterArsenalByCat('Web')" aria-label="Filter tools by Web category" title="Filter tools by Web category" aria-pressed="false">
                                 <span class="cat-icon">🌐</span> WEB
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Exploit" onclick="filterArsenalByCat('Exploit')">
+                            <button class="arsenal-cat-btn" data-cat="Exploit" onclick="filterArsenalByCat('Exploit')" aria-label="Filter tools by Exploitation category" title="Filter tools by Exploitation category" aria-pressed="false">
                                 <span class="cat-icon">💥</span> EXPLOIT
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Creds" onclick="filterArsenalByCat('Creds')">
+                            <button class="arsenal-cat-btn" data-cat="Creds" onclick="filterArsenalByCat('Creds')" aria-label="Filter tools by Credentials category" title="Filter tools by Credentials category" aria-pressed="false">
                                 <span class="cat-icon">🔑</span> CREDS
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="PostEx" onclick="filterArsenalByCat('PostEx')">
+                            <button class="arsenal-cat-btn" data-cat="PostEx" onclick="filterArsenalByCat('PostEx')" aria-label="Filter tools by Post-Exploitation category" title="Filter tools by Post-Exploitation category" aria-pressed="false">
                                 <span class="cat-icon">🎭</span> POST-EX
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="AD" onclick="filterArsenalByCat('AD')">
+                            <button class="arsenal-cat-btn" data-cat="AD" onclick="filterArsenalByCat('AD')" aria-label="Filter tools by Active Directory category" title="Filter tools by Active Directory category" aria-pressed="false">
                                 <span class="cat-icon">🏢</span> AD
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Network" onclick="filterArsenalByCat('Network')">
+                            <button class="arsenal-cat-btn" data-cat="Network" onclick="filterArsenalByCat('Network')" aria-label="Filter tools by Network category" title="Filter tools by Network category" aria-pressed="false">
                                 <span class="cat-icon">📡</span> NET
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Cloud" onclick="filterArsenalByCat('Cloud')">
+                            <button class="arsenal-cat-btn" data-cat="Cloud" onclick="filterArsenalByCat('Cloud')" aria-label="Filter tools by Cloud category" title="Filter tools by Cloud category" aria-pressed="false">
                                 <span class="cat-icon">☁️</span> CLOUD
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Container" onclick="filterArsenalByCat('Container')">
+                            <button class="arsenal-cat-btn" data-cat="Container" onclick="filterArsenalByCat('Container')" aria-label="Filter tools by Kubernetes and Container category" title="Filter tools by Kubernetes and Container category" aria-pressed="false">
                                 <span class="cat-icon">🐳</span> K8S
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Mobile" onclick="filterArsenalByCat('Mobile')">
+                            <button class="arsenal-cat-btn" data-cat="Mobile" onclick="filterArsenalByCat('Mobile')" aria-label="Filter tools by Mobile category" title="Filter tools by Mobile category" aria-pressed="false">
                                 <span class="cat-icon">📱</span> MOBILE
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Wireless" onclick="filterArsenalByCat('Wireless')">
+                            <button class="arsenal-cat-btn" data-cat="Wireless" onclick="filterArsenalByCat('Wireless')" aria-label="Filter tools by Wireless category" title="Filter tools by Wireless category" aria-pressed="false">
                                 <span class="cat-icon">📶</span> WIFI
                             </button>
-                            <button class="arsenal-cat-btn" data-cat="Reversing" onclick="filterArsenalByCat('Reversing')">
+                            <button class="arsenal-cat-btn" data-cat="Reversing" onclick="filterArsenalByCat('Reversing')" aria-label="Filter tools by Reverse Engineering category" title="Filter tools by Reverse Engineering category" aria-pressed="false">
                                 <span class="cat-icon">🔬</span> REV
                             </button>
                         </div>
@@ -8103,7 +8107,9 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             arsenalFilter = cat;
             // Update active button
             document.querySelectorAll('.arsenal-cat-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.cat === cat);
+                const isActive = btn.dataset.cat === cat;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
             renderArsenal();
         }
