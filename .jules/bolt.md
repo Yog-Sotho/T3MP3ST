@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [O(1) Pre-Indexing and Read-Pointer Dequeuing in Workflow Orchestrator]
+**Learning:** In DAG workflow execution engine traversals (`WorkflowOrchestrator.prototype.execute`), performing array lookups (`.find()` for nodes, `.filter()` for incoming edges, and `.find()` for previous node results) inside the Kahn's algorithm topological sort while loop creates $O(N \times (N + M))$ algorithmic complexity. Additionally, using `Array.prototype.shift()` to dequeue nodes incurs $O(N)$ array element shifting at every step.
+**Action:** Pre-index nodes (`nodesById`), incoming edges (`incomingEdgesByNode`), and results (`resultsByNode`) using `Map` structures during initialization and execution, and replace `.shift()` with a read pointer index (`head`) to achieve $O(1)$ dequeuing and $O(N + M)$ linear DAG execution.

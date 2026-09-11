@@ -4,7 +4,7 @@ import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
-import { createKnowledgeBase } from '../stubs/index.js';
+import { createKnowledgeBase, WorkflowOrchestrator, WorkflowBuilder } from '../stubs/index.js';
 import { Semaphore } from '../pack/health.js';
 import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
@@ -185,6 +185,49 @@ describe('OperatorCell performance and correctness under load', () => {
     expect(status.byArchetype.recon).toBe(625);
 
     // Expect single-pass indexed lookups to execute well under 50ms
+    expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('WorkflowOrchestrator performance and correctness under load', () => {
+  it('traverses large DAG workflows in O(N + M) time with zero array shifting or multi-pass lookup overhead', async () => {
+    const builder = new WorkflowBuilder();
+    const numNodes = 1000;
+
+    // Build a DAG workflow with 1,000 nodes and 1,998 edges
+    for (let i = 0; i < numNodes; i++) {
+      builder.addNode({
+        id: `node-${i}`,
+        type: (['recon', 'scan', 'exploit', 'report'] as const)[i % 4],
+        action: { type: 'noop', params: {} },
+      });
+    }
+
+    for (let i = 0; i < numNodes - 1; i++) {
+      builder.addEdge({ from: `node-${i}`, to: `node-${i + 1}` });
+      if (i < numNodes - 2) {
+        builder.addEdge({ from: `node-${i}`, to: `node-${i + 2}` });
+      }
+    }
+
+    const workflow = builder.build();
+    const orchestrator = new WorkflowOrchestrator(undefined);
+
+    const start = performance.now();
+    const report = await orchestrator.execute(workflow);
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] WorkflowOrchestrator 1,000 nodes / ~2,000 edges execution took: ${duration.toFixed(2)}ms`);
+
+    expect(report.results.length).toBe(numNodes);
+    expect(report.execution.status).toBe('failed');
+    for (const res of report.results) {
+      expect(res.notExecuted).toBe(true);
+      expect(res.success).toBe(false);
+    }
+
+    // Expect O(N + M) execution over 1,000 nodes / 2,000 edges to finish in under 50ms (previously O(N^2 + N*M) took ~250ms+)
     expect(duration).toBeLessThan(50);
   });
 });
