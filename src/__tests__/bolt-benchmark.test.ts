@@ -16,6 +16,57 @@ import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+import { Arsenal, BUILTIN_TOOLS } from '../arsenal/index.js';
+
+describe('Arsenal performance and correctness under load', () => {
+  it('correctly retrieves tool definitions and category tools with single-pass iteration and zero multi-pass allocation overhead', () => {
+    const arsenal = new Arsenal();
+    arsenal.registerMany(BUILTIN_TOOLS);
+
+    // Register 30 synthetic tools to simulate a large arsenal setup
+    for (let i = 0; i < 30; i++) {
+      arsenal.register({
+        name: `synthetic_tool_${i}`,
+        description: `Synthetic tool ${i} description`,
+        category: i % 2 === 0 ? 'web' : 'recon',
+        parameters: [
+          { name: 'param1', type: 'string', description: 'Parameter 1', required: true },
+          { name: 'param2', type: 'number', description: 'Parameter 2', required: false, default: 42 },
+        ],
+        handler: async () => ({ success: true }),
+      });
+    }
+
+    const categories = ['recon', 'web'];
+    const toolNames = ['dns_lookup', 'port_scan', 'synthetic_tool_0', 'synthetic_tool_2'];
+
+    const start = performance.now();
+
+    let defsCount = 0;
+    let namedDefsCount = 0;
+    let categoryToolsCount = 0;
+
+    for (let i = 0; i < 5000; i++) {
+      const defs = arsenal.getToolDefinitions(categories);
+      defsCount = defs.length;
+
+      const namedDefs = arsenal.getToolDefinitions(undefined, toolNames);
+      namedDefsCount = namedDefs.length;
+
+      const categoryTools = arsenal.getToolsByCategory('recon');
+      categoryToolsCount = categoryTools.length;
+    }
+
+    const duration = performance.now() - start;
+
+    console.log(`[Bolt Benchmark] Arsenal 5,000 getToolDefinitions and getToolsByCategory calls took: ${duration.toFixed(2)}ms`);
+
+    expect(defsCount).toBeGreaterThan(0);
+    expect(namedDefsCount).toBe(4);
+    expect(categoryToolsCount).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(250);
+  });
+});
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
