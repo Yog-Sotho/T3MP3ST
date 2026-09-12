@@ -167,7 +167,11 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // IPv4-compatible IPv6 addresses can contain up to 6 leading zero-hex groups (e.g. 0:0:0:0:0:0:127.0.0.1 or ::ffff:7f00:1)
   const ipv6PrefixRegex = /^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?/i;
   const hasPrefix = ipv6PrefixRegex.test(ip);
-  const potentialIp = hasPrefix ? ip.replace(ipv6PrefixRegex, '') : ip;
+  let potentialIp = hasPrefix ? ip.replace(ipv6PrefixRegex, '') : ip;
+  // Security: Strip trailing port suffix from hex-word embedded IPv4 tail if present (e.g. ::ffff:7f00:1:8080 -> 7f00:1)
+  if (hasPrefix) {
+    potentialIp = potentialIp.replace(/^([0-9a-f]{1,4}:[0-9a-f]{1,4})(?::\d{1,5})$/i, '$1');
+  }
   const hexWordMatch = hasPrefix && /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(potentialIp);
   if (hexWordMatch) {
     const val = (parseInt(hexWordMatch[1], 16) * 65536) + parseInt(hexWordMatch[2], 16);
