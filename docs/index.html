@@ -3771,9 +3771,9 @@
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Team Preview</span><span>review kit</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="window.open('/ui/TEAM_PREVIEW.md', '_blank')">guide</button>
-                                    <button type="button" onclick="window.open('/ui/INSTALL_MATRIX.md', '_blank')">installs</button>
-                                    <button type="button" onclick="window.open('/ui/SCOPE_AND_AUTHORIZATION.md', '_blank')">scope</button>
+                                    <button type="button" onclick="window.open('/ui/TEAM_PREVIEW.md', '_blank')" aria-label="Open team preview guide" title="Open team preview guide">guide</button>
+                                    <button type="button" onclick="window.open('/ui/INSTALL_MATRIX.md', '_blank')" aria-label="Open installation matrix" title="Open installation matrix">installs</button>
+                                    <button type="button" onclick="window.open('/ui/SCOPE_AND_AUTHORIZATION.md', '_blank')" aria-label="Open scope and authorization document" title="Open scope and authorization document">scope</button>
                                 </div>
                                 <div class="ops-mini-list">
                                     <div class="ops-mini-item"><b>doctor</b><span>npm run doctor</span></div>
@@ -3785,16 +3785,16 @@
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Capability Preflight</span><span id="preflightScore">not run</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="runPlinyPreflight()">preflight</button>
+                                    <button type="button" onclick="runPlinyPreflight()" aria-label="Run capability preflight checks" title="Run capability preflight checks">preflight</button>
                                 </div>
                                 <div class="ops-status-list" id="capabilityPreflightList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Tool Adapter Forge</span><span id="arsenalReadinessStatus">not synced</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="syncPlinyArsenalStatus()">sync arsenal</button>
-                                    <button type="button" onclick="planPlinyArsenal()">plan tools</button>
-                                    <button type="button" onclick="showPlinyArsenalActivation()">activation</button>
+                                    <button type="button" onclick="syncPlinyArsenalStatus()" aria-label="Sync arsenal status" title="Sync arsenal status">sync arsenal</button>
+                                    <button type="button" onclick="planPlinyArsenal()" aria-label="Plan arsenal tool adapters" title="Plan arsenal tool adapters">plan tools</button>
+                                    <button type="button" onclick="showPlinyArsenalActivation()" aria-label="Show arsenal tool activation plan" title="Show arsenal tool activation plan">activation</button>
                                 </div>
                                 <div class="ops-status-list" id="arsenalStatusList"></div>
                                 <div class="ops-status-list" id="arsenalPlanList" style="margin-top: 6px;"></div>
@@ -3802,25 +3802,25 @@
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Evidence Ledger</span><span id="evidenceLedgerCount">0 items</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="logPlinyEvidence()">log evidence</button>
+                                    <button type="button" onclick="logPlinyEvidence()" aria-label="Log new evidence entry" title="Log new evidence entry">log evidence</button>
                                 </div>
                                 <div class="ops-status-list" id="evidenceLedgerList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Hypothesis Graph</span><span id="hypothesisGraphCount">0 nodes</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="seedPlinyHypothesis()">hypothesis</button>
-                                    <button type="button" onclick="syncPlinyEvidenceGraph()">graph</button>
-                                    <button type="button" onclick="promotePlinyHypothesis()">promote</button>
+                                    <button type="button" onclick="seedPlinyHypothesis()" aria-label="Seed hypothesis node" title="Seed hypothesis node">hypothesis</button>
+                                    <button type="button" onclick="syncPlinyEvidenceGraph()" aria-label="Sync evidence hypothesis graph" title="Sync evidence hypothesis graph">graph</button>
+                                    <button type="button" onclick="promotePlinyHypothesis()" aria-label="Promote hypothesis node" title="Promote hypothesis node">promote</button>
                                 </div>
                                 <div class="ops-status-list" id="hypothesisGraphList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Hunt Queue</span><span id="workOrderQueueCount">0 tasks</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="decomposePlinyHypothesis()">decompose</button>
-                                    <button type="button" onclick="completePlinyWorkOrder()">complete</button>
-                                    <button type="button" onclick="syncPlinyWorkOrders()">sync</button>
+                                    <button type="button" onclick="decomposePlinyHypothesis()" aria-label="Decompose hypothesis into work orders" title="Decompose hypothesis into work orders">decompose</button>
+                                    <button type="button" onclick="completePlinyWorkOrder()" aria-label="Complete current work order" title="Complete current work order">complete</button>
+                                    <button type="button" onclick="syncPlinyWorkOrders()" aria-label="Sync work order queue" title="Sync work order queue">sync</button>
                                 </div>
                                 <div class="ops-status-list" id="workOrderQueueList"></div>
                             </section>
@@ -3836,46 +3836,46 @@
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>The Fixer</span><span id="selfHealStatus">WOLF standby</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="runPlinySelfHeal(false)">diagnose</button>
-                                    <button type="button" onclick="runPlinySelfHeal(true)">repair</button>
+                                    <button type="button" onclick="runPlinySelfHeal(false)" aria-label="Diagnose self-heal issues" title="Diagnose self-heal issues">diagnose</button>
+                                    <button type="button" onclick="runPlinySelfHeal(true)" aria-label="Run self-heal repair" title="Run self-heal repair">repair</button>
                                 </div>
                                 <div class="ops-status-list" id="selfHealList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Findings / Retest</span><span id="findingLedgerCount">0 open</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="logPlinyFinding()">log finding</button>
-                                    <button type="button" onclick="queuePlinyRetest()">retest</button>
+                                    <button type="button" onclick="logPlinyFinding()" aria-label="Log security finding" title="Log security finding">log finding</button>
+                                    <button type="button" onclick="queuePlinyRetest()" aria-label="Queue retest for finding" title="Queue retest for finding">retest</button>
                                 </div>
                                 <div class="ops-status-list" id="findingRetestList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Repro Packs</span><span id="reproPackStatus">0 packs</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="buildPlinyReproPacks()">build</button>
-                                    <button type="button" onclick="exportPlinyMissionBundle()">bundle</button>
+                                    <button type="button" onclick="buildPlinyReproPacks()" aria-label="Build reproduction packs" title="Build reproduction packs">build</button>
+                                    <button type="button" onclick="exportPlinyMissionBundle()" aria-label="Export reproduction pack mission bundle" title="Export reproduction pack mission bundle">bundle</button>
                                 </div>
                                 <div class="ops-status-list" id="reproPackList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Pressure Paths</span><span id="pressurePathStatus">0 paths</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="buildPlinyPressurePaths()">plan</button>
-                                    <button type="button" onclick="runPlinyPressureCanary()">canary</button>
-                                    <button type="button" onclick="runPlinyPressureDuel()">duel</button>
-                                    <button type="button" onclick="runPlinyPressureMutations()">mutate</button>
-                                    <button type="button" onclick="runPlinyPressureChains()">chain</button>
-                                    <button type="button" onclick="buildPlinyReproPacks()">repro</button>
-                                    <button type="button" onclick="exportPlinyMissionBundle()">bundle</button>
+                                    <button type="button" onclick="buildPlinyPressurePaths()" aria-label="Plan pressure paths" title="Plan pressure paths">plan</button>
+                                    <button type="button" onclick="runPlinyPressureCanary()" aria-label="Run pressure canary check" title="Run pressure canary check">canary</button>
+                                    <button type="button" onclick="runPlinyPressureDuel()" aria-label="Run pressure duel test" title="Run pressure duel test">duel</button>
+                                    <button type="button" onclick="runPlinyPressureMutations()" aria-label="Mutate pressure paths" title="Mutate pressure paths">mutate</button>
+                                    <button type="button" onclick="runPlinyPressureChains()" aria-label="Execute pressure chains" title="Execute pressure chains">chain</button>
+                                    <button type="button" onclick="buildPlinyReproPacks()" aria-label="Build repro pack for pressure paths" title="Build repro pack for pressure paths">repro</button>
+                                    <button type="button" onclick="exportPlinyMissionBundle()" aria-label="Export pressure path mission bundle" title="Export pressure path mission bundle">bundle</button>
                                 </div>
                                 <div class="ops-status-list" id="pressurePathList"></div>
                             </section>
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Next Moves</span><span id="runbookTitle">no runbook</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="syncPlinyRunbook()">runbook</button>
-                                    <button type="button" onclick="runPlinyMissionGate()">gate</button>
-                                    <button type="button" onclick="exportPlinyMissionBundle()">bundle</button>
+                                    <button type="button" onclick="syncPlinyRunbook()" aria-label="Sync runbook moves" title="Sync runbook moves">runbook</button>
+                                    <button type="button" onclick="runPlinyMissionGate()" aria-label="Run mission gate evaluation" title="Run mission gate evaluation">gate</button>
+                                    <button type="button" onclick="exportPlinyMissionBundle()" aria-label="Export runbook mission bundle" title="Export runbook mission bundle">bundle</button>
                                 </div>
                                 <div class="ops-status-list" id="runbookPhaseList"></div>
                                 <div class="ops-status-list" id="missionBundleList" style="margin-top: 6px;"></div>
@@ -3883,8 +3883,8 @@
                             <section class="ops-assist-card">
                                 <div class="ops-card-title"><span>Learning Capsule</span><span id="learningPolicyStatus">proposal gate</span></div>
                                 <div class="ops-command-strip" style="margin-bottom: 8px;">
-                                    <button type="button" onclick="refreshPlinyLearning()">sync</button>
-                                    <button type="button" onclick="runPlinyLearningReview()">review run</button>
+                                    <button type="button" onclick="refreshPlinyLearning()" aria-label="Sync learning capsule" title="Sync learning capsule">sync</button>
+                                    <button type="button" onclick="runPlinyLearningReview()" aria-label="Run learning review pass" title="Run learning review pass">review run</button>
                                 </div>
                                 <div class="ops-status-list" id="learningStatusList"></div>
                                 <div class="ops-status-list" id="memoryProposalList" style="margin-top: 6px;"></div>
