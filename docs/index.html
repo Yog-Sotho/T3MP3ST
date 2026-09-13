@@ -17824,6 +17824,10 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                 if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
                 const modal = document.getElementById('modalOverlay');
                 if (modal && modal.classList.contains('active')) { closeModal(); return; }
+                const admiral = document.getElementById('admiralWizard');
+                if (admiral && admiral.style.display !== 'none') { window.closeAdmiralWizard(); return; }
+                const operative = document.getElementById('operativeModal');
+                if (operative && operative.style.display !== 'none') { window.closeOperative(); return; }
                 if (missionRunning) { abortMission(false); return; }
                 return;
             }
@@ -25278,7 +25282,7 @@ Be specific and actionable. Format as structured JSON.`;
         + '</div>';
     } else if (S.step===2){
       h = '<div style="font-size:14px;color:#cfe;margin-bottom:4px;font-weight:700;">'+t.icon+' '+t.label+' — what\'s the target?</div>'
-        + '<input id="admTarget" type="text" value="'+esc(S.target)+'" placeholder="'+esc(t.ph)+'" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px 14px;font-size:14px;background:rgba(0,0,0,0.45);border:1px solid rgba(0,200,255,0.3);border-radius:8px;color:#e8f0f3;font-family:\'JetBrains Mono\',monospace;outline:none;">'
+        + '<input id="admTarget" type="text" value="'+esc(S.target)+'" placeholder="'+esc(t.ph)+'" aria-label="Target name or URL" onkeydown="if(event.key===\'Enter\'){event.preventDefault();window.admiralNext();}else if(event.key===\'Escape\'){event.preventDefault();window.closeAdmiralWizard();}" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px 14px;font-size:14px;background:rgba(0,0,0,0.45);border:1px solid rgba(0,200,255,0.3);border-radius:8px;color:#e8f0f3;font-family:\'JetBrains Mono\',monospace;outline:none;">'
         + '<label style="display:flex;align-items:flex-start;gap:8px;margin-top:16px;cursor:pointer;font-size:12.5px;color:#ffcf6b;font-weight:600;">'
         +   '<input type="checkbox" id="admAuth" '+(S.authorized?'checked':'')+' style="accent-color:#ffaa00;margin-top:2px;">'
         +   '<span>I own this target, or have <b>written permission</b> to test it. (Required — T3MP3ST only tests authorized targets.)</span></label>'
@@ -25356,6 +25360,7 @@ Be specific and actionable. Format as structured JSON.`;
     let o = document.getElementById('admiralWizard');
     if (!o){
       o = document.createElement('div'); o.id='admiralWizard'; o.style.cssText=css.overlay;
+      o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'Op Admiral Guided Hunt');
       o.onclick = (e)=>{ if(e.target===o) window.closeAdmiralWizard(); };
       o.innerHTML = '<div style="'+css.card+'" onclick="event.stopPropagation()">'
         + '<div style="'+css.head+'"><div style="font-size:16px;font-weight:800;color:#5bb8ff;">⚓ Op Admiral — Guided Hunt</div>'
@@ -25526,7 +25531,7 @@ Be specific and actionable. Format as structured JSON.`;
     SELECTED = arch; ADVICE = null;
     if(!ROSTER.find(x=>x.archetype===arch)) return;
     let m = document.getElementById('operativeModal');
-    if(!m){ m=document.createElement('div'); m.id='operativeModal'; m.style.cssText='position:fixed;inset:0;background:rgba(2,6,12,0.8);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;'; m.onclick=(e)=>{ if(e.target===m) closeOperative(); }; document.body.appendChild(m); }
+    if(!m){ m=document.createElement('div'); m.id='operativeModal'; m.style.cssText='position:fixed;inset:0;background:rgba(2,6,12,0.8);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Operative Specialist Editor'); m.onclick=(e)=>{ if(e.target===m) closeOperative(); }; document.body.appendChild(m); }
     m.style.display='flex'; renderEditor();
   };
   window.closeOperative = function(){ const m=document.getElementById('operativeModal'); if(m) m.style.display='none'; };
