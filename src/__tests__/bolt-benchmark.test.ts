@@ -23,7 +23,6 @@ import {
   promptPacksForFamily,
   runbookForFamily,
   forefrontPressureForFamily,
-  RESOURCE_PACKS,
 } from '../resources/index.js';
 
 describe('Resources index performance and correctness under load', () => {
