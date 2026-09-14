@@ -5506,14 +5506,15 @@
                                 <input type="text" id="fallbackModelInput"
                                     placeholder="e.g. nousresearch/hermes-3-llama-3.1-405b"
                                     aria-label="Fallback LLM model identifier"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();saveFallbackModel(document.getElementById('fallbackSaveBtn'));}else if(event.key==='Escape'){this.value='';}"
                                     style="flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
-                                <button class="btn btn-sm" onclick="saveFallbackModel()" style="background: #ff8800;">Save</button>
+                                <button class="btn btn-sm" id="fallbackSaveBtn" onclick="saveFallbackModel(this)" aria-label="Save fallback model setting" title="Save fallback model setting" style="background: #ff8800;">Save</button>
                             </div>
                             <div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
-                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='nousresearch/hermes-3-llama-3.1-405b';saveFallbackModel()" style="font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.06); border: 1px solid #444;">Hermes 3 405B</button>
-                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='anthropic/claude-sonnet-4.5';saveFallbackModel()" style="font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.06); border: 1px solid #444;">Claude Sonnet 4.5</button>
-                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='google/gemini-2.5-pro-preview';saveFallbackModel()" style="font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.06); border: 1px solid #444;">Gemini 2.5 Pro</button>
-                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='';saveFallbackModel()" style="font-size: 10px; padding: 2px 8px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); color: #ff6666;">Disable Fallback</button>
+                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='nousresearch/hermes-3-llama-3.1-405b';saveFallbackModel(this)" aria-label="Select Hermes 3 405B fallback model" title="Select Hermes 3 405B fallback model" style="font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.06); border: 1px solid #444;">Hermes 3 405B</button>
+                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='anthropic/claude-sonnet-4.5';saveFallbackModel(this)" aria-label="Select Claude Sonnet 4.5 fallback model" title="Select Claude Sonnet 4.5 fallback model" style="font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.06); border: 1px solid #444;">Claude Sonnet 4.5</button>
+                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='google/gemini-2.5-pro-preview';saveFallbackModel(this)" aria-label="Select Gemini 2.5 Pro fallback model" title="Select Gemini 2.5 Pro fallback model" style="font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.06); border: 1px solid #444;">Gemini 2.5 Pro</button>
+                                <button class="btn btn-sm" onclick="document.getElementById('fallbackModelInput').value='';saveFallbackModel(this)" aria-label="Disable fallback model" title="Disable fallback model" style="font-size: 10px; padding: 2px 8px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); color: #ff6666;">Disable Fallback</button>
                             </div>
                         </div>
                     </div>
@@ -8436,11 +8437,20 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             toast(`Selected ${MODELS.find(m => m.id === id).name}`, 'success');
         }
 
-        function saveFallbackModel() {
+        function saveFallbackModel(btn) {
             const input = document.getElementById('fallbackModelInput');
             const model = input?.value?.trim() || '';
             state.settings.fallbackModel = model;
             saveState();
+            if (btn && btn.nodeType === 1) {
+                if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+                if (btn._saveTimeout) clearTimeout(btn._saveTimeout);
+                btn.textContent = '✓ Saved!';
+                btn._saveTimeout = setTimeout(() => {
+                    btn.textContent = btn.dataset.origText;
+                    delete btn._saveTimeout;
+                }, 1500);
+            }
             if (model) {
                 toast(`Fallback model: ${model}`, 'success');
             } else {
