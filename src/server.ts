@@ -2472,18 +2472,33 @@ function buildEvidenceGraph(params: Record<string, unknown>): Record<string, unk
   const missionId = typeof params.missionId === 'string' ? params.missionId : '';
   const operationId = typeof params.operationId === 'string' ? params.operationId : '';
   const family = typeof params.family === 'string' ? normalizeMissionFamily(params.family, 'web_api') : undefined;
-  const evidence = [...evidenceLedger.values()]
-    .filter(entry => !missionId || entry.missionId === missionId)
-    .filter(entry => !operationId || entry.operationId === operationId);
-  const findings = [...findingsLedger.values()]
-    .filter(finding => !missionId || finding.missionId === missionId)
-    .filter(finding => !operationId || finding.operationId === operationId)
-    .filter(finding => !family || finding.family === family);
+
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, eliminating multi-pass array filter allocations.
+  const evidence: EvidenceEntry[] = [];
+  for (const entry of evidenceLedger.values()) {
+    if (missionId && entry.missionId !== missionId) continue;
+    if (operationId && entry.operationId !== operationId) continue;
+    evidence.push(entry);
+  }
+
+  const findings: FindingRecord[] = [];
+  for (const finding of findingsLedger.values()) {
+    if (missionId && finding.missionId !== missionId) continue;
+    if (operationId && finding.operationId !== operationId) continue;
+    if (family && finding.family !== family) continue;
+    findings.push(finding);
+  }
+
   const findingIds = new Set(findings.map(finding => finding.id));
-  const retests = [...retestLedger.values()].filter(retest =>
-    findingIds.has(retest.findingId) ||
-    ((!missionId || retest.missionId === missionId) && (!operationId || retest.operationId === operationId))
-  );
+  const retests: RetestRecord[] = [];
+  for (const retest of retestLedger.values()) {
+    if (
+      findingIds.has(retest.findingId) ||
+      ((!missionId || retest.missionId === missionId) && (!operationId || retest.operationId === operationId))
+    ) {
+      retests.push(retest);
+    }
+  }
   const hypotheses = scopedHypotheses(missionId, operationId, family);
   const hypothesisIds = new Set(hypotheses.map(hypothesis => hypothesis.id));
   const workOrders = scopedWorkOrders(missionId, operationId, family)
@@ -5480,11 +5495,16 @@ app.get('/api/evidence', (req: Request, res: Response) => {
   const missionId = typeof req.query.missionId === 'string' ? req.query.missionId : '';
   const operationId = typeof req.query.operationId === 'string' ? req.query.operationId : '';
   const findingId = typeof req.query.findingId === 'string' ? req.query.findingId : '';
-  const entries = [...evidenceLedger.values()]
-    .filter(entry => !missionId || entry.missionId === missionId)
-    .filter(entry => !operationId || entry.operationId === operationId)
-    .filter(entry => !findingId || entry.findingId === findingId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding intermediate array filter allocations.
+  const entries: EvidenceEntry[] = [];
+  for (const entry of evidenceLedger.values()) {
+    if (missionId && entry.missionId !== missionId) continue;
+    if (operationId && entry.operationId !== operationId) continue;
+    if (findingId && entry.findingId !== findingId) continue;
+    entries.push(entry);
+  }
+  entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json(redactSecrets({ evidence: entries }));
 });
 
@@ -5516,12 +5536,17 @@ app.get('/api/findings', (req: Request, res: Response) => {
   const operationId = typeof req.query.operationId === 'string' ? req.query.operationId : '';
   const family = typeof req.query.family === 'string' ? normalizeMissionFamily(req.query.family, 'web_api') : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : '';
-  const findings = [...findingsLedger.values()]
-    .filter(finding => !missionId || finding.missionId === missionId)
-    .filter(finding => !operationId || finding.operationId === operationId)
-    .filter(finding => !family || finding.family === family)
-    .filter(finding => !status || finding.status === status)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding intermediate array filter allocations.
+  const findings: FindingRecord[] = [];
+  for (const finding of findingsLedger.values()) {
+    if (missionId && finding.missionId !== missionId) continue;
+    if (operationId && finding.operationId !== operationId) continue;
+    if (family && finding.family !== family) continue;
+    if (status && finding.status !== status) continue;
+    findings.push(finding);
+  }
+  findings.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   res.json(redactSecrets({ findings }));
 });
 
@@ -5626,11 +5651,16 @@ app.get('/api/retests', (req: Request, res: Response) => {
   const findingId = typeof req.query.findingId === 'string' ? req.query.findingId : '';
   const missionId = typeof req.query.missionId === 'string' ? req.query.missionId : '';
   const operationId = typeof req.query.operationId === 'string' ? req.query.operationId : '';
-  const retests = [...retestLedger.values()]
-    .filter(retest => !findingId || retest.findingId === findingId)
-    .filter(retest => !missionId || retest.missionId === missionId)
-    .filter(retest => !operationId || retest.operationId === operationId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding intermediate array filter allocations.
+  const retests: RetestRecord[] = [];
+  for (const retest of retestLedger.values()) {
+    if (findingId && retest.findingId !== findingId) continue;
+    if (missionId && retest.missionId !== missionId) continue;
+    if (operationId && retest.operationId !== operationId) continue;
+    retests.push(retest);
+  }
+  retests.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   res.json(redactSecrets({ retests }));
 });
 

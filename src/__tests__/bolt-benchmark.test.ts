@@ -356,6 +356,59 @@ describe('Single-pass Map ledger scoping performance under load', () => {
     expect(scoped.length).toBe(250);
     expect(duration).toBeLessThan(150);
   });
+
+  it('rapidly computes evidence graph node and edge sets over 5,000 multi-ledger items', () => {
+    const evidenceLedger = new Map<string, { id: string; missionId: string; operationId: string }>();
+    const findingsLedger = new Map<string, { id: string; missionId: string; operationId: string; family: string }>();
+    const retestLedger = new Map<string, { id: string; findingId: string; missionId: string; operationId: string }>();
+
+    for (let i = 0; i < 5000; i++) {
+      evidenceLedger.set(`ev-${i}`, { id: `ev-${i}`, missionId: `m-${i % 5}`, operationId: `op-${i % 4}` });
+      findingsLedger.set(`f-${i}`, { id: `f-${i}`, missionId: `m-${i % 5}`, operationId: `op-${i % 4}`, family: 'web_api' });
+      retestLedger.set(`r-${i}`, { id: `r-${i}`, findingId: `f-${i}`, missionId: `m-${i % 5}`, operationId: `op-${i % 4}` });
+    }
+
+    const missionId = 'm-1';
+    const operationId = 'op-1';
+    const family = 'web_api';
+
+    const start = performance.now();
+
+    const evidence = [];
+    for (const entry of evidenceLedger.values()) {
+      if (missionId && entry.missionId !== missionId) continue;
+      if (operationId && entry.operationId !== operationId) continue;
+      evidence.push(entry);
+    }
+
+    const findings = [];
+    for (const finding of findingsLedger.values()) {
+      if (missionId && finding.missionId !== missionId) continue;
+      if (operationId && finding.operationId !== operationId) continue;
+      if (family && finding.family !== family) continue;
+      findings.push(finding);
+    }
+
+    const findingIds = new Set(findings.map(finding => finding.id));
+    const retests = [];
+    for (const retest of retestLedger.values()) {
+      if (
+        findingIds.has(retest.findingId) ||
+        ((!missionId || retest.missionId === missionId) && (!operationId || retest.operationId === operationId))
+      ) {
+        retests.push(retest);
+      }
+    }
+
+    const duration = performance.now() - start;
+
+    console.log(`[Bolt Benchmark] Multi-ledger single-pass graph scoping for 15,000 items took: ${duration.toFixed(2)}ms`);
+
+    expect(evidence.length).toBe(250);
+    expect(findings.length).toBe(250);
+    expect(retests.length).toBe(250);
+    expect(duration).toBeLessThan(150);
+  });
 });
 
 describe('KnowledgeBase pattern matching performance and correctness under load', () => {
