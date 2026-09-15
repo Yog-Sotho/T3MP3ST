@@ -67,4 +67,10 @@ describe('local API authorization hardening invariants', () => {
     expect(route).toMatch(/targetHost\.startsWith\(['"]-['"]\)/);
     expect(route).toMatch(/isRestrictedInternalIP\(targetHost\)/);
   });
+
+  it('/api/agents/local/detect uses sanitizeErrorForResponse in its catch block', () => {
+    const route = routeBlock("app.get('/api/agents/local/detect'", "app.post('/api/agents/local/connect'");
+
+    expect(route).toMatch(/sanitizeErrorForResponse\(e\)/);
+  });
 });
