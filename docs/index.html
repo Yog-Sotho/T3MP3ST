@@ -4191,15 +4191,15 @@
                                 <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #ff4444; font-weight: bold;">Findings & Loot</span>
                                 <span id="findingsCount" style="font-size: 9px; color: #555; font-family: monospace;">(0)</span>
                             </div>
-                            <div style="display: flex; gap: 4px; align-items: center;">
-                                <span class="finding-filter active" data-sev="all" onclick="filterFindings('all')" style="font-size: 8px; padding: 2px 6px; background: rgba(255,68,68,0.2); border-radius: 3px; cursor: pointer; color: #ff4444;">ALL</span>
-                                <span class="finding-filter" data-sev="critical" onclick="filterFindings('critical')" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px; cursor: pointer; color: #ff0040;">CRIT</span>
-                                <span class="finding-filter" data-sev="high" onclick="filterFindings('high')" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px; cursor: pointer; color: #ff4444;">HIGH</span>
-                                <span class="finding-filter" data-sev="medium" onclick="filterFindings('medium')" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px; cursor: pointer; color: #ffaa00;">MED</span>
-                                <span class="finding-filter" data-sev="low" onclick="filterFindings('low')" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px; cursor: pointer; color: #0088ff;">LOW</span>
-                                <span class="finding-filter" data-sev="cred" onclick="filterFindings('cred')" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px; cursor: pointer; color: #ffaa00;">CREDS</span>
+                            <div style="display: flex; gap: 4px; align-items: center;" role="group" aria-label="Filter findings by severity">
+                                <button type="button" class="finding-filter active" data-sev="all" onclick="filterFindings('all', this)" aria-pressed="true" aria-label="Show all findings" title="Show all findings" style="font-size: 8px; padding: 2px 6px; background: rgba(255,68,68,0.2); border: none; border-radius: 3px; cursor: pointer; color: #ff4444; font-family: inherit;">ALL</button>
+                                <button type="button" class="finding-filter" data-sev="critical" onclick="filterFindings('critical', this)" aria-pressed="false" aria-label="Filter critical findings" title="Filter critical findings" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: none; border-radius: 3px; cursor: pointer; color: #ff0040; font-family: inherit;">CRIT</button>
+                                <button type="button" class="finding-filter" data-sev="high" onclick="filterFindings('high', this)" aria-pressed="false" aria-label="Filter high severity findings" title="Filter high severity findings" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: none; border-radius: 3px; cursor: pointer; color: #ff4444; font-family: inherit;">HIGH</button>
+                                <button type="button" class="finding-filter" data-sev="medium" onclick="filterFindings('medium', this)" aria-pressed="false" aria-label="Filter medium severity findings" title="Filter medium severity findings" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: none; border-radius: 3px; cursor: pointer; color: #ffaa00; font-family: inherit;">MED</button>
+                                <button type="button" class="finding-filter" data-sev="low" onclick="filterFindings('low', this)" aria-pressed="false" aria-label="Filter low severity findings" title="Filter low severity findings" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: none; border-radius: 3px; cursor: pointer; color: #0088ff; font-family: inherit;">LOW</button>
+                                <button type="button" class="finding-filter" data-sev="cred" onclick="filterFindings('cred', this)" aria-pressed="false" aria-label="Filter credential findings" title="Filter credential findings" style="font-size: 8px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: none; border-radius: 3px; cursor: pointer; color: #ffaa00; font-family: inherit;">CREDS</button>
                                 <span style="color: #333; margin: 0 2px;">|</span>
-                                <button onclick="exportMissionReport()" title="Export Report" style="font-size: 9px; padding: 2px 8px; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.2); border-radius: 3px; cursor: pointer; color: #00ff88;">↓ REPORT</button>
+                                <button type="button" onclick="exportMissionReport()" title="Export Report" aria-label="Export mission report" style="font-size: 9px; padding: 2px 8px; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.2); border-radius: 3px; cursor: pointer; color: #00ff88; font-family: inherit;">↓ REPORT</button>
                             </div>
                         </div>
                         <!-- Table header -->
@@ -13997,13 +13997,18 @@ Be brutally honest. This is not a pep talk.`;
             body.insertBefore(row, body.firstChild);
         }
 
-        function filterFindings(severity) {
+        function filterFindings(severity, btnEl) {
+            const targetBtn = btnEl || (typeof event !== 'undefined' ? (event.currentTarget || event.target) : null);
             document.querySelectorAll('.finding-filter').forEach(f => {
                 f.style.background = 'rgba(255,255,255,0.05)';
                 f.classList.remove('active');
+                f.setAttribute('aria-pressed', 'false');
             });
-            event.target.style.background = severity === 'all' ? 'rgba(255,68,68,0.2)' : `rgba(255,255,255,0.1)`;
-            event.target.classList.add('active');
+            if (targetBtn) {
+                targetBtn.style.background = severity === 'all' ? 'rgba(255,68,68,0.2)' : 'rgba(255,255,255,0.1)';
+                targetBtn.classList.add('active');
+                targetBtn.setAttribute('aria-pressed', 'true');
+            }
 
             document.querySelectorAll('.finding-row').forEach(row => {
                 const sev = row.getAttribute('data-severity');
