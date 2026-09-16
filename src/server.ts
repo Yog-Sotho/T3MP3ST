@@ -422,6 +422,7 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     httpx: /^(-o|-output|-sr|-srd|-r|-request|-filter-regex|-match-regex|-config|-dL|-list)$/i,
     katana: /^(-o|-output|-f|-field-scope|-config|-system-chrome|-headless)$/i,
     naabu: /^(-o|-output|-config|-iL|-list|-f|-file)$/i,
+    exiftool: /^(-filename|-o|-overwrite_original|-config|-p|-fmt|-TagsFromFile)$/i,
   };
 
   const pattern = dangerousFlags[bin];
