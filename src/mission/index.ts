@@ -578,15 +578,41 @@ export class MissionControl extends EventEmitter<MissionEvents> {
     planning: number;
     paused: number;
   } {
-    const missions = this.getAllMissions();
+    // ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map.values()
+    // with a switch statement to increment counters in O(N) time with zero intermediate array allocations.
+    let active = 0;
+    let completed = 0;
+    let aborted = 0;
+    let planning = 0;
+    let paused = 0;
+
+    for (const m of this.missions.values()) {
+      switch (m.status) {
+        case 'active':
+          active++;
+          break;
+        case 'completed':
+          completed++;
+          break;
+        case 'aborted':
+          aborted++;
+          break;
+        case 'planning':
+          planning++;
+          break;
+        case 'paused':
+          paused++;
+          break;
+      }
+    }
 
     return {
-      total: missions.length,
-      active: missions.filter(m => m.status === 'active').length,
-      completed: missions.filter(m => m.status === 'completed').length,
-      aborted: missions.filter(m => m.status === 'aborted').length,
-      planning: missions.filter(m => m.status === 'planning').length,
-      paused: missions.filter(m => m.status === 'paused').length,
+      total: this.missions.size,
+      active,
+      completed,
+      aborted,
+      planning,
+      paused,
     };
   }
 }

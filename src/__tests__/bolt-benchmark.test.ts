@@ -6,16 +6,57 @@ import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
 import { createKnowledgeBase } from '../stubs/index.js';
 import { Semaphore } from '../pack/health.js';
-import { TaskQueue } from '../mission/index.js';
+import { TaskQueue, MissionControl } from '../mission/index.js';
 import type { Task } from '../types/index.js';
 import { AnalysisEngine } from '../analysis/index.js';
-import type { MissionControl } from '../mission/index.js';
 import { OpsecController } from '../opsec/index.js';
 import { redTeamTechnique, AI_REDTEAM_TECHNIQUE_IDS } from '../resources/ai-redteam-playbook.js';
 import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+
+describe('MissionControl performance and correctness under load', () => {
+  it('correctly aggregates statistics with single-pass iteration and zero intermediate allocations', () => {
+    const mc = new MissionControl();
+    const statuses = ['planning', 'active', 'paused', 'completed', 'aborted'] as const;
+
+    // 1) Populate 5,000 missions
+    for (let i = 0; i < 5000; i++) {
+      const mission = mc.createMission({
+        name: `Mission ${i}`,
+        objectives: ['Objective 1'],
+      });
+      const targetStatus = statuses[i % statuses.length];
+      if (targetStatus === 'active') {
+        mc.startMission(mission.id);
+      } else if (targetStatus === 'paused') {
+        mc.startMission(mission.id);
+        mc.pauseMission(mission.id);
+      } else if (targetStatus === 'completed') {
+        mc.startMission(mission.id);
+        mc.completeMission(mission.id);
+      } else if (targetStatus === 'aborted') {
+        mc.abortMission(mission.id, 'Test abort');
+      }
+    }
+
+    // 2) Measure getStats performance and assert correctness
+    const start = performance.now();
+    const stats = mc.getStats();
+    const duration = performance.now() - start;
+
+    console.log(`[Bolt Benchmark] MissionControl 5,000-unit getStats took: ${duration.toFixed(2)}ms`);
+
+    expect(stats.total).toBe(5000);
+    expect(stats.planning).toBe(1000);
+    expect(stats.active).toBe(1000);
+    expect(stats.paused).toBe(1000);
+    expect(stats.completed).toBe(1000);
+    expect(stats.aborted).toBe(1000);
+    expect(duration).toBeLessThan(50);
+  });
+});
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
