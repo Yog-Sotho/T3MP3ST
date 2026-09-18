@@ -42,6 +42,14 @@ const DEFAULT_PLANNING_TOKEN_BUDGET = 30000;
  */
 const DEFAULT_WORKER_SOURCE_TOKEN_BUDGET = 24000;
 
+/** Hoisted refusal patterns to avoid array allocations on hot refusal checks. */
+const REFUSAL_PATTERNS = [
+  "i can't assist", "i cannot assist", "i'm not able to", "i am not able to",
+  "i can't help with", "i cannot help with", "against my guidelines",
+  "i must decline", "i'm unable to", "i am unable to", "i won't be able to",
+  "i can't provide", "i cannot provide",
+];
+
 // =============================================================================
 // ROBUST JSON EXTRACTION
 //
@@ -166,9 +174,13 @@ export class DecompositionOrchestrator extends EventEmitter<DecompositionEvents>
 
       // ── STEP 2: dispatch innocuous queries to the worker model ──
       const results = await this.dispatchQueries(queries, round);
-      totalWorkerTokens += results.reduce(
-        (sum, r) => sum + (r.usage?.promptTokens || 0) + (r.usage?.completionTokens || 0), 0,
-      );
+      // ⚡ BOLT OPTIMIZATION: Direct loop for token accumulation avoids callback overhead and closure allocations.
+      for (let i = 0; i < results.length; i++) {
+        const u = results[i].usage;
+        if (u) {
+          totalWorkerTokens += (u.promptTokens || 0) + (u.completionTokens || 0);
+        }
+      }
 
       // ── STEP 3: orchestrator synthesizes the analytical answers ──
       const synthesis = await this.synthesize(objective, accumulatedKnowledge, queries, results, round);
@@ -196,9 +208,22 @@ export class DecompositionOrchestrator extends EventEmitter<DecompositionEvents>
     // ── STEP 4: final synthesis across all rounds ──
     const finalSynthesis = await this.finalSynthesize(objective, rounds);
 
-    const totalQueries = rounds.reduce((s, r) => s + r.queries.length, 0);
-    const answeredQueries = rounds.reduce((s, r) => s + r.results.filter(q => q.status === 'answered').length, 0);
-    const refusedQueries = rounds.reduce((s, r) => s + r.results.filter(q => q.status === 'refused').length, 0);
+    // ⚡ BOLT OPTIMIZATION: Single-pass metric accumulation over rounds
+    // avoids multi-pass .reduce() and .filter() array allocations.
+    let totalQueries = 0;
+    let answeredQueries = 0;
+    let refusedQueries = 0;
+
+    for (let i = 0; i < rounds.length; i++) {
+      const r = rounds[i];
+      totalQueries += r.queries.length;
+      const resList = r.results;
+      for (let j = 0; j < resList.length; j++) {
+        const st = resList[j].status;
+        if (st === 'answered') answeredQueries++;
+        else if (st === 'refused') refusedQueries++;
+      }
+    }
 
     const result: DecompositionResult = {
       rounds,
@@ -368,15 +393,25 @@ export class DecompositionOrchestrator extends EventEmitter<DecompositionEvents>
     if (rounds.length === 0) {
       return { findings: [], gaps: ['no queries were generated'], continueDecomposition: false, attackSurfaceModel: '', confidence: 0 };
     }
-    const roundSummaries = rounds.map(r => ({
-      round: r.roundNumber,
-      queriesAsked: r.queries.length,
-      answered: r.results.filter(q => q.status === 'answered').length,
-      refused: r.results.filter(q => q.status === 'refused').length,
-      findings: r.synthesis.findings,
-      gaps: r.synthesis.gaps,
-      attackSurface: r.synthesis.attackSurfaceModel,
-    }));
+    // ⚡ BOLT OPTIMIZATION: Single-pass count of answered/refused queries per round.
+    const roundSummaries = rounds.map(r => {
+      let answered = 0;
+      let refused = 0;
+      for (let i = 0; i < r.results.length; i++) {
+        const st = r.results[i].status;
+        if (st === 'answered') answered++;
+        else if (st === 'refused') refused++;
+      }
+      return {
+        round: r.roundNumber,
+        queriesAsked: r.queries.length,
+        answered,
+        refused,
+        findings: r.synthesis.findings,
+        gaps: r.synthesis.gaps,
+        attackSurface: r.synthesis.attackSurfaceModel,
+      };
+    });
     const prompt = ORCHESTRATOR_FINAL_PROMPT(objective, roundSummaries);
     const response = await this.askOrchestrator(prompt, 0.3);
     return this.parseSynthesis(response);
@@ -458,16 +493,11 @@ export class DecompositionOrchestrator extends EventEmitter<DecompositionEvents>
   private looksLikeRefusal(content: string): boolean {
     if (!content || content.trim().length < 10) return true;
     const lower = content.toLowerCase();
-    const refusalPatterns = [
-      "i can't assist", "i cannot assist", "i'm not able to", "i am not able to",
-      "i can't help with", "i cannot help with", "against my guidelines",
-      "i must decline", "i'm unable to", "i am unable to", "i won't be able to",
-      "i can't provide", "i cannot provide",
-    ];
+    // ⚡ BOLT OPTIMIZATION: Use module-scoped REFUSAL_PATTERNS to avoid array allocation per call.
     // Only treat as a refusal if the message is SHORT and refusal-y — a long
     // analysis that happens to contain "i cannot determine X from the code" is a
     // legitimate answer, not a decline.
-    return content.trim().length < 400 && refusalPatterns.some(p => lower.includes(p));
+    return content.trim().length < 400 && REFUSAL_PATTERNS.some(p => lower.includes(p));
   }
 
   // ===========================================================================
