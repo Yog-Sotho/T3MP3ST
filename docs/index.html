@@ -17824,6 +17824,8 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                 if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
                 const modal = document.getElementById('modalOverlay');
                 if (modal && modal.classList.contains('active')) { closeModal(); return; }
+                const admiral = document.getElementById('admiralWizard');
+                if (admiral && admiral.style.display === 'flex') { window.closeAdmiralWizard(); return; }
                 if (missionRunning) { abortMission(false); return; }
                 return;
             }
@@ -25356,6 +25358,10 @@ Be specific and actionable. Format as structured JSON.`;
     let o = document.getElementById('admiralWizard');
     if (!o){
       o = document.createElement('div'); o.id='admiralWizard'; o.style.cssText=css.overlay;
+      o.setAttribute('role', 'dialog');
+      o.setAttribute('aria-modal', 'true');
+      o.setAttribute('aria-label', 'Op Admiral Guided Hunt');
+      o.setAttribute('tabindex', '-1');
       o.onclick = (e)=>{ if(e.target===o) window.closeAdmiralWizard(); };
       o.innerHTML = '<div style="'+css.card+'" onclick="event.stopPropagation()">'
         + '<div style="'+css.head+'"><div style="font-size:16px;font-weight:800;color:#5bb8ff;">⚓ Op Admiral — Guided Hunt</div>'
