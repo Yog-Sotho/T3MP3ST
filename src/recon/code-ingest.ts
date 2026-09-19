@@ -39,7 +39,6 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import {
-  estimateTokens,
   type SourceFile,
   type SourceBundle,
 } from '../orchestration/context-pack.js';
@@ -935,14 +934,18 @@ export function packAnalysisUnits(
   const includedUnits: AnalysisUnit[] = [];
   const droppedUnits: AnalysisUnit[] = [];
   let tokensUsed = 0;
+  // ⚡ BOLT OPTIMIZATION: Instead of re-joining `sections.join('\n')` on every loop iteration
+  // (which creates O(N^2) multi-megabyte string allocations and CPU join overhead),
+  // track cumulative character length incrementally in O(N) time.
+  let currentLength = 0;
 
   for (const unit of units) {
     const rendered = formatUnitForLLM(unit);
-    // cost of appending this section (join with a newline between sections)
-    const candidateText = sections.length
-      ? `${sections.join('\n')}\n${rendered}`
-      : rendered;
-    const candidateTokens = estimateTokens(candidateText);
+    // Cost of appending this section (accounting for newline joiner when sections is non-empty)
+    const candidateLength = sections.length > 0
+      ? currentLength + 1 + rendered.length
+      : rendered.length;
+    const candidateTokens = Math.ceil(candidateLength / 4);
 
     if (candidateTokens > budget && includedUnits.length > 0) {
       droppedUnits.push(unit);
@@ -957,6 +960,7 @@ export function packAnalysisUnits(
 
     sections.push(rendered);
     includedUnits.push(unit);
+    currentLength = candidateLength;
     tokensUsed = candidateTokens;
   }
 

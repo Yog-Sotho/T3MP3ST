@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [Quadratic String Join Bottleneck in Analysis Unit Packing]
+**Learning:** In token-budgeted analysis unit packing (`packAnalysisUnits`), re-joining all previously included sections with `sections.join('\n')` on every loop iteration creates $O(N^2)$ multi-megabyte temporary string allocations and CPU join overhead.
+**Action:** Track cumulative character length incrementally in $O(N)$ time using `currentLength = candidateLength` to compute token costs (`Math.ceil(candidateLength / 4)`), eliminating intermediate array joins and string allocations.
