@@ -8733,14 +8733,19 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
         window.addEventListener('load', maybeShowWelcome);
 
         function openQuickActions() {
+            const kbdStyle = 'background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:3px;font-size:10px;font-family:monospace;margin-left:auto;color:var(--accent);border:1px solid var(--border-color);';
             openModal('Quick Actions', `
                 <div style="display:grid;gap:8px">
-                    <button type="button" class="btn btn-secondary" onclick="spawnAllOperators();closeModal()" aria-label="Deploy All Operators">🤖 Deploy All Operators</button>
-                    <button type="button" class="btn btn-secondary" onclick="navigateTo('warroom');closeModal()" aria-label="Navigate to War Room">⚔️ War Room</button>
-                    <button type="button" class="btn btn-secondary" onclick="navigateTo('evidence');closeModal()" aria-label="Navigate to Evidence Vault">🔐 Evidence Vault</button>
-                    <button type="button" class="btn btn-secondary" onclick="navigateTo('terminal');closeModal()" aria-label="Navigate to Terminal">💻 Terminal</button>
-                    <button type="button" class="btn btn-secondary" onclick="navigateTo('benchmarks');closeModal()" aria-label="Run Benchmarks">📈 Run Benchmarks</button>
-                    <button type="button" class="btn btn-secondary" onclick="navigateTo('settings');closeModal()" aria-label="Navigate to Settings">⚙️ Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('warroom');closeModal()" aria-label="Navigate to 1: War Room" style="display:flex;align-items:center;justify-content:space-between;"><span>⚔️ War Room</span><kbd style="${kbdStyle}">1</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('operators');closeModal()" aria-label="Navigate to 2: Operatives" style="display:flex;align-items:center;justify-content:space-between;"><span>🤖 Operatives</span><kbd style="${kbdStyle}">2</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('evidence');closeModal()" aria-label="Navigate to 3: Evidence Vault" style="display:flex;align-items:center;justify-content:space-between;"><span>🔐 Evidence Vault</span><kbd style="${kbdStyle}">3</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('arsenal');closeModal()" aria-label="Navigate to 4: Arsenal" style="display:flex;align-items:center;justify-content:space-between;"><span>📡 Arsenal</span><kbd style="${kbdStyle}">4</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('terminal');closeModal()" aria-label="Navigate to 5: Terminal" style="display:flex;align-items:center;justify-content:space-between;"><span>💻 Terminal</span><kbd style="${kbdStyle}">5</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('benchmarks');closeModal()" aria-label="Navigate to 6: OBSIDIVM" style="display:flex;align-items:center;justify-content:space-between;"><span>📈 OBSIDIVM</span><kbd style="${kbdStyle}">6</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('configs');closeModal()" aria-label="Navigate to 7: Config Library" style="display:flex;align-items:center;justify-content:space-between;"><span>💾 Config Library</span><kbd style="${kbdStyle}">7</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('ctf-range');closeModal()" aria-label="Navigate to 8: CTF Range" style="display:flex;align-items:center;justify-content:space-between;"><span>🚩 CTF Range</span><kbd style="${kbdStyle}">8</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('settings');closeModal()" aria-label="Navigate to 9: Settings" style="display:flex;align-items:center;justify-content:space-between;"><span>⚙️ Settings</span><kbd style="${kbdStyle}">9</kbd></button>
+                    <button type="button" class="btn btn-secondary" onclick="spawnAllOperators();closeModal()" aria-label="Deploy All Operators (Shortcut D)" style="display:flex;align-items:center;justify-content:space-between;"><span>🤖 Deploy All Operators</span><kbd style="${kbdStyle}">D</kbd></button>
                 </div>
             `);
         }
@@ -17781,12 +17786,68 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
             `);
         }
 
+        function isModalOpen() {
+            const modal = document.getElementById('modalOverlay');
+            if (modal && modal.classList.contains('active')) return true;
+            const welcome = document.getElementById('welcomeOverlay');
+            if (welcome && welcome.classList.contains('active')) return true;
+            const operative = document.getElementById('operativeModal');
+            if (operative && operative.style.display !== 'none' && operative.style.display !== '') return true;
+            const admiral = document.getElementById('admiralWizard');
+            if (admiral && admiral.style.display !== 'none' && admiral.style.display !== '') return true;
+            const tour = document.getElementById('t3mpTourLayer');
+            if (tour && tour.classList.contains('active')) return true;
+            return false;
+        }
+
         document.addEventListener('keydown', function(e) {
             // Ignore when typing in inputs or contentEditable elements
             const isTyping = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
             if (isTyping(e.target) || isTyping(document.activeElement)) return;
 
-            // ── Global shortcuts (work on any page) ──
+            // Escape = abort mission or close active modal
+            if (e.key === 'Escape') {
+                const welcome = document.getElementById('welcomeOverlay');
+                if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
+                const modal = document.getElementById('modalOverlay');
+                if (modal && modal.classList.contains('active')) { closeModal(); return; }
+                if (typeof closeOperative === 'function') {
+                    const operative = document.getElementById('operativeModal');
+                    if (operative && operative.style.display !== 'none' && operative.style.display !== '') { closeOperative(); return; }
+                }
+                if (typeof closeAdmiralWizard === 'function') {
+                    const admiral = document.getElementById('admiralWizard');
+                    if (admiral && admiral.style.display !== 'none' && admiral.style.display !== '') { closeAdmiralWizard(); return; }
+                }
+                if (missionRunning) { abortMission(false); return; }
+                return;
+            }
+
+            // Number keys 1-9 = navigate pages (also closes modal if open)
+            const pageKeys = { '1': 'warroom', '2': 'operators', '3': 'evidence', '4': 'arsenal', '5': 'terminal', '6': 'benchmarks', '7': 'configs', '8': 'ctf-range', '9': 'settings' };
+            if (pageKeys[e.key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                e.preventDefault();
+                navigateTo(pageKeys[e.key]);
+                const modal = document.getElementById('modalOverlay');
+                if (modal && modal.classList.contains('active')) { closeModal(); }
+                return;
+            }
+
+            // 'd' / 'D' = Deploy All Operators (if Quick Actions modal is open, trigger and close modal)
+            if ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const modal = document.getElementById('modalOverlay');
+                if (modal && modal.classList.contains('active')) {
+                    e.preventDefault();
+                    spawnAllOperators();
+                    closeModal();
+                    return;
+                }
+            }
+
+            // Prevent background shortcuts when a modal dialog/overlay is active
+            if (isModalOpen()) return;
+
+            // ── Global shortcuts (work on any page when no modal is open) ──
             // / = focus hunt / search input
             if (e.key === '/' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                 e.preventDefault();
@@ -17816,22 +17877,6 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 if (!missionRunning) { navigateTo('warroom'); startMissionFromDashboard(); }
-                return;
-            }
-            // Escape = abort mission or close modal
-            if (e.key === 'Escape') {
-                const welcome = document.getElementById('welcomeOverlay');
-                if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
-                const modal = document.getElementById('modalOverlay');
-                if (modal && modal.classList.contains('active')) { closeModal(); return; }
-                if (missionRunning) { abortMission(false); return; }
-                return;
-            }
-            // Number keys 1-9 = navigate pages
-            const pageKeys = { '1': 'warroom', '2': 'operators', '3': 'evidence', '4': 'arsenal', '5': 'terminal', '6': 'benchmarks', '7': 'configs', '8': 'ctf-range', '9': 'settings' };
-            if (pageKeys[e.key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                e.preventDefault();
-                navigateTo(pageKeys[e.key]);
                 return;
             }
 
