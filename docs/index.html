@@ -8642,6 +8642,20 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
             }
         }
 
+        function isModalOpen() {
+            const welcome = document.getElementById('welcomeOverlay');
+            if (welcome && welcome.classList.contains('active')) return true;
+            const modal = document.getElementById('modalOverlay');
+            if (modal && modal.classList.contains('active')) return true;
+            const admiral = document.getElementById('admiralWizard');
+            if (admiral && admiral.style.display !== 'none') return true;
+            const operative = document.getElementById('operativeModal');
+            if (operative && operative.style.display !== 'none') return true;
+            const tour = document.getElementById('t3mpTourLayer');
+            if (tour && tour.classList.contains('active')) return true;
+            return false;
+        }
+
         // External-target approval — surface a one-click Approve instead of a dead-end error when a
         // standard Hunt is blocked on a missing receipt. Self-contained overlay with its own dismiss
         // paths so it can never hang the caller. Resolves true = operator approved, false = cancelled.
@@ -17824,9 +17838,17 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
                 if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
                 const modal = document.getElementById('modalOverlay');
                 if (modal && modal.classList.contains('active')) { closeModal(); return; }
+                const admiral = document.getElementById('admiralWizard');
+                if (admiral && admiral.style.display !== 'none') { if (typeof window.closeAdmiralWizard === 'function') window.closeAdmiralWizard(); return; }
+                const operative = document.getElementById('operativeModal');
+                if (operative && operative.style.display !== 'none') { if (typeof window.closeOperative === 'function') window.closeOperative(); return; }
                 if (missionRunning) { abortMission(false); return; }
                 return;
             }
+
+            // Suppress background shortcuts when a modal overlay is active
+            if (typeof isModalOpen === 'function' && isModalOpen()) return;
+
             // Number keys 1-9 = navigate pages
             const pageKeys = { '1': 'warroom', '2': 'operators', '3': 'evidence', '4': 'arsenal', '5': 'terminal', '6': 'benchmarks', '7': 'configs', '8': 'ctf-range', '9': 'settings' };
             if (pageKeys[e.key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -25355,7 +25377,7 @@ Be specific and actionable. Format as structured JSON.`;
     window.__admExclude = []; window.__admLastPick = null;
     let o = document.getElementById('admiralWizard');
     if (!o){
-      o = document.createElement('div'); o.id='admiralWizard'; o.style.cssText=css.overlay;
+      o = document.createElement('div'); o.id='admiralWizard'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'Op Admiral Guided Hunt Wizard'); o.style.cssText=css.overlay;
       o.onclick = (e)=>{ if(e.target===o) window.closeAdmiralWizard(); };
       o.innerHTML = '<div style="'+css.card+'" onclick="event.stopPropagation()">'
         + '<div style="'+css.head+'"><div style="font-size:16px;font-weight:800;color:#5bb8ff;">⚓ Op Admiral — Guided Hunt</div>'
@@ -25526,7 +25548,7 @@ Be specific and actionable. Format as structured JSON.`;
     SELECTED = arch; ADVICE = null;
     if(!ROSTER.find(x=>x.archetype===arch)) return;
     let m = document.getElementById('operativeModal');
-    if(!m){ m=document.createElement('div'); m.id='operativeModal'; m.style.cssText='position:fixed;inset:0;background:rgba(2,6,12,0.8);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;'; m.onclick=(e)=>{ if(e.target===m) closeOperative(); }; document.body.appendChild(m); }
+    if(!m){ m=document.createElement('div'); m.id='operativeModal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Operative Specialist Editor'); m.style.cssText='position:fixed;inset:0;background:rgba(2,6,12,0.8);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;'; m.onclick=(e)=>{ if(e.target===m) closeOperative(); }; document.body.appendChild(m); }
     m.style.display='flex'; renderEditor();
   };
   window.closeOperative = function(){ const m=document.getElementById('operativeModal'); if(m) m.style.display='none'; };
