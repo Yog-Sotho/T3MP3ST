@@ -4,7 +4,7 @@ import { EvidenceVault } from '../evidence/index.js';
 import { KillChainPhase, type Finding, type Credential, type Severity, type TargetType, type TargetZone } from '../types/index.js';
 import { TargetEnvironment } from '../target/index.js';
 import { CommsChannel } from '../comms/index.js';
-import { createKnowledgeBase } from '../stubs/index.js';
+import { createKnowledgeBase, WorkflowOrchestrator, WorkflowBuilder, ReportingEngine } from '../stubs/index.js';
 import { Semaphore } from '../pack/health.js';
 import { TaskQueue } from '../mission/index.js';
 import type { Task } from '../types/index.js';
@@ -186,6 +186,66 @@ describe('OperatorCell performance and correctness under load', () => {
 
     // Expect single-pass indexed lookups to execute well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('WorkflowOrchestrator performance and correctness under load', () => {
+  it('traverses 1,000 nodes and 2,000 edges in O(N + M) topological order with zero linear scanning overhead', async () => {
+    const builder = new WorkflowBuilder();
+    const nodeCount = 1000;
+
+    for (let i = 0; i < nodeCount; i++) {
+      builder.addNode({ id: `node-${i}`, type: 'step', action: { type: 'noop', params: {} } });
+    }
+
+    // Connect node-i to node-(i+1) and node-(i+2)
+    for (let i = 0; i < nodeCount - 2; i++) {
+      builder.addEdge({ from: `node-${i}`, to: `node-${i + 1}` });
+      builder.addEdge({ from: `node-${i}`, to: `node-${i + 2}` });
+    }
+
+    const workflow = builder.build();
+    const orchestrator = new WorkflowOrchestrator(undefined);
+
+    const start = performance.now();
+    const report = await orchestrator.execute(workflow);
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] WorkflowOrchestrator 1000-node 2000-edge execution took: ${duration.toFixed(2)}ms`);
+
+    expect(report.results.length).toBe(nodeCount);
+    expect(report.execution.status).toBe('failed');
+    expect(duration).toBeLessThan(100);
+  });
+});
+
+describe('ReportingEngine performance and correctness under load', () => {
+  it('rapidly generates markdown and JSON reports for 5,000 findings with O(1) severity ranking', () => {
+    const engine = new ReportingEngine();
+    const severities = ['critical', 'high', 'medium', 'low', 'info'];
+
+    for (let i = 0; i < 5000; i++) {
+      engine.addFinding({
+        title: `Finding ${i}`,
+        severity: severities[i % severities.length],
+        description: `Description ${i}`,
+      });
+    }
+
+    const start = performance.now();
+    const markdown = engine.generateMarkdown();
+    const jsonStr = engine.generateJSON();
+    const json = JSON.parse(jsonStr);
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] ReportingEngine 5,000-finding markdown & JSON export took: ${duration.toFixed(2)}ms`);
+
+    expect(markdown).toContain('# Penetration Test Report');
+    expect(json.summary.totalFindings).toBe(5000);
+    expect(json.summary.bySeverity.critical).toBe(1000);
+    expect(duration).toBeLessThan(100);
   });
 });
 

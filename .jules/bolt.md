@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [O(N + M) DAG Traversal and O(1) Severity Ranking]
+**Learning:** In workflow execution engines (`WorkflowOrchestrator`), calling `queue.shift()` inside Kahn's topological sort while loop degrades performance to $O(N^2)$ due to array shifting, and executing `nodes.find()` / `edges.filter()` / `results.find()` inside the node traversal loop degrades overall complexity to $O(N^2 + N \cdot M)$ with heavy array and closure allocations. Similarly, in report generation (`ReportingEngine`), calling `indexOf` inside `.sort()` comparators executes linear scans $O(N \log N)$ times.
+**Action:** Pre-index nodes, incoming edges, and previous results into Map lookups, use a read-pointer index (`head`) for $O(1)$ dequeuing, and replace `indexOf` in sort functions with pre-computed rank maps (`SEVERITY_ORDER_MAP`).
