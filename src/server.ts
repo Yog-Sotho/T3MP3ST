@@ -422,6 +422,14 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     httpx: /^(-o|-output|-sr|-srd|-r|-request|-filter-regex|-match-regex|-config|-dL|-list)$/i,
     katana: /^(-o|-output|-f|-field-scope|-config|-system-chrome|-headless)$/i,
     naabu: /^(-o|-output|-config|-iL|-list|-f|-file)$/i,
+    exiftool: /^(-config|-o|--output|-overwrite_original|-p|-eval|-execute)$/i,
+    semgrep: /^(-c|--config|-o|--output)$/i,
+    checkov: /^(-c|--config-file|-o|--output-file-path|--framework)$/i,
+    gitleaks: /^(-c|--config|-r|--report-path)$/i,
+    trivy: /^(-o|--output|--config|--template)$/i,
+    binwalk: /^(-o|--output|-dd|-e|--extract|-C|--directory|-G|--log|-A|-y|--yara)$/i,
+    yara: /^(-o|--output|-c)$/i,
+    openssl: /^(-out|-keyout|-passin|-passout|-config)$/i,
   };
 
   const pattern = dangerousFlags[bin];
