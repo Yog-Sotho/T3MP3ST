@@ -142,14 +142,19 @@ export function isRestrictedInternalIP(hostname: string): boolean {
       ip = ip.slice(1);
     }
   } else {
-    // Strip port suffix for IPv4 / hostname / single-colon target if present
+    // Strip port suffix for unbracketed targets if present:
+    // - Single-colon targets (IPv4:port or hostname:port, e.g. 127.0.0.1:8080, example.com:8080)
+    // - Multi-colon targets with 8 or more colons (unbracketed 8-group IPv6 with port, e.g. 0:0:0:0:0:0:0:1:8080)
     const firstColon = ip.indexOf(':');
     const lastColon = ip.lastIndexOf(':');
-    if (firstColon !== -1 && firstColon === lastColon) {
-      const possiblePort = ip.slice(lastColon + 1);
-      const portNum = Number(possiblePort);
-      if (/^\d{1,5}$/.test(possiblePort) && Number.isInteger(portNum) && portNum >= 0 && portNum <= 65535) {
-        ip = ip.slice(0, lastColon);
+    if (firstColon !== -1) {
+      const colonCount = ip.split(':').length - 1;
+      if (firstColon === lastColon || colonCount >= 8) {
+        const possiblePort = ip.slice(lastColon + 1);
+        const portNum = Number(possiblePort);
+        if (/^\d{1,5}$/.test(possiblePort) && Number.isInteger(portNum) && portNum >= 0 && portNum <= 65535) {
+          ip = ip.slice(0, lastColon);
+        }
       }
     }
   }
