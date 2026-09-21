@@ -716,40 +716,113 @@ export const OPERATOR_RUNBOOKS: OperatorRunbook[] = [
   },
 ];
 
+// ⚡ BOLT OPTIMIZATION: Pre-indexed Maps and pre-computed search haystacks / Set lookups
+// eliminate string joins, lowercasing allocations, and linear scans on hot resource search routes.
+
+interface OptimizedResourcePack {
+  pack: ResourcePack;
+  searchHaystack: string;
+  familiesSet: Set<string>;
+}
+
+const OPTIMIZED_RESOURCE_PACKS: OptimizedResourcePack[] = RESOURCE_PACKS.map(pack => ({
+  pack,
+  searchHaystack: [
+    pack.title,
+    pack.authority,
+    pack.useWhen,
+    pack.humanUse,
+    pack.agentUse.join(' '),
+    pack.queryHints.join(' '),
+    pack.missionFamilies.join(' '),
+  ].join(' ').toLowerCase(),
+  familiesSet: new Set(pack.missionFamilies),
+}));
+
+const RESOURCE_PACKS_BY_FAMILY = new Map<string, ResourcePack[]>();
+for (const pack of RESOURCE_PACKS) {
+  for (const family of pack.missionFamilies) {
+    let list = RESOURCE_PACKS_BY_FAMILY.get(family);
+    if (!list) {
+      list = [];
+      RESOURCE_PACKS_BY_FAMILY.set(family, list);
+    }
+    list.push(pack);
+  }
+}
+
+const WORKFLOW_PRESETS_BY_FAMILY = new Map<string, WorkflowPreset[]>();
+for (const preset of WORKFLOW_PRESETS) {
+  let list = WORKFLOW_PRESETS_BY_FAMILY.get(preset.family);
+  if (!list) {
+    list = [];
+    WORKFLOW_PRESETS_BY_FAMILY.set(preset.family, list);
+  }
+  list.push(preset);
+}
+
+const PROMPT_PACKS_BY_FAMILY = new Map<string, AgentPromptPack[]>();
+for (const pack of AGENT_PROMPT_PACKS) {
+  let list = PROMPT_PACKS_BY_FAMILY.get(pack.family);
+  if (!list) {
+    list = [];
+    PROMPT_PACKS_BY_FAMILY.set(pack.family, list);
+  }
+  list.push(pack);
+}
+
+const RUNBOOKS_BY_FAMILY = new Map<string, OperatorRunbook>();
+for (const runbook of OPERATOR_RUNBOOKS) {
+  RUNBOOKS_BY_FAMILY.set(runbook.family, runbook);
+}
+
+const FOREFRONT_PRESSURE_BY_FAMILY = new Map<string, ForefrontPressureLane[]>();
+for (const lane of FOREFRONT_PRESSURE_LANES) {
+  let list = FOREFRONT_PRESSURE_BY_FAMILY.get(lane.family);
+  if (!list) {
+    list = [];
+    FOREFRONT_PRESSURE_BY_FAMILY.set(lane.family, list);
+  }
+  list.push(lane);
+}
+
 export function resourcesForFamily(family: string): ResourcePack[] {
-  return RESOURCE_PACKS.filter(resource => resource.missionFamilies.includes(family as MissionFamily));
+  return RESOURCE_PACKS_BY_FAMILY.get(family) || [];
 }
 
 export function searchResources(query = '', family = ''): ResourcePack[] {
   const normalizedQuery = query.trim().toLowerCase();
-  return RESOURCE_PACKS.filter(resource => {
-    const familyMatches = !family || resource.missionFamilies.includes(family as MissionFamily);
-    if (!normalizedQuery) return familyMatches;
-    const haystack = [
-      resource.title,
-      resource.authority,
-      resource.useWhen,
-      resource.humanUse,
-      resource.agentUse.join(' '),
-      resource.queryHints.join(' '),
-      resource.missionFamilies.join(' '),
-    ].join(' ').toLowerCase();
-    return familyMatches && haystack.includes(normalizedQuery);
-  });
+  const result: ResourcePack[] = [];
+
+  for (let i = 0; i < OPTIMIZED_RESOURCE_PACKS.length; i++) {
+    const item = OPTIMIZED_RESOURCE_PACKS[i];
+    const familyMatches = !family || item.familiesSet.has(family);
+    if (!familyMatches) continue;
+
+    if (!normalizedQuery || item.searchHaystack.includes(normalizedQuery)) {
+      result.push(item.pack);
+    }
+  }
+
+  return result;
 }
 
 export function workflowPresetsForFamily(family = ''): WorkflowPreset[] {
-  return family ? WORKFLOW_PRESETS.filter(preset => preset.family === family) : WORKFLOW_PRESETS;
+  if (!family) return WORKFLOW_PRESETS;
+  return WORKFLOW_PRESETS_BY_FAMILY.get(family) || [];
 }
 
 export function promptPacksForFamily(family = ''): AgentPromptPack[] {
-  return family ? AGENT_PROMPT_PACKS.filter(pack => pack.family === family) : AGENT_PROMPT_PACKS;
+  if (!family) return AGENT_PROMPT_PACKS;
+  return PROMPT_PACKS_BY_FAMILY.get(family) || [];
 }
 
 export function runbookForFamily(family = ''): OperatorRunbook | undefined {
-  return OPERATOR_RUNBOOKS.find(runbook => runbook.family === family);
+  if (!family) return undefined;
+  return RUNBOOKS_BY_FAMILY.get(family);
 }
 
 export function forefrontPressureForFamily(family = ''): ForefrontPressureLane[] {
-  return family ? FOREFRONT_PRESSURE_LANES.filter(lane => lane.family === family) : FOREFRONT_PRESSURE_LANES;
+  if (!family) return FOREFRONT_PRESSURE_LANES;
+  return FOREFRONT_PRESSURE_BY_FAMILY.get(family) || [];
 }
