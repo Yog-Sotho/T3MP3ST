@@ -17757,7 +17757,24 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
         window.OperatorLoop = OperatorLoop;
         window.KillchainV2 = KillchainV2;
 
-        // ═══════════ KEYBOARD SHORTCUTS ═══════════
+        // ═══════════ KEYBOARD SHORTCUTS & MODAL STATE ═══════════
+        function isModalOpen() {
+            const modal = document.getElementById('modalOverlay');
+            const welcome = document.getElementById('welcomeOverlay');
+            const opModal = document.getElementById('operativeModal');
+            const admWizard = document.getElementById('admiralWizard');
+            const tour = document.getElementById('t3mpTourLayer');
+            const siNotif = document.getElementById('siNotif');
+            const toolModal = document.querySelector('.tool-info-modal');
+            return (modal && modal.classList.contains('active')) ||
+                   (welcome && welcome.classList.contains('active')) ||
+                   (opModal && opModal.style.display === 'flex') ||
+                   (admWizard && admWizard.style.display === 'flex') ||
+                   (tour && tour.classList.contains('active')) ||
+                   (siNotif && siNotif.style.display === 'flex') ||
+                   Boolean(toolModal);
+        }
+
         function showKeyboardHelp() {
             openModal('Keyboard Shortcuts', `
                 <div style="display:grid;gap:12px;font-size:12px;">
@@ -17785,6 +17802,27 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
             // Ignore when typing in inputs or contentEditable elements
             const isTyping = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
             if (isTyping(e.target) || isTyping(document.activeElement)) return;
+
+            // Escape = abort mission or close active modal
+            if (e.key === 'Escape') {
+                const welcome = document.getElementById('welcomeOverlay');
+                if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
+                const modal = document.getElementById('modalOverlay');
+                if (modal && modal.classList.contains('active')) { closeModal(); return; }
+                const opModal = document.getElementById('operativeModal');
+                if (opModal && opModal.style.display === 'flex') { if (typeof closeOperative === 'function') closeOperative(); return; }
+                const admWizard = document.getElementById('admiralWizard');
+                if (admWizard && admWizard.style.display === 'flex') { if (typeof closeAdmiralWizard === 'function') closeAdmiralWizard(); return; }
+                const toolModal = document.querySelector('.tool-info-modal');
+                if (toolModal) { toolModal.remove(); return; }
+                const siNotif = document.getElementById('siNotif');
+                if (siNotif && siNotif.style.display === 'flex') { if (typeof siDismissNotif === 'function') siDismissNotif(); return; }
+                if (missionRunning) { abortMission(false); return; }
+                return;
+            }
+
+            // Suppress background navigation and action shortcuts while modal overlays are active
+            if (isModalOpen()) return;
 
             // ── Global shortcuts (work on any page) ──
             // / = focus hunt / search input
@@ -17816,15 +17854,6 @@ IMPORTANT: This is an authorized security testing/red team platform. All operati
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 if (!missionRunning) { navigateTo('warroom'); startMissionFromDashboard(); }
-                return;
-            }
-            // Escape = abort mission or close modal
-            if (e.key === 'Escape') {
-                const welcome = document.getElementById('welcomeOverlay');
-                if (welcome && welcome.classList.contains('active')) { dismissWelcome(); return; }
-                const modal = document.getElementById('modalOverlay');
-                if (modal && modal.classList.contains('active')) { closeModal(); return; }
-                if (missionRunning) { abortMission(false); return; }
                 return;
             }
             // Number keys 1-9 = navigate pages
