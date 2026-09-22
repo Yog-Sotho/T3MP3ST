@@ -16,6 +16,7 @@ import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+import { resolvePath } from '../agent/local-agents.js';
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
@@ -186,6 +187,29 @@ describe('OperatorCell performance and correctness under load', () => {
 
     // Expect single-pass indexed lookups to execute well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('resolvePath performance and correctness', () => {
+  it('correctly rejects disallowed binaries and resolves allowed binaries rapidly via PATH traversal', () => {
+    // 1) Test security whitelist rejection
+    expect(resolvePath('bash')).toBeUndefined();
+    expect(resolvePath('rm')).toBeUndefined();
+    expect(resolvePath('malicious_bin')).toBeUndefined();
+
+    // 2) Benchmark 100 iterations (400 lookups) over allowed agent binaries
+    const start = performance.now();
+    for (let i = 0; i < 100; i++) {
+      resolvePath('claude');
+      resolvePath('codex');
+      resolvePath('hermes');
+      resolvePath('pi');
+    }
+    const duration = performance.now() - start;
+
+    console.log(`[Bolt Benchmark] resolvePath 400 binary lookups took: ${duration.toFixed(2)}ms`);
+
+    expect(duration).toBeLessThan(250);
   });
 });
 

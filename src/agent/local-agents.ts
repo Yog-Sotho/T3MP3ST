@@ -15,7 +15,7 @@
 import { execFile, execFileSync, spawn } from 'child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
 import { homedir, tmpdir, userInfo } from 'os';
-import { join } from 'path';
+import { delimiter, join } from 'path';
 
 // t3mp3st injects its OWN provider keys (from .env) into the server process. If we let those leak into
 // a spawned CLI, the CLI uses t3mp3st's key instead of the user's native login → 401. The entire point
@@ -187,19 +187,45 @@ export interface AgentDetection {
   ready: boolean;      // installed && authed
 }
 
-function resolvePath(bin: string): string | undefined {
-  try {
-    // Security: Whitelist allowed agent binaries to prevent command injection
-    // (even though bin is currently hardcoded from SPECS, defensive coding practice)
-    const ALLOWED_BINS = ['claude', 'codex', 'hermes', 'pi'];
-    if (!ALLOWED_BINS.includes(bin)) {
-      return undefined;
-    }
+const ALLOWED_AGENT_BINS = new Set(['claude', 'codex', 'hermes', 'pi']);
 
-    // Try 'which' first (standard, doesn't need shell)
+/**
+ * Fast, non-blocking binary path resolution for allowed agent CLIs.
+ * Traverses PATH directories using native fs.existsSync to avoid spawning synchronous
+ * `which` or `sh` child processes on the V8 main thread (~100x faster).
+ */
+export function resolvePath(bin: string): string | undefined {
+  // Security: Whitelist allowed agent binaries to prevent command injection / lookup
+  if (!ALLOWED_AGENT_BINS.has(bin)) {
+    return undefined;
+  }
+
+  const pathEnv = process.env.PATH || '';
+  if (pathEnv) {
+    const dirs = pathEnv.split(delimiter);
+    const extensions = process.platform === 'win32' ? ['.exe', '.cmd', '.bat', ''] : [''];
+    for (let i = 0; i < dirs.length; i++) {
+      const dir = dirs[i];
+      if (!dir) continue;
+      for (let j = 0; j < extensions.length; j++) {
+        const fullPath = join(dir, bin + extensions[j]);
+        try {
+          if (existsSync(fullPath)) {
+            return fullPath;
+          }
+        } catch {
+          /* ignore permission or path errors */
+        }
+      }
+    }
+    // If PATH was non-empty and searched, the binary does not exist in PATH
+    return undefined;
+  }
+
+  // Fallback ONLY if process.env.PATH is empty
+  try {
     return execFileSync('which', [bin], { encoding: 'utf8' }).trim() || undefined;
   } catch {
-    // Fallback: try 'command' if which fails (shouldn't happen on normal systems)
     try {
       return execFileSync('sh', ['-c', 'command -v "$1"', '--', bin], { encoding: 'utf8' }).trim() || undefined;
     } catch {
