@@ -59,6 +59,14 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/httpx:\s*\/\^\(-o\|-output\|-sr\|-srd\|-r\|-request\|-filter-regex\|-match-regex\|-config\|-dL\|-list\)\$\//);
     expect(block).toMatch(/katana:\s*\/\^\(-o\|-output\|-f\|-field-scope\|-config\|-system-chrome\|-headless\)\$\//);
     expect(block).toMatch(/naabu:\s*\/\^\(-o\|-output\|-config\|-iL\|-list\|-f\|-file\)\$\//);
+    expect(block).toMatch(/semgrep:\s*\/\^\(-o\|--output\|-c\|--config\)\$\//);
+    expect(block).toMatch(/checkov:\s*\/\^\(-o\|--output\|--output-file-path\|-f\|--file\|--config-file\)\$\//);
+    expect(block).toMatch(/gitleaks:\s*\/\^\(-r\|--report-path\|-c\|--config\)\$\//);
+    expect(block).toMatch(/trivy:\s*\/\^\(-o\|--output\|--config\)\$\//);
+    expect(block).toMatch(/binwalk:\s*\/\^\(-e\|--extract\|-G\|--log\|-f\|--file\|-C\|--directory\)\$\//);
+    expect(block).toMatch(/yara:\s*\/\^\(-o\|--output\)\$\//);
+    expect(block).toMatch(/openssl:\s*\/\^\(-out\|-in\)\$\//);
+    expect(block).toMatch(/exiftool:\s*\/\^\(-o\|-config\|-p\|-@\|-TagsFromFile\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {
@@ -66,5 +74,11 @@ describe('local API authorization hardening invariants', () => {
 
     expect(route).toMatch(/targetHost\.startsWith\(['"]-['"]\)/);
     expect(route).toMatch(/isRestrictedInternalIP\(targetHost\)/);
+  });
+
+  it('/api/agents/local/detect sanitizes caught errors before sending response', () => {
+    const route = routeBlock("app.get('/api/agents/local/detect'", "app.post('/api/agents/local/connect'");
+
+    expect(route).toMatch(/sanitizeErrorForResponse\(e\)/);
   });
 });
