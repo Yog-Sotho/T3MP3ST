@@ -422,6 +422,14 @@ function parseCommand(command: string): ParsedCommand | { error: string } {
     httpx: /^(-o|-output|-sr|-srd|-r|-request|-filter-regex|-match-regex|-config|-dL|-list)$/i,
     katana: /^(-o|-output|-f|-field-scope|-config|-system-chrome|-headless)$/i,
     naabu: /^(-o|-output|-config|-iL|-list|-f|-file)$/i,
+    semgrep: /^(-o|--output|-c|--config)$/i,
+    checkov: /^(-o|--output|--output-file-path|-f|--file|--config-file)$/i,
+    gitleaks: /^(-r|--report-path|-c|--config)$/i,
+    trivy: /^(-o|--output|--config)$/i,
+    binwalk: /^(-e|--extract|-G|--log|-f|--file|-C|--directory)$/i,
+    yara: /^(-o|--output)$/i,
+    openssl: /^(-out|-in)$/i,
+    exiftool: /^(-o|-config|-p|-@|-TagsFromFile)$/i,
   };
 
   const pattern = dangerousFlags[bin];
@@ -7570,7 +7578,7 @@ app.get('/api/agents/local/detect', async (_req: Request, res: Response): Promis
     const agents = await detectLocalAgents();
     res.json({ agents, connected: Array.from(connectedLocalAgents.keys()) });
   } catch (e) {
-    res.status(500).json({ error: String((e as Error).message) });
+    res.status(500).json({ error: sanitizeErrorForResponse(e) });
   }
 });
 
