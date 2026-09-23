@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [OpGeneral Nested Map Indexing & Allocation-Free String Validation]
+**Learning:** In high-throughput plan review and execution paths (`OpGeneral.reviewPlan` and `OpGeneral.executePlan`), calling `.trim()` on thousands of work order fields allocated huge numbers of temporary strings on the V8 heap. Furthermore, constructing composite string keys like `${family}:${archetype}` for Map lookups created high garbage collection pressure during campaign planning and assignment calculations.
+**Action:** Use an allocation-free `isBlank` helper to check string whitespace without creating substrings, use nested `Map<MissionFamily, Map<OperatorArchetype, ...>>` structures to eliminate composite string key allocations, and perform target filtering and sorting in a single non-mutating pass.

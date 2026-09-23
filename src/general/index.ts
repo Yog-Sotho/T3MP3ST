@@ -295,6 +295,18 @@ export interface StrategicAssessment {
 // EVENTS
 // =============================================================================
 
+/** Fast allocation-free whitespace check without string allocation from .trim() */
+function isBlank(str: string | undefined | null): boolean {
+  if (!str) return true;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code !== 32 && code !== 9 && code !== 10 && code !== 13) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export interface GeneralEvents {
   'general:planning': { directive: Directive };
   'general:plan_ready': { plan: OpPlan };
@@ -1169,8 +1181,8 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
     const workOrderFamilies = new Set<MissionFamily>();
     for (let i = 0; i < p.workOrders.length; i++) {
       const order = p.workOrders[i];
-      if (!order.retest.trim()) workOrdersWithoutRetestsCount++;
-      if (!order.falsifier.trim()) workOrdersWithoutFalsifiersCount++;
+      if (isBlank(order.retest)) workOrdersWithoutRetestsCount++;
+      if (isBlank(order.falsifier)) workOrdersWithoutFalsifiersCount++;
       workOrderFamilies.add(order.family);
     }
 
@@ -1241,7 +1253,7 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       score -= 12;
     }
 
-    if (!p.critic.weirdRoute.trim() || !p.critic.proofPressure.trim()) {
+    if (isBlank(p.critic.weirdRoute) || isBlank(p.critic.proofPressure)) {
       warnings.push('General critique is too thin; add weird-route and proof-pressure analysis.');
       score -= 10;
     } else {
@@ -1327,18 +1339,22 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
     this.emit('general:executing', { plan: p });
 
     // Build execution config from the plan
-    const targetAddresses = p.targets
-      .sort((a, b) => a.priority - b.priority)
-      .map(t => t.address)
-      .filter(addr => addr.length > 0);
+    const sortedTargets = p.targets.length > 1 ? [...p.targets].sort((a, b) => a.priority - b.priority) : p.targets;
+    const targetAddresses: string[] = [];
+    for (let i = 0; i < sortedTargets.length; i++) {
+      const addr = sortedTargets[i].address;
+      if (addr && addr.length > 0) {
+        targetAddresses.push(addr);
+      }
+    }
 
     const review = this.reviewPlan(p);
 
     // Flatten operator allocation while preserving useful multiplicity.
-    // ⚡ BOLT OPTIMIZATION: Pre-index work orders by archetype and family+archetype,
-    // and pre-index hunt lanes by specialist archetype to eliminate O(N * M) filtering/finding loops.
-    const workOrderIdsByArchetype = new Map<string, string[]>();
-    const workOrderIdsByFamilyAndArchetype = new Map<string, string[]>();
+    // ⚡ BOLT OPTIMIZATION: Use nested Maps to index work orders by archetype and family+archetype
+    // without string key concatenations, and allocation-free checks for assignments.
+    const workOrderIdsByArchetype = new Map<OperatorArchetype, string[]>();
+    const workOrderIdsByFamilyAndArchetype = new Map<MissionFamily, Map<OperatorArchetype, string[]>>();
     for (let i = 0; i < p.workOrders.length; i++) {
       const order = p.workOrders[i];
       let byArch = workOrderIdsByArchetype.get(order.assignedArchetype);
@@ -1348,11 +1364,15 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       }
       byArch.push(order.id);
 
-      const famArchKey = `${order.family}:${order.assignedArchetype}`;
-      let byFamArch = workOrderIdsByFamilyAndArchetype.get(famArchKey);
+      let familyMap = workOrderIdsByFamilyAndArchetype.get(order.family);
+      if (!familyMap) {
+        familyMap = new Map();
+        workOrderIdsByFamilyAndArchetype.set(order.family, familyMap);
+      }
+      let byFamArch = familyMap.get(order.assignedArchetype);
       if (!byFamArch) {
         byFamArch = [];
-        workOrderIdsByFamilyAndArchetype.set(famArchKey, byFamArch);
+        familyMap.set(order.assignedArchetype, byFamArch);
       }
       byFamArch.push(order.id);
     }
@@ -1376,7 +1396,20 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
       workOrderIds: string[];
       briefing: string;
     }> = [];
-    const assignmentKeysSet = new Set<string>();
+    const assignedFamilyArchetypes = new Map<MissionFamily, Set<OperatorArchetype>>();
+
+    const isAssigned = (fam: MissionFamily, arch: OperatorArchetype): boolean => {
+      const set = assignedFamilyArchetypes.get(fam);
+      return set ? set.has(arch) : false;
+    };
+    const markAssigned = (fam: MissionFamily, arch: OperatorArchetype) => {
+      let set = assignedFamilyArchetypes.get(fam);
+      if (!set) {
+        set = new Set();
+        assignedFamilyArchetypes.set(fam, set);
+      }
+      set.add(arch);
+    };
 
     for (let i = 0; i < p.operators.length; i++) {
       const op = p.operators[i];
@@ -1393,7 +1426,7 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
           briefing: op.briefing,
         });
         if (lane) {
-          assignmentKeysSet.add(`${lane}:${op.archetype}`);
+          markAssigned(lane, op.archetype);
         }
       }
     }
@@ -1406,10 +1439,9 @@ Return only a valid JSON object wrapped in a json code block. Keep it compact, c
           operators.push(archetype);
           operatorsSet.add(archetype);
         }
-        const assignKey = `${lane.family}:${archetype}`;
-        if (!assignmentKeysSet.has(assignKey)) {
-          assignmentKeysSet.add(assignKey);
-          const workOrderIds = workOrderIdsByFamilyAndArchetype.get(assignKey) || [];
+        if (!isAssigned(lane.family, archetype)) {
+          markAssigned(lane.family, archetype);
+          const workOrderIds = workOrderIdsByFamilyAndArchetype.get(lane.family)?.get(archetype) || [];
           operatorAssignments.push({
             archetype,
             lane: lane.family,
