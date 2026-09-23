@@ -37,6 +37,27 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        .skip-link {
+            position: absolute;
+            top: -100px;
+            left: 16px;
+            z-index: 10001;
+            padding: 10px 16px;
+            background: var(--accent, #2fffd2);
+            color: #071017;
+            font-weight: 700;
+            font-size: 13px;
+            border-radius: 6px;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: top 0.2s ease-in-out;
+        }
+        .skip-link:focus {
+            top: 16px;
+            outline: 2px solid #ffffff;
+            outline-offset: 2px;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background:
@@ -3341,6 +3362,7 @@
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="bg-grid"></div>
 
     <div class="app-container">
@@ -3423,7 +3445,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="main-content" tabindex="-1">
             <header class="header">
                 <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" title="Toggle navigation sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
                 <h1 class="header-title" id="pageTitle">War Room</h1>
@@ -3893,9 +3915,9 @@
                         <div class="ops-layer-grid">
                             <section class="ops-route-card">
                                 <div class="ops-card-title"><span>Mission Contract</span><span>plain text -> route</span></div>
-                                <textarea id="plinyDirective" class="ops-directive" placeholder="Describe the authorized operation in normal language. Example: We own this staging API. Find the highest-impact risks, preserve evidence, and give engineering a fix plan."></textarea>
+                                <textarea id="plinyDirective" class="ops-directive" aria-label="Mission contract directive" placeholder="Describe the authorized operation in normal language. Example: We own this staging API. Find the highest-impact risks, preserve evidence, and give engineering a fix plan."></textarea>
                                 <div class="ops-control-row">
-                                    <select id="plinyMissionFamily" title="Mission family">
+                                    <select id="plinyMissionFamily" title="Mission family" aria-label="Mission family">
                                         <option value="auto">Auto-route from directive</option>
                                         <option value="web_api">Web / API</option>
                                         <option value="ai_red_team">AI red team</option>
@@ -3908,7 +3930,7 @@
                                         <option value="social_osint">Social / OSINT</option>
                                         <option value="reporting_remediation">Reports / remediation</option>
                                     </select>
-                                    <select id="plinyAgentMode" title="Agent routing mode">
+                                    <select id="plinyAgentMode" title="Agent routing mode" aria-label="Agent routing mode">
                                         <option value="wizard">Human wizard</option>
                                         <option value="lanes">Agent lanes</option>
                                         <option value="expert">Expert console</option>
