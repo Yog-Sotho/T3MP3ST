@@ -300,7 +300,8 @@
 
         .btn:focus-visible,
         .api-reconnect-btn:focus-visible,
-        .cmd-btn:focus-visible {
+        .cmd-btn:focus-visible,
+        .api-key-toggle:focus-visible {
             outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
@@ -5425,7 +5426,7 @@
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-..." aria-label="OpenRouter API key">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('openrouterKey')" aria-label="Show OpenRouter API key">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('openrouterKey')" aria-label="Show OpenRouter API key" title="Show OpenRouter API key">Show</button>
                                 </div>
                                 <div class="form-hint">Get key from <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--accent);">openrouter.ai/keys</a></div>
                             </div>
@@ -5437,7 +5438,7 @@
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="veniceKey" placeholder="venice key…" aria-label="Venice API key">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('veniceKey')" aria-label="Show Venice API key">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('veniceKey')" aria-label="Show Venice API key" title="Show Venice API key">Show</button>
                                 </div>
                                 <div class="form-hint">OpenAI-compatible, privacy-focused. Get key from <a href="https://venice.ai/settings/api" target="_blank" style="color: var(--accent);">venice.ai/settings/api</a></div>
                             </div>
@@ -5449,7 +5450,7 @@
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="anthropicKey" placeholder="sk-ant-..." aria-label="Anthropic API key">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('anthropicKey')" aria-label="Show Anthropic API key">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('anthropicKey')" aria-label="Show Anthropic API key" title="Show Anthropic API key">Show</button>
                                 </div>
                             </div>
                             <div style="font-size: 10px; color: #888; margin-bottom: 8px;">Stored, but direct-LLM currently routes via <b>OpenRouter</b> or a connected agent — not wired to this key yet.</div>
@@ -5461,7 +5462,7 @@
                             <div class="form-group">
                                 <div class="api-key-input">
                                     <input type="password" class="form-input" id="openaiKey" placeholder="sk-..." aria-label="OpenAI API key">
-                                    <button class="api-key-toggle" onclick="toggleApiKey('openaiKey')" aria-label="Show OpenAI API key">Show</button>
+                                    <button class="api-key-toggle" onclick="toggleApiKey('openaiKey')" aria-label="Show OpenAI API key" title="Show OpenAI API key">Show</button>
                                 </div>
                             </div>
                             <div style="font-size: 10px; color: #888; margin-bottom: 8px;">Stored, but direct-LLM currently routes via <b>OpenRouter</b> or a connected agent — not wired to this key yet.</div>
@@ -8389,7 +8390,9 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                 openaiKey: 'OpenAI'
             };
             const name = nameMap[id] || 'API';
-            b.setAttribute('aria-label', `${i.type === 'password' ? 'Show' : 'Hide'} ${name} API key`);
+            const label = `${i.type === 'password' ? 'Show' : 'Hide'} ${name} API key`;
+            b.setAttribute('aria-label', label);
+            b.setAttribute('title', label);
         }
 
         function saveApiKey(provider, btn) {
