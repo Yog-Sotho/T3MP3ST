@@ -8,16 +8,17 @@
 /** Provider secret signatures. Each is applied globally; a match is replaced with `[redacted]`. */
 export const SECRET_PATTERNS: Record<string, { pattern: RegExp; severity: string; provider: string }> = {
   aws_access_key: { pattern: /AKIA[0-9A-Z]{16}/g, severity: 'critical', provider: 'AWS' },
-  aws_secret_key: { pattern: /[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/g, severity: 'critical', provider: 'AWS' },
   gcp_api_key: { pattern: /AIza[0-9A-Za-z\-_]{35}/g, severity: 'high', provider: 'GCP' },
+  github_pat: { pattern: /github_pat_[A-Za-z0-9_]{22,}/g, severity: 'critical', provider: 'GitHub' },
   github_token: { pattern: /ghp_[A-Za-z0-9]{36}/g, severity: 'critical', provider: 'GitHub' },
   github_oauth: { pattern: /gho_[A-Za-z0-9]{36}/g, severity: 'critical', provider: 'GitHub' },
+  github_app_token: { pattern: /(?:ghu_|ghs_|ghr_)[A-Za-z0-9]{36}/g, severity: 'critical', provider: 'GitHub' },
   anthropic_api_key: { pattern: /sk-ant-api\d{2}-[A-Za-z0-9_\-]{16,}/g, severity: 'critical', provider: 'Anthropic' },
   openai_api_key: { pattern: /sk-[A-Za-z0-9_\-]{20,}/g, severity: 'critical', provider: 'OpenAI' },
   gitlab_token: { pattern: /glpat-[A-Za-z0-9\-_]{20}/g, severity: 'critical', provider: 'GitLab' },
-  jwt: { pattern: /eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*/g, severity: 'high', provider: 'JWT' },
   stripe_live: { pattern: /sk_live_[0-9a-zA-Z]{24}/g, severity: 'critical', provider: 'Stripe' },
   slack_token: { pattern: /xox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*/g, severity: 'high', provider: 'Slack' },
+  jwt: { pattern: /eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*/g, severity: 'high', provider: 'JWT' },
   postgres_uri: { pattern: /postgres(ql)?:\/\/[^:]+:[^@]+@[^/]+\/\w+/gi, severity: 'critical', provider: 'PostgreSQL' },
   mongodb_uri: { pattern: /mongodb(\+srv)?:\/\/[^:]+:[^@]+@[^/]+/gi, severity: 'critical', provider: 'MongoDB' },
   pem_private_key: { pattern: /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g, severity: 'critical', provider: 'PEM' },
@@ -25,6 +26,7 @@ export const SECRET_PATTERNS: Record<string, { pattern: RegExp; severity: string
   openssh_private: { pattern: new RegExp('-----BEGIN OPENSSH ' + 'PRIVATE KEY-----', 'g'), severity: 'critical', provider: 'OpenSSH' },
   password_field: { pattern: /password["\s]*[:=]["\s]*[^"'\s]{4,}/gi, severity: 'high', provider: 'Generic' },
   api_key_field: { pattern: /api[_-]?key["\s]*[:=]["\s]*["']?[A-Za-z0-9\-_]{16,}["']?/gi, severity: 'high', provider: 'Generic' },
+  aws_secret_key: { pattern: /[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/g, severity: 'critical', provider: 'AWS' },
 };
 
 /** Pre-computed array of patterns to avoid calling Object.values on every redactString call. */
@@ -32,7 +34,7 @@ const PATTERNS = Object.values(SECRET_PATTERNS);
 
 /** Fast pre-screen RegExp to check if a string contains any potential secrets/credentials.
  *  Allows ~99.9% of normal strings/lines to skip the heavy regex replacements. */
-const PRE_SCREEN_RE = /AKIA|AIza|ghp_|gho_|sk-|glpat-|eyJ|sk_live_|xox|postgres|mongodb|-----BEGIN|password|api|Bearer|token|secret|:\/\/|[A-Za-z0-9/+=]{40}/i;
+const PRE_SCREEN_RE = /AKIA|AIza|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|sk-|glpat-|eyJ|sk_live_|xox|postgres|mongodb|-----BEGIN|password|api|Bearer|token|secret|:\/\/|[A-Za-z0-9/+=]{40}/i;
 
 /** Hoisted RegExp for object keys that need redaction to avoid recompiling it on every object key. */
 const SECRET_KEY_RE = /(api[_-]?key|authorization|cookie|credential|password|secret|token)/i;

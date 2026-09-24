@@ -30,6 +30,14 @@ describe('redactString — URL userinfo (basic-auth) scrub', () => {
     expect(redactString('token=abc123def456ghi')).toBe('token=[redacted]');
     expect(redactString('Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9')).toContain('Bearer [redacted]');
   });
+
+  it('redacts GitHub fine-grained PATs and GitHub App tokens', () => {
+    const pat = 'github_pat_11A12345678901234567890123456789012345678901234567890123456789012345678901234567890123';
+    expect(redactString(`my pat is ${pat}`)).toBe('my pat is [redacted]');
+    expect(redactString('ghu_123456789012345678901234567890123456')).toBe('[redacted]');
+    expect(redactString('ghs_123456789012345678901234567890123456')).toBe('[redacted]');
+    expect(redactString('ghr_123456789012345678901234567890123456')).toBe('[redacted]');
+  });
 });
 
 describe('redactSecrets — approval-audit record shape', () => {
