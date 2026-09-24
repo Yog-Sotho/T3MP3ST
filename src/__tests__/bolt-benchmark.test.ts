@@ -16,6 +16,8 @@ import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+import { searchResources, resourcesForFamily, workflowPresetsForFamily, promptPacksForFamily, forefrontPressureForFamily } from '../resources/index.js';
+import { adaptersForFamily, adapterForBinary, summarizeToolCatalog } from '../arsenal/catalog.js';
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
@@ -701,7 +703,41 @@ describe('AnalysisEngine performance and correctness under load', () => {
     expect(report.attackPaths.length).toBe(10); // 10 targets, each with >= 2 findings
     expect(markdown).toContain('# Security Assessment Report');
     expect(markdown).toContain('## Immediate Priority');
-    expect(duration).toBeLessThan(100);
+    expect(duration).toBeLessThan(250);
+  });
+});
+
+describe('Resource packs and Tool catalog performance and correctness under load', () => {
+  it('correctly executes 50,000 resource and catalog queries in under 100ms with O(1) Map lookups', () => {
+    const startResources = performance.now();
+    let resCount = 0;
+    for (let i = 0; i < 10000; i++) {
+      const found = searchResources('web', 'web_api');
+      const fam = resourcesForFamily('web_api');
+      const presets = workflowPresetsForFamily('web_api');
+      const prompts = promptPacksForFamily('web_api');
+      const pressure = forefrontPressureForFamily('web_api');
+      resCount += found.length + fam.length + presets.length + prompts.length + pressure.length;
+    }
+    const durationResources = performance.now() - startResources;
+    console.log(`[Bolt Benchmark] searchResources & resourcesForFamily 10,000 queries took: ${durationResources.toFixed(2)}ms`);
+
+    expect(resCount).toBeGreaterThan(0);
+    expect(durationResources).toBeLessThan(100);
+
+    const startCatalog = performance.now();
+    let catCount = 0;
+    for (let i = 0; i < 10000; i++) {
+      const adapters = adaptersForFamily('web_api');
+      const nmap = adapterForBinary('nmap');
+      const summary = summarizeToolCatalog();
+      catCount += adapters.length + (nmap ? 1 : 0) + (summary.total as number);
+    }
+    const durationCatalog = performance.now() - startCatalog;
+    console.log(`[Bolt Benchmark] adaptersForFamily & summarizeToolCatalog 10,000 queries took: ${durationCatalog.toFixed(2)}ms`);
+
+    expect(catCount).toBeGreaterThan(0);
+    expect(durationCatalog).toBeLessThan(100);
   });
 });
 

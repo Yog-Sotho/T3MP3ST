@@ -1142,38 +1142,74 @@ export const NETWORK_COMMANDS = new Set(
     .map(adapter => adapter.binary)
 );
 
-export function adaptersForFamily(family?: string): ToolAdapter[] {
-  return family
-    ? TOOL_ADAPTERS.filter(adapter => adapter.families.includes(family as MissionFamily))
-    : TOOL_ADAPTERS;
+// Pre-indexed Map lookups and summary cache initialized at module load
+const ADAPTERS_BY_FAMILY = new Map<string, ToolAdapter[]>();
+const ADAPTERS_BY_BINARY_OR_ID = new Map<string, ToolAdapter>();
+
+for (const adapter of TOOL_ADAPTERS) {
+  if (!ADAPTERS_BY_BINARY_OR_ID.has(adapter.binary)) {
+    ADAPTERS_BY_BINARY_OR_ID.set(adapter.binary, adapter);
+  }
+  if (!ADAPTERS_BY_BINARY_OR_ID.has(adapter.id)) {
+    ADAPTERS_BY_BINARY_OR_ID.set(adapter.id, adapter);
+  }
+  for (const family of adapter.families) {
+    let list = ADAPTERS_BY_FAMILY.get(family);
+    if (!list) {
+      list = [];
+      ADAPTERS_BY_FAMILY.set(family, list);
+    }
+    list.push(adapter);
+  }
 }
 
-export function adapterForBinary(binary: string): ToolAdapter | undefined {
-  return TOOL_ADAPTERS.find(adapter => adapter.binary === binary || adapter.id === binary);
-}
+function computeCatalogSummary(adapters: ToolAdapter[]): Record<string, unknown> {
+  let commandReady = 0;
+  let catalogOnly = 0;
+  let importOnly = 0;
+  const byExecution: Record<string, number> = {};
+  const byRisk: Record<string, number> = {};
+  const byCategory: Record<string, number> = {};
 
-export function summarizeToolCatalog(adapters = TOOL_ADAPTERS): Record<string, unknown> {
-  const commandReady = adapters.filter(adapter => adapter.execution === 'safe_command' || adapter.execution === 'receipt_required').length;
-  const byExecution = adapters.reduce<Record<string, number>>((acc, adapter) => {
-    acc[adapter.execution] = (acc[adapter.execution] || 0) + 1;
-    return acc;
-  }, {});
-  const byRisk = adapters.reduce<Record<string, number>>((acc, adapter) => {
-    acc[adapter.risk] = (acc[adapter.risk] || 0) + 1;
-    return acc;
-  }, {});
-  const byCategory = adapters.reduce<Record<string, number>>((acc, adapter) => {
-    acc[adapter.category] = (acc[adapter.category] || 0) + 1;
-    return acc;
-  }, {});
+  for (let i = 0; i < adapters.length; i++) {
+    const adapter = adapters[i];
+    if (adapter.execution === 'safe_command' || adapter.execution === 'receipt_required') {
+      commandReady++;
+    } else if (adapter.execution === 'catalog_only') {
+      catalogOnly++;
+    } else if (adapter.execution === 'import_only') {
+      importOnly++;
+    }
+    byExecution[adapter.execution] = (byExecution[adapter.execution] || 0) + 1;
+    byRisk[adapter.risk] = (byRisk[adapter.risk] || 0) + 1;
+    byCategory[adapter.category] = (byCategory[adapter.category] || 0) + 1;
+  }
+
   return {
     total: adapters.length,
     commandReady,
-    catalogOnly: adapters.filter(adapter => adapter.execution === 'catalog_only').length,
-    importOnly: adapters.filter(adapter => adapter.execution === 'import_only').length,
+    catalogOnly,
+    importOnly,
     unmodeled: adapters.length === 0 || commandReady === 0,
     byExecution,
     byRisk,
     byCategory,
   };
+}
+
+const DEFAULT_CATALOG_SUMMARY = computeCatalogSummary(TOOL_ADAPTERS);
+
+export function adaptersForFamily(family?: string): ToolAdapter[] {
+  return family ? (ADAPTERS_BY_FAMILY.get(family) || []) : TOOL_ADAPTERS;
+}
+
+export function adapterForBinary(binary: string): ToolAdapter | undefined {
+  return ADAPTERS_BY_BINARY_OR_ID.get(binary);
+}
+
+export function summarizeToolCatalog(adapters = TOOL_ADAPTERS): Record<string, unknown> {
+  if (adapters === TOOL_ADAPTERS) {
+    return DEFAULT_CATALOG_SUMMARY;
+  }
+  return computeCatalogSummary(adapters);
 }
