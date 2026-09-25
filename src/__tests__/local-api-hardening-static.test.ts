@@ -59,6 +59,14 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/httpx:\s*\/\^\(-o\|-output\|-sr\|-srd\|-r\|-request\|-filter-regex\|-match-regex\|-config\|-dL\|-list\)\$\//);
     expect(block).toMatch(/katana:\s*\/\^\(-o\|-output\|-f\|-field-scope\|-config\|-system-chrome\|-headless\)\$\//);
     expect(block).toMatch(/naabu:\s*\/\^\(-o\|-output\|-config\|-iL\|-list\|-f\|-file\)\$\//);
+    expect(block).toMatch(/semgrep:\s*\/\^\(-o\|--output\|--config\|-e\|--pattern\)\$\//);
+    expect(block).toMatch(/checkov:\s*\/\^\(-o\|--output\|-f\|--file\|--config-file\)\$\//);
+    expect(block).toMatch(/gitleaks:\s*\/\^\(-r\|--report-path\|-c\|--config\)\$\//);
+    expect(block).toMatch(/trivy:\s*\/\^\(-o\|--output\|--config\)\$\//);
+    expect(block).toMatch(/binwalk:\s*\/\^\(-e\|--extract\|-C\|--directory\|-l\|--log\|-f\|--file\)\$\//);
+    expect(block).toMatch(/yara:\s*\/\^\(-c\|--config\)\$\//);
+    expect(block).toMatch(/exiftool:\s*\/\^\(-o\|-config\|-stay_open\|-@\)\$\//);
+    expect(block).toMatch(/openssl:\s*\/\^\(-out\|-config\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {
