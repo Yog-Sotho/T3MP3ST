@@ -16,6 +16,7 @@ import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+import { validateAttackGraph } from '../recon/attack-graph.js';
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
@@ -186,6 +187,53 @@ describe('OperatorCell performance and correctness under load', () => {
 
     // Expect single-pass indexed lookups to execute well under 50ms
     expect(duration).toBeLessThan(50);
+  });
+});
+
+describe('validateAttackGraph performance and correctness under load', () => {
+  it('rapidly validates and normalizes large attack graphs with zero multi-pass allocation overhead', () => {
+    const rawNodes = Array.from({ length: 5000 }, (_, i) => ({
+      id: `node-${i}`,
+      label: `Label for node ${i}`,
+      phase: i % 2 === 0 ? 'RECON' : 'FOOTHOLD',
+      kind: (['target_root', 'service', 'finding', 'sink', 'pivot', 'unknown_kind'] as const)[i % 6],
+      status: (['verified', 'active', 'probing', 'hypothesized', 'discarded', 'unknown_status'] as const)[i % 6],
+      operator: 'GHOST',
+    }));
+
+    // Create 10,000 edges between existing nodes, plus some pointing to non-existent nodes
+    const rawEdges = Array.from({ length: 10000 }, (_, i) => ({
+      from: `node-${i % 5000}`,
+      to: i % 10 === 0 ? 'node-nonexistent' : `node-${(i + 1) % 5000}`,
+      kind: (['proven', 'hypothesized', 'discarded', 'invalid_edge_kind'] as const)[i % 4],
+    }));
+
+    const rawGraph = {
+      target: '10.0.0.1',
+      family: 'pentest',
+      phases: ['RECON', 'FOOTHOLD', 'PRIVESC', 'LATERAL', 'EXFIL'],
+      nodes: rawNodes,
+      edges: rawEdges,
+      source: 'recon',
+    };
+
+    const start = performance.now();
+    const validated = validateAttackGraph(rawGraph);
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] validateAttackGraph (5,000 nodes, 10,000 edges) took: ${duration.toFixed(2)}ms`);
+
+    expect(validated.nodes.length).toBe(5000);
+    // 1,000 edges pointing to non-existent nodes are filtered out -> 9,000 remain
+    expect(validated.edges.length).toBe(9000);
+    expect(validated.source).toBe('recon');
+    // Ensure invalid kinds/statuses were safely fallback-normalized
+    expect(validated.nodes[5].kind).toBe('service'); // 'unknown_kind' -> fallback 'service'
+    expect(validated.nodes[5].status).toBe('probing'); // 'unknown_status' -> fallback 'probing'
+    expect(validated.edges[2].kind).toBe('hypothesized'); // rawEdges[3] ('invalid_edge_kind') dropped rawEdges[0], so index 2 -> fallback 'hypothesized'
+
+    expect(duration).toBeLessThan(100);
   });
 });
 

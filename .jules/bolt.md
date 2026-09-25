@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [Static Set Pre-Compilation and Single-Pass Graph Validation]
+**Learning:** In graph validation routines (`validateAttackGraph`), creating inline array literals inside loops for `.includes()` membership checks (e.g., `['target_root', ...].includes(...)`) allocates fresh arrays and performs linear array scans on every single node and edge. Furthermore, chaining `.filter().map()` and re-iterating nodes to construct lookup sets introduces multi-pass array allocations and heap churn.
+**Action:** Pre-compile static validation `Set`s at module scope for $O(1)$ membership checks, and replace multi-pass `.filter().map()` chains with a single indexed `for` loop that validates and builds ID tracking sets concurrently.

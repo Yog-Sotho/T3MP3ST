@@ -78,6 +78,10 @@ const VOCAB: Record<string, string[]> = {
 
 const OPERATORS = ['WRAITH', 'GHOST', 'RAVEN', 'CIPHER', 'ORACLE', 'QUARRY', 'SERAPH', 'STRATUS'];
 
+const VALID_KINDS = new Set(['target_root', 'service', 'finding', 'sink', 'pivot']);
+const VALID_STATUSES = new Set(['verified', 'active', 'probing', 'hypothesized', 'discarded']);
+const VALID_EDGE_KINDS = new Set(['proven', 'hypothesized', 'discarded']);
+
 // stable string hash → deterministic-but-varied scaffolds (no Math.random; same target = same skeleton)
 function hash(s: string): number {
   let h = 2166136261;
@@ -199,20 +203,45 @@ export function validateAttackGraph(g: any): AttackGraph {
   const phaseSet = new Set(phases);
   const rawNodes: any[] = Array.isArray(g.nodes) ? g.nodes : [];
   const ids = new Set<string>();
-  const nodes: AttackGraphNode[] = rawNodes.filter((n) => n && n.id && !ids.has(n.id) && ids.add(n.id)).map((n) => ({
-    id: String(n.id),
-    label: String(n.label || n.id).slice(0, 18),
-    phase: phaseSet.has(n.phase) ? n.phase : phases[0],
-    kind: ['target_root', 'service', 'finding', 'sink', 'pivot'].includes(n.kind) ? n.kind : 'service',
-    status: ['verified', 'active', 'probing', 'hypothesized', 'discarded'].includes(n.status) ? n.status : 'probing',
-    operator: n.operator ? String(n.operator) : undefined,
-    evidence: n.evidence ? String(n.evidence) : undefined,
-    note: n.note ? String(n.note) : undefined,
-  }));
-  const have = new Set(nodes.map((n) => n.id));
-  const edges: AttackGraphEdge[] = (Array.isArray(g.edges) ? g.edges : [])
-    .filter((e: any) => e && have.has(e.from) && have.has(e.to))
-    .map((e: any) => ({ from: String(e.from), to: String(e.to), kind: ['proven', 'hypothesized', 'discarded'].includes(e.kind) ? e.kind : 'hypothesized' }));
+  const nodes: AttackGraphNode[] = [];
+  const have = new Set<string>();
+
+  for (let i = 0; i < rawNodes.length; i++) {
+    const n = rawNodes[i];
+    if (!n || !n.id) continue;
+    const idStr = String(n.id);
+    if (ids.has(idStr)) continue;
+    ids.add(idStr);
+    have.add(idStr);
+
+    nodes.push({
+      id: idStr,
+      label: String(n.label || n.id).slice(0, 18),
+      phase: phaseSet.has(n.phase) ? n.phase : phases[0],
+      kind: VALID_KINDS.has(n.kind) ? n.kind : 'service',
+      status: VALID_STATUSES.has(n.status) ? n.status : 'probing',
+      operator: n.operator ? String(n.operator) : undefined,
+      evidence: n.evidence ? String(n.evidence) : undefined,
+      note: n.note ? String(n.note) : undefined,
+    });
+  }
+
+  const rawEdges: any[] = Array.isArray(g.edges) ? g.edges : [];
+  const edges: AttackGraphEdge[] = [];
+  for (let i = 0; i < rawEdges.length; i++) {
+    const e = rawEdges[i];
+    if (!e) continue;
+    const from = String(e.from);
+    const to = String(e.to);
+    if (!have.has(from) || !have.has(to)) continue;
+
+    edges.push({
+      from,
+      to,
+      kind: VALID_EDGE_KINDS.has(e.kind) ? e.kind : 'hypothesized',
+    });
+  }
+
   return {
     target: String(g.target || 'unknown'),
     family: String(g.family || 'default'),
