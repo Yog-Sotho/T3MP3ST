@@ -67,3 +67,7 @@
 ## 2025-03-19 - [O(1) Map Pre-Indexing and RegExp Hoisting in AI Playbook & Anti-Fitting Gate]
 **Learning:** In technique lookup routines (`redTeamTechnique`), calling `.find()` on static playbooks creates $O(N)$ linear array scans on every query. Similarly, in anti-fitting and validation gates (`isAnswerLeak` and `isFittingTell`), instantiating regular expressions inline or using array tuple destructuring (`for (const [rx, why] of FORBIDDEN_TELLS)`) allocates fresh RegExp objects and iterator/tuple arrays on every invocation.
 **Action:** Pre-index static playbooks into a module-level `Map` for $O(1)$ lookups, hoist static `RegExp` literals to module scope, and replace tuple array destructuring in loops with indexed `for` loops.
+
+## 2025-03-20 - [Provenance Gate Array Allocation Bottleneck]
+**Learning:** In live verification gates (`gateLiveFinding`), running `Array.prototype.filter` on every finding creation or verification allocates an intermediate array on the V8 heap solely to inspect its length. Under high-throughput finding recording across autonomous swarm operations, this causes GC churn.
+**Action:** Replace `Array.prototype.filter` with a single-pass indexed loop to count matching tool output evidence directly without heap array allocations.

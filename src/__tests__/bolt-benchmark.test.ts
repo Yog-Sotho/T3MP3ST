@@ -16,6 +16,46 @@ import { isFittingTell } from '../admiral/index.js';
 import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
+import { gateLiveFinding } from '../evidence/gate.js';
+
+describe('gateLiveFinding provenance gate performance and correctness under load', () => {
+  it('correctly evaluates provenance and gates live findings rapidly with zero filter array allocation overhead', () => {
+    const severities: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
+
+    const findings: Finding[] = Array.from({ length: 5000 }, (_, i) => ({
+      id: `finding-${i}`,
+      title: `Vulnerability ${i}`,
+      description: `Description ${i}`,
+      severity: severities[i % severities.length],
+      targetId: 'target-1',
+      operatorId: 'op-1',
+      phase: KillChainPhase.EXPLOIT,
+      evidence: i % 2 === 0
+        ? [
+            { type: 'output', content: `Tool execution log output ${i}`, timestamp: Date.now() },
+            { type: 'command', content: `nmap -sV target-${i}`, timestamp: Date.now() },
+          ]
+        : [],
+      discoveredAt: Date.now(),
+    }));
+
+    const start = performance.now();
+
+    let passedCount = 0;
+    for (let i = 0; i < findings.length; i++) {
+      const res = gateLiveFinding(findings[i]);
+      if (res.passed) passedCount++;
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] gateLiveFinding 5,000 live finding gate checks took: ${duration.toFixed(2)}ms`);
+
+    expect(passedCount).toBe(2500); // 50% have tool output evidence
+    expect(duration).toBeLessThan(50);
+  });
+});
 
 describe('OpGeneral performance and correctness under load', () => {
   it('rapidly reviews plans and computes execution assignments with zero multi-pass allocation overhead', () => {
