@@ -97,6 +97,13 @@ describe('isRestrictedInternalIP — trailing dot FQDN & localhost suffix SSRF p
     expect(isRestrictedInternalIP('0000:0000:0000:0000:0000:0000:169.254.169.254:80')).toBe(true);
     expect(isRestrictedInternalIP('::127.0.0.1:8080')).toBe(true);
 
+    // Alternative IPv4 representations with port suffixes in IPv4-mapped/compatible IPv6 addresses
+    expect(isRestrictedInternalIP('::ffff:0x7f000001:8080')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:2130706433:8080')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:127.1:8080')).toBe(true);
+    expect(isRestrictedInternalIP('0:0:0:0:0:0:127.1:8080')).toBe(true);
+    expect(isRestrictedInternalIP('::ffff:7f00:1:8080')).toBe(true);
+
     expect(isRestrictedInternalIP('::ffff:8.8.8.8:53')).toBe(false);
     expect(isRestrictedInternalIP('0:0:0:0:0:0:1.1.1.1:8080')).toBe(false);
   });

@@ -160,8 +160,24 @@ export function isRestrictedInternalIP(hostname: string): boolean {
   // Strip trailing dot(s) for FQDNs (e.g. localhost., 127.0.0.1., 0x7f000001.)
   ip = ip.replace(/\.+$/, '');
 
-  // Strip trailing port suffix if present after an IPv4-mapped/compatible IPv6 string (e.g. ::ffff:127.0.0.1:8080 or 0:0:0:0:0:0:127.0.0.1:8080)
-  ip = ip.replace(/^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d{1,5})$/i, '$1');
+  // Strip trailing port suffix if present after an IPv4-mapped/compatible IPv6 string (e.g. ::ffff:127.0.0.1:8080, ::ffff:0x7f000001:8080, 0:0:0:0:0:0:127.1:8080, or ::ffff:7f00:1:8080)
+  const portMatch = /^(.*):(\d{1,5})$/.exec(ip);
+  if (portMatch) {
+    const portNum = Number(portMatch[2]);
+    if (portNum >= 0 && portNum <= 65535) {
+      const candidate = portMatch[1];
+      const ipv6PrefixRegex = /^(?:(?:0*:){1,6}|::)(?:ffff:(?:0:)?)?/i;
+      if (ipv6PrefixRegex.test(candidate)) {
+        const potentialIp = candidate.replace(ipv6PrefixRegex, '');
+        const isDotDecimal = /^[0-9a-f.]+\.[0-9a-f.]+$/i.test(potentialIp);
+        const isHexOrDecimal = /^0x[0-9a-f]+$/i.test(potentialIp) || /^\d{5,}$/.test(potentialIp);
+        const isTwoHexWords = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.test(potentialIp);
+        if (isDotDecimal || isHexOrDecimal || isTwoHexWords) {
+          ip = candidate;
+        }
+      }
+    }
+  }
 
   // Resolve alternative IPv4 representation (including hex, decimal, octal, and mapped/compatible IPv6)
   // IPv4-compatible IPv6 addresses can contain up to 6 leading zero-hex groups (e.g. 0:0:0:0:0:0:127.0.0.1 or ::ffff:7f00:1)
