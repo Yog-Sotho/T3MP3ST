@@ -235,9 +235,16 @@ export class Arsenal extends EventEmitter<ArsenalEvents> {
 
   /**
    * Get tools by category
+   * ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values, avoiding intermediate array allocations.
    */
   getToolsByCategory(category: string): CustomTool[] {
-    return this.getAllTools().filter(t => t.category === category);
+    const result: CustomTool[] = [];
+    for (const tool of this.tools.values()) {
+      if (tool.category === category) {
+        result.push(tool);
+      }
+    }
+    return result;
   }
 
   /** Set (or clear with null) the authorized egress scope enforced in execute(). */
@@ -344,43 +351,26 @@ export class Arsenal extends EventEmitter<ArsenalEvents> {
 
   /**
    * Convert registered tools to LLM tool definitions for function calling
+   * ⚡ BOLT OPTIMIZATION: Single-pass iteration directly over Map values and O(1) Set lookups
+   * for name allowlists and category filters, avoiding intermediate array allocations.
    */
   getToolDefinitions(categories?: string[], names?: string[]): LLMToolDefinition[] {
-    let tools = this.getAllTools();
+    const result: LLMToolDefinition[] = [];
     // A per-operator NAME allowlist (the archetype's role toolkit) is the precise gate and
     // takes precedence over the coarse category filter; fall back to categories, then to all.
-    if (names?.length) {
-      tools = tools.filter(t => names.includes(t.name));
-    } else if (categories?.length) {
-      tools = tools.filter(t => categories.includes(t.category));
-    }
-    return tools.map(tool => {
-      const properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }> = {};
-      const required: string[] = [];
+    const nameSet = names?.length ? new Set(names) : null;
+    const categorySet = !nameSet && categories?.length ? new Set(categories) : null;
 
-      for (const param of tool.parameters || []) {
-        properties[param.name] = {
-          type: param.type,
-          description: param.description,
-        };
-        if (param.default !== undefined) {
-          properties[param.name].default = param.default;
-        }
-        if (param.required) {
-          required.push(param.name);
-        }
+    for (const tool of this.tools.values()) {
+      if (nameSet) {
+        if (!nameSet.has(tool.name)) continue;
+      } else if (categorySet) {
+        if (!categorySet.has(tool.category)) continue;
       }
+      result.push(formatToolDefinition(tool));
+    }
 
-      return {
-        name: tool.name,
-        description: tool.description,
-        parameters: {
-          type: 'object' as const,
-          properties,
-          required: required.length > 0 ? required : undefined,
-        },
-      };
-    });
+    return result;
   }
 
   /**
@@ -425,6 +415,42 @@ export function createToolContext(
   return {
     target,
     parameters: parameters || {},
+  };
+}
+
+/**
+ * Helper to format a CustomTool into an LLMToolDefinition
+ * ⚡ BOLT OPTIMIZATION: Allocation-free parameter formatting using an indexed loop.
+ */
+function formatToolDefinition(tool: CustomTool): LLMToolDefinition {
+  const properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }> = {};
+  const required: string[] = [];
+  const params = tool.parameters;
+
+  if (params) {
+    for (let i = 0; i < params.length; i++) {
+      const param = params[i];
+      properties[param.name] = {
+        type: param.type,
+        description: param.description,
+      };
+      if (param.default !== undefined) {
+        properties[param.name].default = param.default;
+      }
+      if (param.required) {
+        required.push(param.name);
+      }
+    }
+  }
+
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: {
+      type: 'object' as const,
+      properties,
+      required: required.length > 0 ? required : undefined,
+    },
   };
 }
 
