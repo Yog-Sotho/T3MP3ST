@@ -509,6 +509,12 @@
             background: rgba(0, 255, 136, 0.1);
         }
 
+        .arch-card:focus-visible,
+        .model-option:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
         .arch-icon {
             font-size: 24px;
             margin-bottom: 6px;
@@ -7073,15 +7079,29 @@ Correlating findings across agents, identifying patterns, producing actionable i
         setTimeout(function(){ try { hydrateFindings(); } catch (e) {} }, 1600);
 
         function renderArchitectures() {
-            document.getElementById('architectureGrid').innerHTML = ARCHITECTURES.map(a => `
-                <div class="arch-card ${currentArchitecture === a.id ? 'active' : ''}"
-                     data-id="${a.id}" onclick="selectArchitecture('${a.id}')">
-                    <div class="arch-icon">${a.icon}</div>
-                    <div class="arch-name">${a.name}</div>
-                    <div class="arch-desc">${a.desc}</div>
-                    <div class="arch-ops">${a.operators.length} operators</div>
-                </div>
-            `).join('');
+            const grid = document.getElementById('architectureGrid');
+            if (grid) {
+                grid.setAttribute('role', 'radiogroup');
+                grid.setAttribute('aria-label', 'Agent architecture options');
+                grid.innerHTML = ARCHITECTURES.map(a => {
+                    const isActive = currentArchitecture === a.id;
+                    return `
+                    <div class="arch-card ${isActive ? 'active' : ''}"
+                         data-id="${a.id}"
+                         tabindex="0"
+                         role="radio"
+                         aria-checked="${isActive}"
+                         aria-label="${escapeHtml(a.name)}: ${escapeHtml(a.desc)}"
+                         onclick="selectArchitecture('${a.id}')"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectArchitecture('${a.id}');}">
+                        <div class="arch-icon">${a.icon}</div>
+                        <div class="arch-name">${escapeHtml(a.name)}</div>
+                        <div class="arch-desc">${escapeHtml(a.desc)}</div>
+                        <div class="arch-ops">${a.operators.length} operators</div>
+                    </div>
+                `;
+                }).join('');
+            }
         }
 
         function selectArchitecture(archId) {
@@ -8421,12 +8441,23 @@ o.id === 'coordinator' ? `1. MISSION_STATUS: Progress assessment
                 return;
             }
             const selectedModel = state.settings?.selectedModel || 'anthropic/claude-opus-4.6';
-            container.innerHTML = MODELS.map(m => `
-                <div class="model-option ${selectedModel === m.id ? 'selected' : ''}" onclick="selectModel('${m.id}')">
-                    <h4>${m.name}</h4>
-                    <p>${m.provider}</p>
+            container.setAttribute('role', 'radiogroup');
+            container.setAttribute('aria-label', 'AI model options');
+            container.innerHTML = MODELS.map(m => {
+                const isSelected = selectedModel === m.id;
+                return `
+                <div class="model-option ${isSelected ? 'selected' : ''}"
+                     tabindex="0"
+                     role="radio"
+                     aria-checked="${isSelected}"
+                     aria-label="${escapeHtml(m.name)} (${escapeHtml(m.provider)})"
+                     onclick="selectModel('${m.id}')"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectModel('${m.id}');}">
+                    <h4>${escapeHtml(m.name)}</h4>
+                    <p>${escapeHtml(m.provider)}</p>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function selectModel(id) {
