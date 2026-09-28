@@ -17,7 +17,79 @@ import { OperatorCell, ARCHETYPE_PROFILES } from '../operators/index.js';
 import type { OperatorArchetype } from '../types/index.js';
 import { OpGeneral, type OpPlan } from '../general/index.js';
 import { Arsenal } from '../arsenal/index.js';
-import type { CustomTool } from '../types/index.js';
+import type { CustomTool, ToolFinding } from '../types/index.js';
+import { scoreBenchmark, matchFinding, aggregateMetrics, createBenchmark, type GroundTruthVuln } from '../benchmark/index.js';
+
+describe('Benchmark scoring performance and correctness under load', () => {
+  it('correctly scores findings against ground truth vulnerabilities with high performance', () => {
+    const groundTruth: GroundTruthVuln[] = [
+      { id: 'sqli-1', title: 'SQL Injection', severity: 'critical', category: 'sqli', matchKeywords: ['sql', 'sqli', 'injection'], points: 25 },
+      { id: 'xss-1', title: 'Cross Site Scripting', severity: 'high', category: 'xss', matchKeywords: ['xss', 'scripting'], points: 20 },
+      { id: 'rce-1', title: 'Remote Code Execution', severity: 'critical', category: 'rce', matchKeywords: ['rce', 'command execution'], points: 30 },
+      { id: 'csrf-1', title: 'Cross Site Request Forgery', severity: 'medium', category: 'csrf', matchKeywords: ['csrf', 'forgery'], points: 15 },
+      { id: 'info-1', title: 'Information Disclosure', severity: 'info', category: 'info', matchKeywords: ['disclosure', 'info'], points: 5 },
+    ];
+
+    const findings: ToolFinding[] = [];
+    // Populate 5,000 findings (mixture of matched detections and false positives)
+    for (let i = 0; i < 5000; i++) {
+      if (i % 5 === 0) {
+        findings.push({ title: 'Discovered SQL Injection', details: 'Unescaped parameter', toolName: 'sqlmap' });
+      } else if (i % 5 === 1) {
+        findings.push({ title: 'Discovered XSS', details: 'Reflected script tag', toolName: 'dalfox' });
+      } else if (i % 5 === 2) {
+        findings.push({ title: 'RCE Vulnerability', details: 'Command execution in endpoint', toolName: 'custom-rce' });
+      } else if (i % 5 === 3) {
+        findings.push({ title: 'CSRF Token Missing', details: 'Forgery possible on POST', toolName: 'zap' });
+      } else {
+        findings.push({ title: 'Clean Request Log', details: 'Normal traffic', toolName: 'logger' });
+      }
+    }
+
+    const start = performance.now();
+
+    // Perform scoreBenchmark over 5,000 findings
+    const metrics = scoreBenchmark(findings, groundTruth, 60, 5.2);
+
+    const end = performance.now();
+    const duration = end - start;
+
+    console.log(`[Bolt Benchmark] scoreBenchmark for 5,000 findings took: ${duration.toFixed(2)}ms`);
+
+    // Correctness assertions
+    expect(metrics.truePositives).toBe(4); // sqli, xss, rce, csrf found (info-1 not found)
+    expect(metrics.falsePositives).toBe(1000); // 1000 'Clean Request Log' findings
+    expect(metrics.missedVulns).toBe(1); // info-1 missed
+    expect(metrics.maxPoints).toBe(95);
+    expect(metrics.pointsScored).toBe(90); // 25 + 20 + 30 + 15
+    expect(metrics.severityBreakdown.critical.found).toBe(2);
+    expect(metrics.severityBreakdown.critical.total).toBe(2);
+    expect(metrics.severityBreakdown.info.found).toBe(0);
+    expect(metrics.severityBreakdown.info.total).toBe(1);
+
+    // Verify fast execution (well under 50ms)
+    expect(duration).toBeLessThan(50);
+  });
+
+  it('correctly executes full benchmark scoreRun and aggregateMetrics', () => {
+    const bench = createBenchmark();
+
+    const findings: ToolFinding[] = [
+      { title: 'Found SQL Injection in ID', details: 'SQL error in id query param', toolName: 'sqlmap' },
+      { title: 'Found Reflected XSS', details: 'Cross-site scripting payload in name param', toolName: 'dalfox' },
+    ];
+
+    const runResult = bench.scoreRun('full-pentest', findings, 120, 10);
+
+    expect(runResult.foundVulns.length).toBe(2);
+    expect(runResult.falsePositives.length).toBe(0);
+    expect(runResult.metrics.pointsScored).toBe(45); // sqli (25) + xss (20)
+
+    const aggregate = aggregateMetrics([runResult]);
+    expect(aggregate.pointsScored).toBe(45);
+    expect(aggregate.truePositives).toBe(2);
+  });
+});
 
 describe('Arsenal performance and correctness under load', () => {
   it('rapidly resolves tool definitions and category filters with zero intermediate array allocation overhead', () => {

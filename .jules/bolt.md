@@ -71,3 +71,7 @@
 ## 2025-03-20 - [Single-Pass Direct Iteration and O(1) Set Lookups in Arsenal Tool Definition Resolution]
 **Learning:** Calling `this.getAllTools()` inside `getToolDefinitions` and `getToolsByCategory` creates an intermediate array snapshot of all registered tools on every invocation. Furthermore, filtering tool name allowlists or categories via `names.includes(...)` or `categories.includes(...)` incurs $O(N \cdot M)$ linear array scanning overhead on every LLM agent turn.
 **Action:** Iterate directly over `this.tools.values()` in a single pass, convert `names` or `categories` filter arrays into `Set` instances for $O(1)$ membership checks, and format tool schemas using an allocation-free helper function.
+
+## 2025-03-21 - [Single-Pass Benchmark Scoring and Elimination of Multi-Pass Array Allocations]
+**Learning:** In the benchmark scoring framework (`scoreBenchmark`), evaluating ground truth vulnerabilities executed over 10 separate `.filter()` and `.reduce()` array iterations per benchmark run to calculate points scored, max possible points, and severity breakdown statistics, creating unnecessary V8 heap churn.
+**Action:** Replace multi-pass array operations with a single indexed `for` loop over `groundTruth` to compute accumulated points, max points, and severity totals/matches simultaneously with zero intermediate array allocations.

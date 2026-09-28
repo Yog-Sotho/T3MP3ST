@@ -131,21 +131,31 @@ export interface BenchmarkEvents {
 
 /**
  * Match a finding against ground truth vulnerabilities
+ *
+ * ⚡ BOLT OPTIMIZATION: Replaced .some() callbacks and iterator overhead
+ * with indexed for loops to eliminate closure allocation on keyword checks.
  */
 export function matchFinding(finding: ToolFinding, groundTruth: GroundTruthVuln[]): GroundTruthVuln | null {
   const findingText = `${finding.title} ${finding.details}`.toLowerCase();
 
-  for (const vuln of groundTruth) {
-    const matched = vuln.matchKeywords.some(keyword =>
-      findingText.includes(keyword.toLowerCase())
-    );
-    if (matched) return vuln;
+  for (let i = 0; i < groundTruth.length; i++) {
+    const vuln = groundTruth[i];
+    const keywords = vuln.matchKeywords;
+    for (let j = 0; j < keywords.length; j++) {
+      if (findingText.includes(keywords[j].toLowerCase())) {
+        return vuln;
+      }
+    }
   }
   return null;
 }
 
 /**
  * Score a set of findings against ground truth
+ *
+ * ⚡ BOLT OPTIMIZATION: Replaced 12+ multi-pass .filter() and .reduce() array allocations
+ * with a single indexed loop over groundTruth to compute pointsScored, maxPoints, and
+ * severityBreakdown simultaneously.
  */
 export function scoreBenchmark(
   findings: ToolFinding[],
@@ -156,7 +166,8 @@ export function scoreBenchmark(
   const matchedVulnIds = new Set<string>();
   const falsePositives: ToolFinding[] = [];
 
-  for (const finding of findings) {
+  for (let i = 0; i < findings.length; i++) {
+    const finding = findings[i];
     const match = matchFinding(finding, groundTruth);
     if (match) {
       matchedVulnIds.add(match.id);
@@ -173,18 +184,32 @@ export function scoreBenchmark(
   const recall = totalGroundTruth > 0 ? truePositives / totalGroundTruth : 0;
   const f1Score = (precision + recall) > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
 
-  const pointsScored = groundTruth
-    .filter(v => matchedVulnIds.has(v.id))
-    .reduce((sum, v) => sum + v.points, 0);
-  const maxPoints = groundTruth.reduce((sum, v) => sum + v.points, 0);
+  let pointsScored = 0;
+  let maxPoints = 0;
 
-  // Severity breakdown
-  const severities: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
-  const severityBreakdown = {} as Record<Severity, { found: number; total: number }>;
-  for (const sev of severities) {
-    const total = groundTruth.filter(v => v.severity === sev).length;
-    const found = groundTruth.filter(v => v.severity === sev && matchedVulnIds.has(v.id)).length;
-    severityBreakdown[sev] = { found, total };
+  const severityBreakdown: Record<Severity, { found: number; total: number }> = {
+    critical: { found: 0, total: 0 },
+    high: { found: 0, total: 0 },
+    medium: { found: 0, total: 0 },
+    low: { found: 0, total: 0 },
+    info: { found: 0, total: 0 },
+  };
+
+  for (let i = 0; i < groundTruth.length; i++) {
+    const v = groundTruth[i];
+    maxPoints += v.points;
+
+    const sevObj = severityBreakdown[v.severity];
+    if (sevObj) {
+      sevObj.total++;
+    }
+
+    if (matchedVulnIds.has(v.id)) {
+      pointsScored += v.points;
+      if (sevObj) {
+        sevObj.found++;
+      }
+    }
   }
 
   return {
@@ -206,21 +231,46 @@ export function scoreBenchmark(
 
 /**
  * Aggregate metrics across multiple benchmark runs
+ *
+ * ⚡ BOLT OPTIMIZATION: Single-pass indexed accumulation over benchmark runs
+ * to eliminate intermediate array allocations from flatMap, filter, and reduce.
  */
 export function aggregateMetrics(runs: BenchmarkRunResult[]): BenchmarkMetrics {
   if (runs.length === 0) {
     return scoreBenchmark([], [], 0, null);
   }
 
-  const allFindings = runs.flatMap(r => r.allFindings);
-  const allGroundTruth = runs.flatMap(r => [...r.foundVulns, ...r.missedVulns]);
-  const totalDuration = runs.reduce((sum, r) => sum + r.metrics.totalDurationSec, 0);
-  const firstFindingTimes = runs
-    .map(r => r.metrics.timeToFirstFinding)
-    .filter((t): t is number => t !== null);
-  const avgFirstFinding = firstFindingTimes.length > 0
-    ? firstFindingTimes.reduce((a, b) => a + b, 0) / firstFindingTimes.length
-    : null;
+  const allFindings: ToolFinding[] = [];
+  const allGroundTruth: GroundTruthVuln[] = [];
+  let totalDuration = 0;
+  let firstFindingSum = 0;
+  let firstFindingCount = 0;
+
+  for (let i = 0; i < runs.length; i++) {
+    const r = runs[i];
+    totalDuration += r.metrics.totalDurationSec;
+    if (r.metrics.timeToFirstFinding !== null) {
+      firstFindingSum += r.metrics.timeToFirstFinding;
+      firstFindingCount++;
+    }
+
+    const runFindings = r.allFindings;
+    for (let j = 0; j < runFindings.length; j++) {
+      allFindings.push(runFindings[j]);
+    }
+
+    const found = r.foundVulns;
+    for (let j = 0; j < found.length; j++) {
+      allGroundTruth.push(found[j]);
+    }
+
+    const missed = r.missedVulns;
+    for (let j = 0; j < missed.length; j++) {
+      allGroundTruth.push(missed[j]);
+    }
+  }
+
+  const avgFirstFinding = firstFindingCount > 0 ? firstFindingSum / firstFindingCount : null;
 
   return scoreBenchmark(allFindings, allGroundTruth, totalDuration, avgFirstFinding);
 }
