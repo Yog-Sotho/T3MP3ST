@@ -67,6 +67,25 @@ describe('local API authorization hardening invariants', () => {
     expect(block).toMatch(/binwalk:\s*\/\^\(-f\|--log\|-e\|--extract\|-C\|--directory\)\$\//);
     expect(block).toMatch(/yara:\s*\/\^\(-x\|--extension\)\$\//);
     expect(block).toMatch(/openssl:\s*\/\^\(-config\|-out\)\$\//);
+    expect(block).toMatch(/radamsa:\s*\/\^\(-o\|--output\)\$\//);
+    expect(block).toMatch(/trufflehog:\s*\/\^\(-o\|--output\|-c\|--config\)\$\//);
+    expect(block).toMatch(/syft:\s*\/\^\(-o\|--output\|-c\|--config\)\$\//);
+    expect(block).toMatch(/grype:\s*\/\^\(-o\|--output\|-c\|--config\|-f\|--file\)\$\//);
+    expect(block).toMatch(/'osv-scanner':\s*\/\^\(-o\|--output\|--config\)\$\//);
+    expect(block).toMatch(/garak:\s*\/\^\(-o\|--report_prefix\|-c\|--config\)\$\//);
+    expect(block).toMatch(/promptfoo:\s*\/\^\(-o\|--output\|-c\|--config\)\$\//);
+    expect(block).toMatch(/slither:\s*\/\^\(--config-file\)\$\//);
+    expect(block).toMatch(/myth:\s*\/\^\(-o\|--output\)\$\//);
+    expect(block).toMatch(/echidna:\s*\/\^\(--config\)\$\//);
+    expect(block).toMatch(/forge:\s*\/\^\(-o\|--out\|--config-path\)\$\//);
+    expect(block).toMatch(/cast:\s*\/\^\(--config-path\)\$\//);
+    expect(block).toMatch(/'afl-fuzz':\s*\/\^\(-o\|-f\)\$\//);
+    expect(block).toMatch(/apktool:\s*\/\^\(-o\|--output\)\$\//);
+    expect(block).toMatch(/jadx:\s*\/\^\(-d\|--output-dir\)\$\//);
+    expect(block).toMatch(/apkleaks:\s*\/\^\(-o\|--output\)\$\//);
+    expect(block).toMatch(/mobsfscan:\s*\/\^\(-o\|--output\)\$\//);
+    expect(block).toMatch(/john:\s*\/\^\(-o\|--output\|--config\)\$\//);
+    expect(block).toMatch(/hashcat:\s*\/\^\(-o\|--outfile\|--config\)\$\//);
   });
 
   it('/api/tools/recon blocks option-looking targets and restricts internal/loopback IPs', () => {
